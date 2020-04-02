@@ -1,21 +1,21 @@
 import type { IncomingHttpHeaders } from 'http2';
 import type { TuftRouteSchema } from './route-map';
 
-import { constants } from 'http2';
+export const requestMethods = [
+  'CONNECT',
+  'DELETE',
+  'GET',
+  'HEAD',
+  'OPTIONS',
+  'PATCH',
+  'POST',
+  'PUT',
+  'TRACE',
+];
 
-function getRequestMethods() {
-  return [
-    constants.HTTP2_METHOD_CONNECT,
-    constants.HTTP2_METHOD_DELETE,
-    constants.HTTP2_METHOD_GET,
-    constants.HTTP2_METHOD_HEAD,
-    constants.HTTP2_METHOD_OPTIONS,
-    constants.HTTP2_METHOD_PATCH,
-    constants.HTTP2_METHOD_POST,
-    constants.HTTP2_METHOD_PUT,
-    constants.HTTP2_METHOD_TRACE,
-  ];
-}
+Object.freeze(requestMethods);
+
+export const pathSegmentCache = new Map();
 
 function bufferToString(buf: Buffer): string {
   const bytes = [];
@@ -86,9 +86,8 @@ function formatValue(value: any): string {
 }
 
 const validPathRegexp = /^\/([0-9A-Za-z-_.~%:[\]@!$&'()*+,;=/{}]+)?$/;
-const requestMethods = getRequestMethods();
 
-function findInvalidSchemaEntry(schema: TuftRouteSchema): string | null {
+export function findInvalidSchemaEntry(schema: TuftRouteSchema): string | null {
   if (typeof schema !== 'object') {
     return `'${schema}' is not an object.`;
   }
@@ -152,7 +151,7 @@ const HTTP2_HEADER_PATH = ':path';
 
 const headerCache = new WeakMap();
 
-function extractPathnameAndQueryString(headers: IncomingHttpHeaders) {
+export function extractPathnameAndQueryString(headers: IncomingHttpHeaders) {
   let pathObj: { pathname: string, queryString?: string } = headerCache.get(headers);
 
   if (!pathObj ) {
@@ -170,12 +169,3 @@ function extractPathnameAndQueryString(headers: IncomingHttpHeaders) {
 
   return pathObj;
 }
-
-const pathSegmentCache = new Map();
-
-export {
-  getRequestMethods,
-  findInvalidSchemaEntry,
-  extractPathnameAndQueryString,
-  pathSegmentCache,
-};

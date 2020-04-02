@@ -1,30 +1,31 @@
+import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { RouteMap, TuftRoute } from './route-map';
 
 import { createRouteHandler } from './route-handlers';
 import { pathSegmentCache } from './utils';
-import { getRequestMethods } from './utils';
+import { requestMethods } from './utils';
 
-const sym_handler: unique symbol = Symbol('handler');
-const sym_next: unique symbol = Symbol('next');
-const sym_wildcard: unique symbol = Symbol('{*}');
-const sym_doubleWildcard: unique symbol = Symbol('{**}');
+const sym_handler         = Symbol('sym_handler');
+const sym_next            = Symbol('sym_next');
+const sym_wildcard        = Symbol('sym_wildcard');
+const sym_doubleWildcard  = Symbol('sym_doubleWildcard');
 
-type RouteTreeNode = {
-  [sym_handler]?: any,
-  [sym_next]: RouteTree,
+type RouteTreeBranch = {
+  [sym_handler]?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
+  [sym_next]: RouteTreeNode,
 };
 
-type RouteTree = {
-  [key: string]: RouteTreeNode,
-  [sym_wildcard]?: RouteTreeNode,
-  [sym_doubleWildcard]?: RouteTreeNode,
+type RouteTreeNode = {
+  [key: string]: RouteTreeBranch,
+  [sym_wildcard]?: RouteTreeBranch,
+  [sym_doubleWildcard]?: RouteTreeBranch,
 }
 
 export class RouteManager {
   private readonly _routes: { [method: string]: RouteStore } = {};
 
   constructor(routeMaps: RouteMap | RouteMap[]) {
-    for (const method of getRequestMethods()) {
+    for (const method of requestMethods) {
       this._routes[method] = new RouteStore();
     }
 
@@ -52,7 +53,7 @@ const wildcardRegexp = /{\*\*?}/;
 const defaultDoubleWildcard = { [sym_next]: {} };
 
 class RouteStore {
-  private readonly _routeTree: RouteTree = {};
+  private readonly _routeTree: RouteTreeNode = {};
 
   set(path: string, route: TuftRoute) {
     const params = [];
@@ -87,7 +88,9 @@ class RouteStore {
         route.params = params;
       }
 
-      node[segment] = node[segment] ?? { [sym_next]: {} };
+      if (node[segment] === undefined) {
+        node[segment] = { [sym_next]: {} };
+      }
 
       if (i === pathSegments.length - 1) {
         node[segment]![sym_handler] = createRouteHandler(route);
@@ -101,38 +104,62 @@ class RouteStore {
   get(path: string) {
     let routeHandler;
 
-    let node = this._routeTree;
-    let doubleWildcard: RouteTreeNode = defaultDoubleWildcard;
-    let begin;
-    let end;
-    let value;
+    let node: RouteTreeNode = this._routeTree;
+    let doubleWildcard: RouteTreeBranch = defaultDoubleWildcard;
+    let value: RouteTreeBranch;
 
-    const pathSegments: string[] = [];
+    const pathSegments = pathSegmentCache.get(path);
 
-    for (begin = 1; begin > 0; begin = end + 1) {
-      end = path.indexOf('/', begin);
+    if (pathSegments !== undefined) {
+      for (let i = 0; i < pathSegments.length; i++) {
+        const pathSegment = pathSegments[i];
 
-      const pathSegment = path.slice(begin, end >= 0 ? end : undefined);
-      pathSegments.push(pathSegment);
+        doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
+        value = node[pathSegment] ?? node[sym_wildcard] ?? doubleWildcard;
 
-      doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
-      value = node[pathSegment] ?? node[sym_wildcard] ?? doubleWildcard;
+        const isFinalSegment = i === pathSegments.length - 1;
+        const isDoubleWildcard = value === doubleWildcard;
 
-      const isFinalSegment = end === -1;
-      const isDoubleWildcard = value === doubleWildcard;
+        if (isFinalSegment || isDoubleWildcard) {
+          routeHandler = value[sym_handler];
 
-      if (isFinalSegment || isDoubleWildcard) {
-        routeHandler = value[sym_handler];
-
-        if (routeHandler !== undefined) {
-          break;
+          if (routeHandler !== undefined) {
+            break;
+          }
         }
-      }
 
-      node = value[sym_next];
+        node = value[sym_next];
+      }
     }
 
-    pathSegmentCache.set(path, pathSegments);
+    else {
+      const pathSegments: string[] = [];
+
+      for (let begin = 1, end; begin > 0; begin = end + 1) {
+        end = path.indexOf('/', begin);
+
+        const pathSegment = path.slice(begin, end >= 0 ? end : undefined);
+        pathSegments.push(pathSegment);
+
+        doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
+        value = node[pathSegment] ?? node[sym_wildcard] ?? doubleWildcard;
+
+        const isFinalSegment = end === -1;
+        const isDoubleWildcard = value === doubleWildcard;
+
+        if (isFinalSegment || isDoubleWildcard) {
+          routeHandler = value[sym_handler];
+
+          if (routeHandler !== undefined) {
+            break;
+          }
+        }
+
+        node = value[sym_next];
+      }
+
+      pathSegmentCache.set(path, pathSegments);
+    }
 
     return routeHandler ?? doubleWildcard[sym_handler] ?? null;
   }

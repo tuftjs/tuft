@@ -1,20 +1,18 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
-import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftErrorHandler } from './route-map';
-import type { Transaction } from './transaction';
+import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHandler, TuftErrorHandler } from './route-map';
+import type { TuftContext, TuftContextOptions } from './context';
 
-import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
-import { createTransaction } from './transaction';
+import { createContext } from './context';
 
-const {
-  HTTP2_HEADER_STATUS,
-  HTTP2_HEADER_CONTENT_TYPE,
-  HTTP2_HEADER_CONTENT_LENGTH,
-  HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
-} = constants;
+const HTTP2_HEADER_STATUS         = ':status';
+const HTTP2_HEADER_CONTENT_TYPE   = 'content-type';
+const HTTP2_HEADER_CONTENT_LENGTH = 'content-length';
 
-const mimeTypes: { [key: string]: string } = {
+const HTTP_STATUS_BAD_REQUEST           = 400;
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+
+const mimeTypeMap: { [key: string]: string } = {
   'text':                     'text/plain',
   'text/plain':               'text/plain',
   'html':                     'text/html',
@@ -25,7 +23,7 @@ const mimeTypes: { [key: string]: string } = {
   'application/octet-stream': 'application/octet-stream',
 };
 
-function handleEmptyResponse(response: { status?: number }, stream: ServerHttp2Stream) {
+function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
 
   const { status } = response;
@@ -42,14 +40,14 @@ function handleEmptyResponse(response: { status?: number }, stream: ServerHttp2S
 }
 
 async function handleEmptyResponseWithPreHandlers(
-  response: { status?: number },
+  response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
-  txn: Transaction,
+  t: TuftContext,
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](txn);
+      await preHandlers[i](t);
     }
   }
 
@@ -60,20 +58,17 @@ async function handleEmptyResponseWithPreHandlers(
   const { status } = response;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
   if (stream.destroyed) {
     return;
   }
 
-  stream.respond(txn.outgoingHeaders, { endStream: true });
+  stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
-async function handleFileResponse(
-  response: { status?: number, file: string },
-  stream: ServerHttp2Stream,
-) {
+async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
 
   const { status, file } = response;
@@ -82,7 +77,7 @@ async function handleFileResponse(
     outgoingHeaders[HTTP2_HEADER_STATUS] = status;
   }
 
-  const fileHandle = await fsPromises.open(file, 'r');
+  const fileHandle = await fsPromises.open(file as string, 'r');
   const stat = await fileHandle.stat();
 
   outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = stat.size;
@@ -95,14 +90,14 @@ async function handleFileResponse(
 }
 
 async function handleFileResponseWithPreHandlers(
-  response: { status?: number, file: string },
+  response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
-  txn: Transaction,
+  t: TuftContext,
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](txn);
+      await preHandlers[i](t);
     }
   }
 
@@ -113,33 +108,31 @@ async function handleFileResponseWithPreHandlers(
   const { status, file } = response;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
-  const fileHandle = await fsPromises.open(file, 'r');
+  const fileHandle = await fsPromises.open(file as string, 'r');
   const stat = await fileHandle.stat();
 
-  txn.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
+  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
 
   if (stream.destroyed) {
     return;
   }
 
-  stream.respondWithFD(fileHandle, txn.outgoingHeaders);
+  stream.respondWithFD(fileHandle, t.outgoingHeaders);
 }
 
-async function handleFDResponse(
-  response: { status?: number, file: fsPromises.FileHandle },
-  stream: ServerHttp2Stream,
-) {
+async function handleFDResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
 
-  const { status, file: fileHandle } = response;
+  const { status } = response;
 
   if (status) {
     outgoingHeaders[HTTP2_HEADER_STATUS] = status;
   }
 
+  const fileHandle = response.file as fsPromises.FileHandle;
   const stat = await fileHandle.stat();
 
   outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = stat.size;
@@ -152,14 +145,14 @@ async function handleFDResponse(
 }
 
 async function handleFDResponseWithPreHandlers(
-  response: { status?: number, file: fsPromises.FileHandle },
+  response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
-  txn: Transaction,
+  t: TuftContext,
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](txn);
+      await preHandlers[i](t);
     }
   }
 
@@ -167,30 +160,25 @@ async function handleFDResponseWithPreHandlers(
     return err;
   }
 
-  const { status, file: fileHandle } = response;
+  const { status } = response;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
+  const fileHandle = response.file as fsPromises.FileHandle;
   const stat = await fileHandle.stat();
 
-  txn.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
+  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
 
   if (stream.destroyed) {
     return;
   }
 
-  stream.respondWithFD(fileHandle, txn.outgoingHeaders);
+  stream.respondWithFD(fileHandle, t.outgoingHeaders);
 }
 
-async function handleStreamResponse(
-  response: {
-    status?: number,
-    stream: (write: (chunk: any, encoding?: string) => Promise<void>) => Promise<void>,
-  },
-  stream: ServerHttp2Stream,
-) {
+async function handleStreamResponse(response: TuftResponse, stream: ServerHttp2Stream) {
 
   const outgoingHeaders: OutgoingHttpHeaders = {};
 
@@ -206,7 +194,9 @@ async function handleStreamResponse(
 
   stream.respond(outgoingHeaders);
 
-  await response.stream((chunk: any, encoding?: string) => {
+  const streamHandler = response.stream as TuftStreamHandler;
+
+  await streamHandler((chunk: any, encoding?: string) => {
     return new Promise((resolve, reject) => {
       stream.write(chunk, encoding, (err) => {
         err ? reject(err) : resolve();
@@ -218,17 +208,14 @@ async function handleStreamResponse(
 }
 
 async function handleStreamResponseWithPreHandlers(
-  response: {
-    status?: number,
-    stream: (write: (chunk: any, encoding?: string) => Promise<void>) => Promise<void>,
-  },
+  response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
-  txn: Transaction,
+  t: TuftContext,
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](txn);
+      await preHandlers[i](t);
     }
   }
 
@@ -239,16 +226,18 @@ async function handleStreamResponseWithPreHandlers(
   const { status } = response;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
   if (stream.destroyed) {
     return;
   }
 
-  stream.respond(txn.outgoingHeaders);
+  stream.respond(t.outgoingHeaders);
 
-  await response.stream((chunk: any, encoding?: string) => {
+  const streamHandler = response.stream as TuftStreamHandler;
+
+  await streamHandler((chunk: any, encoding?: string) => {
     return new Promise((resolve, reject) => {
       stream.write(chunk, encoding, (err) => {
         err ? reject(err) : resolve();
@@ -259,14 +248,7 @@ async function handleStreamResponseWithPreHandlers(
   stream.end();
 }
 
-function handleBodyResponse(
-  response: {
-    status?: number,
-    contentType: string,
-    body: any,
-  },
-  stream: ServerHttp2Stream,
-) {
+function handleBodyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
 
   const { status, contentType, body } = response;
@@ -287,18 +269,14 @@ function handleBodyResponse(
 }
 
 async function handleBodyResponseWithPreHandlers(
-  response: {
-    status?: number,
-    body: any,
-    contentType: string,
-  },
+  response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
-  txn: Transaction,
+  t: TuftContext,
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](txn);
+      await preHandlers[i](t);
     }
   }
 
@@ -309,17 +287,17 @@ async function handleBodyResponseWithPreHandlers(
   const { status, contentType, body } = response;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
-  txn.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-  txn.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
+  t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
+  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
 
   if (stream.destroyed) {
     return;
   }
 
-  stream.respond(txn.outgoingHeaders);
+  stream.respond(t.outgoingHeaders);
   stream.end(body);
 }
 
@@ -327,16 +305,16 @@ async function handleUnknownResponse(
   preHandlers: TuftPreHandler[],
   handler: TuftHandler,
   stream: ServerHttp2Stream,
-  txn: Transaction,
+  t: TuftContext,
 ) {
   let result: TuftResponse | undefined;
 
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](txn);
+      await preHandlers[i](t);
     }
 
-    result = await handler(txn);
+    result = await handler(t);
   }
 
   catch (err) {
@@ -350,11 +328,11 @@ async function handleUnknownResponse(
   let { status, contentType, body, file, stream: streamHandler } = result;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
   if (body !== undefined) {
-    contentType = contentType && mimeTypes[contentType];
+    contentType = contentType && mimeTypeMap[contentType];
 
     if (!contentType) {
       switch (typeof body) {
@@ -391,14 +369,14 @@ async function handleUnknownResponse(
       body = JSON.stringify(body);
     }
 
-    txn.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-    txn.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
+    t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
+    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
 
     if (stream.destroyed) {
       return;
     }
 
-    stream.respond(txn.outgoingHeaders);
+    stream.respond(t.outgoingHeaders);
     stream.end(body);
 
     return;
@@ -411,13 +389,13 @@ async function handleUnknownResponse(
 
     const stat = await fileHandle.stat();
 
-    txn.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
+    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
 
     if (stream.destroyed) {
       return;
     }
 
-    stream.respondWithFD(fileHandle, txn.outgoingHeaders);
+    stream.respondWithFD(fileHandle, t.outgoingHeaders);
 
     return;
   }
@@ -427,7 +405,7 @@ async function handleUnknownResponse(
       return;
     }
 
-    stream.respond(txn.outgoingHeaders);
+    stream.respond(t.outgoingHeaders);
 
     await streamHandler((chunk: any, encoding?: string) => {
       return new Promise((resolve, reject) => {
@@ -445,16 +423,16 @@ async function handleUnknownResponse(
     return;
   }
 
-  stream.respond(txn.outgoingHeaders, { endStream: true });
+  stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
 async function handleErrorResponse(
   errorHandler: TuftErrorHandler,
   err: Error,
   stream: ServerHttp2Stream,
-  txn: Transaction
+  t: TuftContext
 ) {
-  const result = await errorHandler(err, txn);
+  const result = await errorHandler(err, t);
 
   if (!result || typeof result !== 'object') {
     return;
@@ -463,11 +441,11 @@ async function handleErrorResponse(
   let { status, contentType, body } = result;
 
   if (status) {
-    txn.setHeader(HTTP2_HEADER_STATUS, status);
+    t.setHeader(HTTP2_HEADER_STATUS, status);
   }
 
   if (body !== undefined) {
-    contentType = contentType && mimeTypes[contentType];
+    contentType = contentType && mimeTypeMap[contentType];
 
     if (!contentType) {
       switch (typeof body) {
@@ -504,14 +482,14 @@ async function handleErrorResponse(
       body = JSON.stringify(body);
     }
 
-    txn.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-    txn.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
+    t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
+    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
 
     if (stream.destroyed) {
       return;
     }
 
-    stream.respond(txn.outgoingHeaders);
+    stream.respond(t.outgoingHeaders);
     stream.end(body);
 
     return;
@@ -521,34 +499,23 @@ async function handleErrorResponse(
     return;
   }
 
-  stream.respond(txn.outgoingHeaders, { endStream: true });
+  stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
 async function handleResponseWithTransaction(
-  handleResponse: (stream: ServerHttp2Stream, txn: Transaction) => Promise<void | Error>,
-  handleErrorResponse: (err: Error, stream: ServerHttp2Stream, txn: Transaction) => Promise<void>,
-  options: {
-    errorHandler?: TuftErrorHandler;
-    params?: {
-      n: number;
-      key: string;
-    }[];
-    parseCookies?: boolean,
-    parseText?: boolean | number,
-    parseJson?: boolean | number,
-    parseUrlEncoded?: boolean | number,
-  },
+  handleResponse: (stream: ServerHttp2Stream, t: TuftContext) => Promise<void | Error>,
+  handleErrorResponse: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => Promise<void>,
+  options: TuftContextOptions,
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
 ) {
   try {
-    const txn = await createTransaction(stream, headers, options);
-
-    const err = await handleResponse(stream, txn);
+    const t = await createContext(stream, headers, options);
+    const err = await handleResponse(stream, t);
 
     if (err) {
       console.error(err);
-      handleErrorResponse(err, stream, txn);
+      handleErrorResponse(err, stream, t);
     }
   }
 
@@ -573,7 +540,7 @@ function defaultErrorHandler() {
   return { status: HTTP_STATUS_INTERNAL_SERVER_ERROR };
 }
 
-function createRouteHandler({
+export function createRouteHandler({
   response,
   preHandlers,
   errorHandler,
@@ -583,8 +550,6 @@ function createRouteHandler({
   parseJson,
   parseUrlEncoded,
 }: TuftRoute) {
-  preHandlers = Object.assign([], preHandlers);
-
   const boundHandleErrorResponse = handleErrorResponse.bind(null, errorHandler ?? defaultErrorHandler);
 
   const options = {
@@ -601,11 +566,9 @@ function createRouteHandler({
   }
 
   else if (response.body) {
-    response = Object.assign({}, response);
-
     let { contentType, body } = response;
 
-    contentType = contentType && mimeTypes[contentType];
+    contentType = contentType && mimeTypeMap[contentType];
 
     if (!contentType) {
       switch (typeof body) {
@@ -646,50 +609,48 @@ function createRouteHandler({
     response.body = body;
 
     if (preHandlers) {
-      const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(null, Object.create(response), preHandlers);
+      const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(null, response, preHandlers);
       return handleResponseWithTransaction.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
 
-    return handleBodyResponse.bind(null, Object.create(response));
+    return handleBodyResponse.bind(null, response);
   }
 
   else if (response.file) {
     if (typeof response.file === 'string') {
       if (preHandlers) {
-        const boundHandleResponse = handleFileResponseWithPreHandlers.bind(null, Object.create(response), preHandlers);
+        const boundHandleResponse = handleFileResponseWithPreHandlers.bind(null, response, preHandlers);
         return handleResponseWithTransaction.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
       }
 
-      return handleFileResponse.bind(null, Object.create(response));
+      return handleFileResponse.bind(null, response);
     }
 
     else {
       if (preHandlers) {
-        const boundHandleResponse = handleFDResponseWithPreHandlers.bind(null, Object.create(response), preHandlers);
+        const boundHandleResponse = handleFDResponseWithPreHandlers.bind(null, response, preHandlers);
         return handleResponseWithTransaction.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
       }
 
-      return handleFDResponse.bind(null, Object.create(response));
+      return handleFDResponse.bind(null, response);
     }
   }
 
   else if (response.stream) {
     if (preHandlers) {
-      const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(null, Object.create(response), preHandlers);
+      const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(null, response, preHandlers);
       return handleResponseWithTransaction.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
 
-    return handleStreamResponse.bind(null, Object.create(response));
+    return handleStreamResponse.bind(null, response);
   }
 
   else {
     if (preHandlers) {
-      const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(null, Object.create(response), preHandlers);
+      const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(null, response, preHandlers);
       return handleResponseWithTransaction.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
 
-    return handleEmptyResponse.bind(null, Object.create(response));
+    return handleEmptyResponse.bind(null, response);
   }
 }
-
-export { createRouteHandler };

@@ -9,16 +9,16 @@ export type ServerOptions = {
 }
 
 export type SecureServerOptions = {
-  key: string | Buffer | (Buffer | KeyObject)[],
-  cert: string | Buffer | (string | Buffer)[],
   host?: string,
   port?: number,
+  key?: string | Buffer | Array<Buffer | KeyObject>,
+  cert?: string | Buffer | Array<string | Buffer>,
 }
 
 const DEFAULT_HOST = 'localhost';
 const DEFAULT_PORT = 3000;
 
-class Server {
+export class TuftServer {
   readonly #http2Server: Http2Server;
   readonly #host: string;
   readonly #port: number;
@@ -59,7 +59,7 @@ class Server {
   }
 }
 
-class SecureServer {
+export class TuftSecureServer {
   readonly #http2SecureServer: Http2SecureServer;
   readonly #host: string;
   readonly #port: number;
@@ -99,5 +99,3 @@ class SecureServer {
     });
   }
 }
-
-export { Server, SecureServer };
