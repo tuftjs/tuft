@@ -15,8 +15,6 @@ export const requestMethods = [
 
 Object.freeze(requestMethods);
 
-export const pathSegmentCache = new Map();
-
 function bufferToString(buf: Buffer): string {
   const bytes = [];
   let i = 0;
@@ -168,4 +166,26 @@ export function extractPathnameAndQueryString(headers: IncomingHttpHeaders) {
   }
 
   return pathObj;
+}
+
+const pathSegmentCache = new Map();
+
+export function extractPathSegments(path: string) {
+  let pathSegments: string[] = pathSegmentCache.get(path);
+
+  if (pathSegments !== undefined) {
+    return pathSegments;
+  }
+
+  pathSegments = [];
+
+  for (let begin = 1, end; begin > 0; begin = end + 1) {
+    end = path.indexOf('/', begin);
+    const pathSegment = path.slice(begin, end >= 0 ? end : undefined);
+    pathSegments.push(pathSegment);
+  }
+
+  pathSegmentCache.set(path, pathSegments);
+
+  return pathSegments;
 }

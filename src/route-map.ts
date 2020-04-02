@@ -322,20 +322,10 @@ function createPrimaryHandler(routeMap: RouteMap) {
   const routes = new RouteManager(routeMap);
 
   return function primaryHandler(stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
-    const method = headers[HTTP2_HEADER_METHOD];
-    const { pathname } = extractPathnameAndQueryString(headers);
-
-    if (!method || !pathname) {
-      return;
-    }
-
+    const method = headers[HTTP2_HEADER_METHOD] as string;
+    const pathname = extractPathnameAndQueryString(headers).pathname as string;
     const routeHandler = routes.find(method, pathname);
-
-    if (!routeHandler) {
-      return;
-    }
-
-    routeHandler(stream, headers);
+    routeHandler?.(stream, headers);
   };
 }
 

@@ -1,6 +1,6 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import { EventEmitter } from 'events';
-import { extractPathnameAndQueryString, pathSegmentCache } from './utils';
+import { extractPathnameAndQueryString, extractPathSegments } from './utils';
 
 type TuftContextParams = {
   stream: ServerHttp2Stream,
@@ -118,7 +118,7 @@ export async function createContext(
   const params: { [key: string]: string } = {};
 
   if (options.params) {
-    const pathSegments = pathSegmentCache.get(pathname);
+    const pathSegments = extractPathSegments(pathname);
 
     for (let i = 0; i < options.params.length; i++) {
       const { key, n } = options.params[i];

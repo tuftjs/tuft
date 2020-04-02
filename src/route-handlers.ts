@@ -25,7 +25,6 @@ const mimeTypeMap: { [key: string]: string } = {
 
 function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
-
   const { status } = response;
 
   if (status) {
@@ -70,7 +69,6 @@ async function handleEmptyResponseWithPreHandlers(
 
 async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
-
   const { status, file } = response;
 
   if (status) {
@@ -125,7 +123,6 @@ async function handleFileResponseWithPreHandlers(
 
 async function handleFDResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
-
   const { status } = response;
 
   if (status) {
@@ -179,9 +176,7 @@ async function handleFDResponseWithPreHandlers(
 }
 
 async function handleStreamResponse(response: TuftResponse, stream: ServerHttp2Stream) {
-
   const outgoingHeaders: OutgoingHttpHeaders = {};
-
   const { status } = response;
 
   if (status) {
@@ -250,7 +245,6 @@ async function handleStreamResponseWithPreHandlers(
 
 function handleBodyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders: OutgoingHttpHeaders = {};
-
   const { status, contentType, body } = response;
 
   if (status) {
