@@ -23,6 +23,7 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "start:example": "ts-node ./example/index.ts",
     "build": "rm -rf ./lib && tsc -b"
   },
