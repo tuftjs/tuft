@@ -8,6 +8,11 @@ void async function() {
       body: 'hey there'
     }
   });
+  foo.set('GET /a/b/c/d/e/f', {
+    response: {
+      body: 'hey there again'
+    }
+  });
 
   foo.add({
     path: '/{**}',
