@@ -68,16 +68,17 @@ type RouteMapOptions = {
 }
 
 const HTTP2_HEADER_METHOD = ':method';
+const HTTP2_HEADER_PATH   = ':path';
 
-const DEFAULT_TRAILING_SLASH = null;
-const DEFAULT_PARSE_COOKIES = null;
-const DEFAULT_PARSE_JSON = null;
-const DEFAULT_PARSE_BODY_LIMIT = 10_485_760; //bytes
-const DEFAULT_BASE_PATH = '';
-const DEFAULT_PATH = '/';
-const DEFAULT_ERROR_HANDLER = null;
+const DEFAULT_TRAILING_SLASH    = null;
+const DEFAULT_PARSE_COOKIES     = null;
+const DEFAULT_PARSE_JSON        = null;
+const DEFAULT_PARSE_BODY_LIMIT  = 10_485_760; //bytes
+const DEFAULT_BASE_PATH         = '';
+const DEFAULT_PATH              = '/';
+const DEFAULT_ERROR_HANDLER     = null;
 
-class RouteMap extends Map {
+export class RouteMap extends Map {
   readonly #trailingSlash: boolean | null;
 
   readonly #parseCookies: boolean | null;
@@ -102,7 +103,7 @@ class RouteMap extends Map {
     this.#preHandlers = options.preHandlers ?? [];
     this.#errorHandler = options.errorHandler ?? DEFAULT_ERROR_HANDLER;
 
-
+    // Determine the value of 'parseText'
     if (options.parseText === true) {
       this.#parseText = DEFAULT_PARSE_BODY_LIMIT;
     }
@@ -119,8 +120,7 @@ class RouteMap extends Map {
       this.#parseText = DEFAULT_PARSE_JSON;
     }
 
-
-
+    // Determine the value of 'parseJson'
     if (options.parseJson === true) {
       this.#parseJson = DEFAULT_PARSE_BODY_LIMIT;
     }
@@ -137,8 +137,7 @@ class RouteMap extends Map {
       this.#parseJson = DEFAULT_PARSE_JSON;
     }
 
-
-
+    // Determine the value of 'parseUrlEncoded'
     if (options.parseUrlEncoded === true) {
       this.#parseUrlEncoded = DEFAULT_PARSE_BODY_LIMIT;
     }
@@ -156,72 +155,65 @@ class RouteMap extends Map {
     }
   }
 
-  private _merge(APP_NAME_INSTANCE: RouteMap) {
-    for (const [key, routeProps] of APP_NAME_INSTANCE) {
-      let [method, path] = key.split(' ');
+  private _merge(routes: RouteMap) {
+    for (const [key, route] of routes) {
+      const [method, path] = key.split(' ');
 
-      if (path === '/') {
-        path = '';
-      }
-
-      const newPath = this.#basePath + path;
-
-      const route: TuftRoute = {
-        preHandlers: this.#preHandlers.concat(routeProps.preHandlers ?? []),
-        response: routeProps.response,
+      const mergedKey = method + ' ' + this.#basePath + (path === '/' ? '' : path);
+      const mergedRoute: TuftRoute = {
+        preHandlers: this.#preHandlers.concat(route.preHandlers ?? []),
+        response: route.response,
       };
 
-      if (routeProps.errorHandler) {
-        route.errorHandler = routeProps.errorHandler;
+      if (route.errorHandler !== undefined) {
+        mergedRoute.errorHandler = route.errorHandler;
       }
 
-      else if (this.#errorHandler) {
-        route.errorHandler = this.#errorHandler;
+      else if (this.#errorHandler !== null) {
+        mergedRoute.errorHandler = this.#errorHandler;
       }
 
-      if (routeProps.trailingSlash !== undefined) {
-        route.trailingSlash = routeProps.trailingSlash;
+      if (route.trailingSlash !== undefined) {
+        mergedRoute.trailingSlash = route.trailingSlash;
       }
 
       else if (this.#trailingSlash !== null) {
-        route.trailingSlash = this.#trailingSlash;
+        mergedRoute.trailingSlash = this.#trailingSlash;
       }
 
-      if (routeProps.parseCookies !== undefined) {
-        route.parseCookies = routeProps.parseCookies;
+      if (route.parseCookies !== undefined) {
+        mergedRoute.parseCookies = route.parseCookies;
       }
 
       else if (this.#parseCookies !== null) {
-        route.parseCookies = this.#parseCookies;
+        mergedRoute.parseCookies = this.#parseCookies;
       }
 
-      if (routeProps.parseText !== undefined) {
-        route.parseText = routeProps.parseText;
+      if (route.parseText !== undefined) {
+        mergedRoute.parseText = route.parseText;
       }
 
       else if (this.#parseText !== null) {
-        route.parseText = this.#parseText;
+        mergedRoute.parseText = this.#parseText;
       }
 
-      if (routeProps.parseJson !== undefined) {
-        route.parseJson = routeProps.parseJson;
+      if (route.parseJson !== undefined) {
+        mergedRoute.parseJson = route.parseJson;
       }
 
       else if (this.#parseJson !== null) {
-        route.parseJson = this.#parseJson;
+        mergedRoute.parseJson = this.#parseJson;
       }
 
-      if (routeProps.parseUrlEncoded !== undefined) {
-        route.parseUrlEncoded = routeProps.parseUrlEncoded;
+      if (route.parseUrlEncoded !== undefined) {
+        mergedRoute.parseUrlEncoded = route.parseUrlEncoded;
       }
 
       else if (this.#parseUrlEncoded !== null) {
-        route.parseUrlEncoded = this.#parseUrlEncoded;
+        mergedRoute.parseUrlEncoded = this.#parseUrlEncoded;
       }
 
-      const newKey = `${method} ${newPath}`;
-
-      super.set(newKey, route);
+      super.set(mergedKey, mergedRoute);
     }
   }
 
@@ -231,24 +223,21 @@ class RouteMap extends Map {
       return this;
     }
 
-    const errorMessage = findInvalidSchemaEntry(schema);
+    const err = findInvalidSchemaEntry(schema);
 
-    if (errorMessage) {
-      const err = Error(errorMessage);
+    if (err) {
       console.error(err);
       process.exit(1);
     }
 
-    const thisPath = schema.path ?? this.#path;
-
-    const path = this.#basePath + (thisPath === '/' ? '' : thisPath);
+    const path = this.#basePath + (schema.path ?? this.#path);
 
     const methods = schema.method
       ? [schema.method].flat()
       : this.#methods;
 
     const preHandlers = schema.preHandlers
-      ? this.#preHandlers.concat(([schema.preHandlers ?? []]).flat())
+      ? this.#preHandlers.concat([schema.preHandlers].flat())
       : this.#preHandlers;
 
     const route: TuftRoute = {
@@ -263,7 +252,6 @@ class RouteMap extends Map {
     else if (this.#errorHandler) {
       route.errorHandler = this.#errorHandler;
     }
-
 
     if (this.#trailingSlash !== null) {
       route.trailingSlash = this.#trailingSlash;
@@ -285,9 +273,8 @@ class RouteMap extends Map {
       route.parseUrlEncoded = this.#parseUrlEncoded;
     }
 
-
     for (const method of methods) {
-      const key = `${method} ${path}`;
+      const key = method + ' ' + path;
       super.set(key, route);
     }
 
@@ -323,7 +310,7 @@ function createPrimaryHandler(routeMap: RouteMap) {
 
   return function primaryHandler(stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
     const method = headers[HTTP2_HEADER_METHOD] as string;
-    const pathname = extractPathnameAndQueryString(headers).pathname as string;
+    const { pathname } = extractPathnameAndQueryString(headers[HTTP2_HEADER_PATH] as string);
     const routeHandler = routes.find(method, pathname);
     routeHandler?.(stream, headers);
   };
@@ -332,5 +319,3 @@ function createPrimaryHandler(routeMap: RouteMap) {
 export function createRouteMap(options?: RouteMapOptions) {
   return new RouteMap(options);
 }
-
-export type { RouteMap };

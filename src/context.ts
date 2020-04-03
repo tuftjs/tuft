@@ -22,6 +22,7 @@ export type TuftContextOptions = {
 }
 
 const HTTP2_HEADER_METHOD         = ':method';
+const HTTP2_HEADER_PATH           = ':path';
 const HTTP2_HEADER_CONTENT_TYPE   = 'content-type';
 const HTTP2_HEADER_CONTENT_LENGTH = 'content-length';
 const HTTP2_HEADER_SET_COOKIE     = 'set-cookie';
@@ -107,7 +108,8 @@ export async function createContext(
   options: TuftContextOptions = {},
 ) {
   const method = headers[HTTP2_HEADER_METHOD] as string;
-  const { pathname, queryString } = extractPathnameAndQueryString(headers);
+  const path = headers[HTTP2_HEADER_PATH] as string;
+  const { pathname, queryString } = extractPathnameAndQueryString(path);
 
   if (!pathname) {
     throw Error('ERR_NULL_PATHNAME');

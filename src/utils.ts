@@ -1,5 +1,6 @@
-import type { IncomingHttpHeaders } from 'http2';
 import type { TuftRouteSchema } from './route-map';
+
+const MAX_PATH_SEGMENT_CACHE_SIZE = 10_000;
 
 export const requestMethods = [
   'CONNECT',
@@ -14,6 +15,45 @@ export const requestMethods = [
 ];
 
 Object.freeze(requestMethods);
+
+export function extractPathnameAndQueryString(path: string) {
+  let separatorIndex = path.indexOf('?');
+
+  if (separatorIndex === -1) {
+    separatorIndex = path.length;
+  }
+
+  return {
+    pathname: path.slice(0, separatorIndex),
+    queryString: path.slice(separatorIndex + 1),
+  };
+}
+
+let pathSegmentCache = new Map();
+
+export function extractPathSegments(path: string) {
+  let result: string[] = pathSegmentCache.get(path);
+
+  if (result !== undefined) {
+    return result;
+  }
+
+  result = [];
+
+  for (let begin = 1, end; begin > 0; begin = end + 1) {
+    end = path.indexOf('/', begin);
+    const pathSegment = path.slice(begin, end >= 0 ? end : undefined);
+    result.push(pathSegment);
+  }
+
+  if (pathSegmentCache.size >= MAX_PATH_SEGMENT_CACHE_SIZE) {
+    pathSegmentCache = new Map();
+  }
+
+  pathSegmentCache.set(path, result);
+
+  return result;
+}
 
 function bufferToString(buf: Buffer): string {
   const bytes = [];
@@ -57,135 +97,96 @@ function bufferToString(buf: Buffer): string {
 }
 
 function formatValue(value: any): string {
-  let formattedValue = value;
+  let result: string;
 
-  if (Buffer.isBuffer(value)) {
-    formattedValue = bufferToString(value);
+  switch (typeof value) {
+    case 'boolean':
+      result = `\x1b[1m\x1b[33m${value}`;
+      break;
+    case 'number':
+      result = `\x1b[1m\x1b[33m${value}`;
+      break;
+    case 'bigint':
+      result = `\x1b[1m\x1b[33m${value}`;
+      break;
+    case 'string':
+      result = `\x1b[1m\x1b[32m'${value}'`;
+      break;
+    case 'function':
+      result = `\x1b[1m\x1b[36m[${value.constructor.name}: ${value.name}]`;
+      break;
+    case 'object': {
+      if (value === null) {
+        result = value;
+      }
+
+      else if (Buffer.isBuffer(value)) {
+        result = bufferToString(value);
+      }
+
+      else {
+        const name = Array.isArray(value) ? 'Array' : 'Object';
+        result = `\x1b[1m\x1b[36m[${name}]`;
+      }
+
+      break;
+    }
+    default:
+      result = value;
   }
 
-  else if (typeof value === 'string') {
-    formattedValue = `\x1b[1m\x1b[32m'${value}'`;
-  }
-
-  else if (typeof value === 'number' || typeof value === 'boolean') {
-    formattedValue = `\x1b[1m\x1b[33m${value}`;
-  }
-
-  else if (typeof value === 'function') {
-    formattedValue = `\x1b[1m\x1b[36m[${value.constructor.name}: ${value.name}]`;
-  }
-
-  else if (typeof value === 'object' && value !== null) {
-    const objectName = Array.isArray(value) ? 'Array' : 'Object';
-    formattedValue = `\x1b[1m\x1b[36m[${objectName}]`;
-  }
-
-  return formattedValue + '\x1b[0m';
+  return result + '\x1b[0m';
 }
 
 const validPathRegexp = /^\/([0-9A-Za-z-_.~%:[\]@!$&'()*+,;=/{}]+)?$/;
 
-export function findInvalidSchemaEntry(schema: TuftRouteSchema): string | null {
-  if (typeof schema !== 'object') {
-    return `'${schema}' is not an object.`;
+export function findInvalidSchemaEntry(schema: TuftRouteSchema): TypeError | null {
+  if (typeof schema !== 'object' || schema === null) {
+    return TypeError(`'${schema}' is not an object.`);
   }
 
   for (const [prop, value] of Object.entries(schema)) {
-
     switch (prop) {
-
       case 'method': {
         for (const method of [value].flat()) {
           const isValidMethod = typeof method === 'string' && requestMethods.includes(method.toUpperCase());
 
           if (!isValidMethod) {
-            return `${formatValue(method)} is not a valid request method.`;
+            return TypeError(`${formatValue(method)} is not a valid request method.`);
           }
         }
 
         continue;
       }
-
       case 'path': {
         const isValidPath = typeof value === 'string' && validPathRegexp.test(value);
 
         if (!isValidPath) {
-          return `${formatValue(value)} is not a valid path.`;
+          return TypeError(`${formatValue(value)} is not a valid path.`);
         }
 
         continue;
       }
-
       case 'preHandlers': {
         for (const preHandler of [value].flat()) {
           if (typeof preHandler !== 'function') {
-            return `${formatValue(preHandler)} is not a function.`;
+            return TypeError(`${formatValue(preHandler)} is not a function.`);
           }
         }
 
         continue;
       }
-
       case 'response': {
         if (typeof value !== 'object' && typeof value !== 'function') {
-          return `${formatValue(value)} is not an object or function.`;
+          return TypeError(`${formatValue(value)} is not an object or function.`);
         }
 
         continue;
       }
-
-      default: {
-        return `"${prop}" is not a valid route schema property.`;
-      }
-
+      default:
+        return TypeError(`"${prop}" is not a valid route schema property.`);
     }
-
   }
 
   return null;
-}
-
-const HTTP2_HEADER_PATH = ':path';
-
-const headerCache = new WeakMap();
-
-export function extractPathnameAndQueryString(headers: IncomingHttpHeaders) {
-  let pathObj: { pathname: string, queryString?: string } = headerCache.get(headers);
-
-  if (!pathObj ) {
-    const path = headers[HTTP2_HEADER_PATH];
-
-    if (!path) {
-      return { pathname: undefined, queryString: undefined };
-    }
-
-    const [pathname, queryString] = path.split('?');
-    pathObj = { pathname, queryString };
-
-    headerCache.set(headers, pathObj);
-  }
-
-  return pathObj;
-}
-
-const pathSegmentCache = new Map();
-
-export function extractPathSegments(path: string) {
-  let pathSegments: string[] = pathSegmentCache.get(path);
-
-  if (pathSegments !== undefined) {
-    return pathSegments;
-  }
-
-  pathSegments = [];
-
-  for (let begin = 1, end; begin > 0; begin = end + 1) {
-    end = path.indexOf('/', begin);
-    const pathSegment = path.slice(begin, end >= 0 ? end : undefined);
-    pathSegments.push(pathSegment);
-  }
-
-  pathSegmentCache.set(path, pathSegments);
-
-  return pathSegments;
 }
