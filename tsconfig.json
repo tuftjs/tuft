@@ -9,7 +9,7 @@
     "removeComments": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "forceConsistentCasingInFileNames":true
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "src/**/*"
