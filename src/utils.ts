@@ -1,6 +1,6 @@
 import type { TuftRouteSchema } from './route-map';
 
-const MAX_PATH_SEGMENT_CACHE_SIZE = 10_000;
+const MAX_PATH_SEGMENT_CACHE_SIZE = 100_000;
 
 export const requestMethods = [
   'CONNECT',
