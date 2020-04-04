@@ -5,7 +5,7 @@ import type { TuftContext } from './context';
 
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
-import { requestMethods, findInvalidSchemaEntry, extractPathnameAndQueryString } from './utils';
+import { requestMethods, findInvalidSchemaEntry } from './utils';
 
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | Promise<TuftResponse>;
@@ -37,10 +37,7 @@ export interface TuftRoute {
   parseText?: boolean | number;
   parseJson?: boolean | number;
   parseUrlEncoded?: boolean | number;
-  params?: {
-    n: number;
-    key: string;
-  }[];
+  params?: { [key: string]: string };
   preHandlers: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
   errorHandler?: TuftErrorHandler;
@@ -310,7 +307,14 @@ function createPrimaryHandler(routeMap: RouteMap) {
 
   return function primaryHandler(stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
     const method = headers[HTTP2_HEADER_METHOD] as string;
-    const { pathname } = extractPathnameAndQueryString(headers[HTTP2_HEADER_PATH] as string);
+    let pathname = headers[HTTP2_HEADER_PATH] as string;
+
+    let separatorIndex = pathname.indexOf('?');
+
+    if (separatorIndex > 0) {
+      pathname = pathname.slice(0, separatorIndex);
+    }
+
     const routeHandler = routes.find(method, pathname);
     routeHandler?.(stream, headers);
   };

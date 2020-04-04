@@ -1,7 +1,5 @@
 import type { TuftRouteSchema } from './route-map';
 
-const MAX_PATH_SEGMENT_CACHE_SIZE = 100_000;
-
 export const requestMethods = [
   'CONNECT',
   'DELETE',
@@ -15,45 +13,6 @@ export const requestMethods = [
 ];
 
 Object.freeze(requestMethods);
-
-export function extractPathnameAndQueryString(path: string) {
-  let separatorIndex = path.indexOf('?');
-
-  if (separatorIndex === -1) {
-    separatorIndex = path.length;
-  }
-
-  return {
-    pathname: path.slice(0, separatorIndex),
-    queryString: path.slice(separatorIndex + 1),
-  };
-}
-
-let pathSegmentCache = new Map();
-
-export function extractPathSegments(path: string) {
-  let result: string[] = pathSegmentCache.get(path);
-
-  if (result !== undefined) {
-    return result;
-  }
-
-  result = [];
-
-  for (let begin = 1, end; begin > 0; begin = end + 1) {
-    end = path.indexOf('/', begin);
-    const pathSegment = path.slice(begin, end >= 0 ? end : undefined);
-    result.push(pathSegment);
-  }
-
-  if (pathSegmentCache.size >= MAX_PATH_SEGMENT_CACHE_SIZE) {
-    pathSegmentCache = new Map();
-  }
-
-  pathSegmentCache.set(path, result);
-
-  return result;
-}
 
 function bufferToString(buf: Buffer): string {
   const bytes = [];

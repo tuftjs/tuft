@@ -1,6 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import { EventEmitter } from 'events';
-import { extractPathnameAndQueryString, extractPathSegments } from './utils';
 
 type TuftContextParams = {
   stream: ServerHttp2Stream,
@@ -14,7 +13,7 @@ type TuftContextParams = {
 };
 
 export type TuftContextOptions = {
-  params?: { n: number, key: string }[];
+  params?: { [key: number]: string };
   parseCookies?: boolean,
   parseText?: boolean | number,
   parseJson?: boolean | number,
@@ -109,22 +108,33 @@ export async function createContext(
 ) {
   const method = headers[HTTP2_HEADER_METHOD] as string;
   const path = headers[HTTP2_HEADER_PATH] as string;
-  const { pathname, queryString } = extractPathnameAndQueryString(path);
 
-  if (!pathname) {
-    throw Error('ERR_NULL_PATHNAME');
+  let pathname: string = path;
+  let queryString: string | undefined = undefined;
+
+  let separatorIndex = path.indexOf('?');
+
+  if (separatorIndex > 0) {
+    pathname = path.slice(0, separatorIndex);
+    queryString = path.slice(separatorIndex + 1);
   }
 
   const searchParams = new URLSearchParams(queryString);
 
   const params: { [key: string]: string } = {};
+  const paramKeys = options.params;
 
-  if (options.params) {
+  if (paramKeys) {
     const pathSegments = extractPathSegments(pathname);
+    let key, i, j;
 
-    for (let i = 0; i < options.params.length; i++) {
-      const { key, n } = options.params[i];
-      params[key] = pathSegments[n];
+    for (const n in paramKeys) {
+      key = paramKeys[n];
+
+      i = pathSegments.indexOf(n) + 3;
+      j = pathSegments.indexOf('\n', i);
+
+      params[key] = pathSegments.slice(i, j);
     }
   }
 
@@ -218,6 +228,26 @@ function parseUrlEncoded(urlEncodedStr: string): { [key: string]: string } {
   }
 
   return obj;
+}
+
+function extractPathSegments(path: string) {
+  let result = '';
+
+  let begin = 1;
+  let end = path.indexOf('/', begin);
+  let i = 10;
+
+  while (end >= 0 && i < 99) {
+    result += '#' + i + path.slice(begin, end) + '\n';
+
+    begin = end + 1;
+    end = path.indexOf('/', begin);
+    i++;
+  }
+
+  result += '#' + i + path.slice(begin) + '\n';
+
+  return result;
 }
 
 export type { TuftContext };
