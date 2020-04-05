@@ -55,7 +55,7 @@ export class TuftServer {
   stop() {
     return new Promise((resolve, reject) => {
       this.#http2Server.close((err) => {
-        err ? reject() : resolve();
+        err ? reject(err) : resolve();
       });
     });
   }
@@ -76,7 +76,7 @@ export class TuftSecureServer {
 
   constructor(
     handler: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void,
-    options: SecureServerOptions,
+    options: SecureServerOptions = {},
   ) {
     const server = createSecureServer({ key: options.key, cert: options.cert });
 
@@ -96,7 +96,7 @@ export class TuftSecureServer {
   stop() {
     return new Promise((resolve, reject) => {
       this.#http2SecureServer.close((err) => {
-        err ? reject() : resolve();
+        err ? reject(err) : resolve();
       });
     });
   }

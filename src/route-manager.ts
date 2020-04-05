@@ -2,12 +2,12 @@ import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { RouteMap, TuftRoute } from './route-map';
 
 import { createRouteHandler } from './route-handlers';
-import { requestMethods } from './utils';
+import { getValidRequestMethods } from './utils';
 
-const sym_handler         = Symbol('sym_handler');
-const sym_next            = Symbol('sym_next');
-const sym_wildcard        = Symbol('sym_wildcard');
-const sym_doubleWildcard  = Symbol('sym_doubleWildcard');
+const sym_handler         = Symbol('handler');
+const sym_next            = Symbol('next');
+const sym_wildcard        = Symbol('wildcard');
+const sym_doubleWildcard  = Symbol('doubleWildcard');
 
 type RouteTreeBranch = {
   [sym_handler]?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
@@ -24,7 +24,7 @@ export class RouteManager {
   private readonly _routes: { [method: string]: RouteStore } = {};
 
   constructor(routeMaps: RouteMap | RouteMap[]) {
-    for (const method of requestMethods) {
+    for (const method of getValidRequestMethods()) {
       this._routes[method] = new RouteStore();
     }
 

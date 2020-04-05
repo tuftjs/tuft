@@ -9,6 +9,16 @@ export const ROUTE_MAP_DEFAULT_ERROR_HANDLER      = null;
 export const HTTP2_SERVER_DEFAULT_HOST            = 'localhost';
 export const HTTP2_SERVER_DEFAULT_PORT            = 3000;
 
+export const HTTP2_METHOD_CONENCT                 = 'CONNECT';
+export const HTTP2_METHOD_DELETE                  = 'DELETE';
+export const HTTP2_METHOD_GET                     = 'GET';
+export const HTTP2_METHOD_HEAD                    = 'HEAD';
+export const HTTP2_METHOD_OPTIONS                 = 'OPTIONS';
+export const HTTP2_METHOD_PATCH                   = 'PATCH';
+export const HTTP2_METHOD_POST                    = 'POST';
+export const HTTP2_METHOD_PUT                     = 'PUT';
+export const HTTP2_METHOD_TRACE                   = 'TRACE';
+
 export const HTTP2_HEADER_STATUS                  = ':status';
 export const HTTP2_HEADER_METHOD                  = ':method';
 export const HTTP2_HEADER_PATH                    = ':path';

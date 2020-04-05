@@ -5,7 +5,8 @@ import type { TuftContext } from './tuft-context';
 
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
-import { requestMethods, findInvalidSchemaEntry } from './utils';
+import { findInvalidSchemaEntry } from './schema-validation';
+import { getValidRequestMethods } from './utils';
 
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
@@ -55,9 +56,11 @@ export interface TuftRoute {
   errorHandler?: TuftErrorHandler;
 }
 
+type RequestMethod = 'CONNECT' | 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
+
 export interface TuftRouteSchema {
   path?: string;
-  method?: string | string[];
+  method?: RequestMethod | RequestMethod[];
   preHandlers?: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
   errorHandler?: TuftErrorHandler;
@@ -71,7 +74,7 @@ type RouteMapOptions = {
   parseUrlEncoded?: boolean | number,
   basePath?: string,
   path?: string,
-  method?: string | string[],
+  method?: RequestMethod | RequestMethod[],
   preHandlers?: TuftPreHandler[],
   errorHandler?: TuftErrorHandler,
 }
@@ -97,7 +100,7 @@ export class RouteMap extends Map {
     this.#parseCookies = options.parseCookies ?? ROUTE_MAP_DEFAULT_PARSE_COOKIES;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
-    this.#methods = ([options.method ?? requestMethods]).flat();
+    this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
     this.#preHandlers = options.preHandlers ?? [];
     this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
 
@@ -157,9 +160,9 @@ export class RouteMap extends Map {
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
 
-      const mergedKey = method + ' ' + this.#basePath + (path === '/' ? '' : path);
+      const mergedKey = method + ' ' + this.#basePath + (this.#basePath.length > 0 && path === '/' ? '' : path);
       const mergedRoute: TuftRoute = {
-        preHandlers: this.#preHandlers.concat(route.preHandlers ?? []),
+        preHandlers: this.#preHandlers.concat(route.preHandlers),
         response: route.response,
       };
 
@@ -225,7 +228,7 @@ export class RouteMap extends Map {
 
     if (err) {
       console.error(err);
-      process.exit(1);
+      return process.exit(1);
     }
 
     const path = this.#basePath + (schema.path ?? this.#path);
@@ -263,24 +266,12 @@ export class RouteMap extends Map {
       route.parseText = this.#parseText;
     }
 
-    if (route.parseText === true) {
-      route.parseText = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
-    }
-
     if (this.#parseJson !== null) {
       route.parseJson = this.#parseJson;
     }
 
-    if (route.parseJson === true) {
-      route.parseJson = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
-    }
-
     if (this.#parseUrlEncoded !== null) {
       route.parseUrlEncoded = this.#parseUrlEncoded;
-    }
-
-    if (route.parseUrlEncoded === true) {
-      route.parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
 
     for (const method of methods) {
@@ -295,7 +286,7 @@ export class RouteMap extends Map {
     const [method, path] = key.split(/[ ]+/);
 
     const schema = Object.assign(route, {
-      method: method === '*' ? requestMethods : method.split('|'),
+      method: method === '*' ? getValidRequestMethods() : method.split('|'),
       path,
     });
 
@@ -304,12 +295,12 @@ export class RouteMap extends Map {
     return this;
   }
 
-  createServer(options: ServerOptions) {
+  createServer(options?: ServerOptions) {
     const handler = createPrimaryHandler(this);
     return new TuftServer(handler, options);
   }
 
-  createSecureServer(options: SecureServerOptions) {
+  createSecureServer(options?: SecureServerOptions) {
     const handler = createPrimaryHandler(this);
     return new TuftSecureServer(handler, options);
   }
