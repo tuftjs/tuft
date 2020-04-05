@@ -3,6 +3,11 @@ import type { KeyObject } from 'tls';
 
 import { createServer, createSecureServer } from 'http2';
 
+import {
+  HTTP2_SERVER_DEFAULT_HOST,
+  HTTP2_SERVER_DEFAULT_PORT,
+} from './constants';
+
 export type ServerOptions = {
   host?: string,
   port?: number,
@@ -14,9 +19,6 @@ export type SecureServerOptions = {
   key?: string | Buffer | Array<Buffer | KeyObject>,
   cert?: string | Buffer | Array<string | Buffer>,
 }
-
-const DEFAULT_HOST = 'localhost';
-const DEFAULT_PORT = 3000;
 
 export class TuftServer {
   readonly #http2Server: Http2Server;
@@ -40,8 +42,8 @@ export class TuftServer {
     server.on('stream', handler);
 
     this.#http2Server = server;
-    this.#host = options.host ?? DEFAULT_HOST;
-    this.#port = options.port ?? DEFAULT_PORT;
+    this.#host = options.host ?? HTTP2_SERVER_DEFAULT_HOST;
+    this.#port = options.port ?? HTTP2_SERVER_DEFAULT_PORT;
   }
 
   start() {
@@ -81,8 +83,8 @@ export class TuftSecureServer {
     server.on('stream', handler);
 
     this.#http2SecureServer = server;
-    this.#host = options.host ?? DEFAULT_HOST;
-    this.#port = options.port ?? DEFAULT_PORT;
+    this.#host = options.host ?? HTTP2_SERVER_DEFAULT_HOST;
+    this.#port = options.port ?? HTTP2_SERVER_DEFAULT_PORT;
   }
 
   start() {

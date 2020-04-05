@@ -1,6 +1,15 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import { EventEmitter } from 'events';
 
+import {
+  HTTP2_HEADER_METHOD,
+  HTTP2_HEADER_PATH,
+  HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP2_HEADER_CONTENT_TYPE,
+  HTTP2_HEADER_COOKIE,
+  HTTP2_HEADER_SET_COOKIE,
+} from './constants';
+
 type TuftContextParams = {
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
@@ -19,12 +28,6 @@ export type TuftContextOptions = {
   parseJson?: boolean | number,
   parseUrlEncoded?: boolean | number,
 }
-
-const HTTP2_HEADER_METHOD         = ':method';
-const HTTP2_HEADER_PATH           = ':path';
-const HTTP2_HEADER_CONTENT_TYPE   = 'content-type';
-const HTTP2_HEADER_CONTENT_LENGTH = 'content-length';
-const HTTP2_HEADER_SET_COOKIE     = 'set-cookie';
 
 const methodsWithBody = new Set([
   'DELETE',
@@ -101,7 +104,7 @@ class TuftContext extends EventEmitter {
   }
 }
 
-export async function createContext(
+export async function createTuftContext(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
   options: TuftContextOptions = {},
@@ -122,59 +125,67 @@ export async function createContext(
   const searchParams = new URLSearchParams(queryString);
 
   const params: { [key: string]: string } = {};
+
   const paramKeys = options.params;
 
   if (paramKeys) {
-    const pathSegments = extractPathSegments(pathname);
-    let key, i, j;
+    let i, begin, end, key;
 
-    for (const n in paramKeys) {
-      key = paramKeys[n];
+    for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
+      end = path.indexOf('/', begin);
 
-      i = pathSegments.indexOf(n) + 3;
-      j = pathSegments.indexOf('\n', i);
-
-      params[key] = pathSegments.slice(i, j);
+      if (paramKeys[i]) {
+        key = paramKeys[i];
+        params[key] = path.slice(begin, end < 0 ? undefined : end);
+      }
     }
   }
 
-  const cookies = options.parseCookies && headers.cookie
-    ? parseCookies(headers.cookie)
+  const cookieHeader = headers[HTTP2_HEADER_COOKIE];
+
+  const cookies = options.parseCookies && cookieHeader
+    ? parseCookiesStr(cookieHeader)
     : null;
 
-  let body: any = null;
+  let body: Buffer | string | { [key: string]: any } | null;
 
-  const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH] as string;
+  body = null;
 
-  if (contentLengthString && methodsWithBody.has(method)) {
+  if (methodsWithBody.has(method)) {
+    const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
+
+    if (!contentLengthString) {
+      throw Error('ERR_CONTENT_LENGTH_REQUIRED');
+    }
+
     const chunks: Buffer[] = [];
 
     for await (const chunk of stream) {
       chunks.push(chunk);
     }
 
-    body = Buffer.concat(chunks);
+    body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
 
-    const contentLength = parseInt(contentLengthString, 10);
-
-    if (body.length !== contentLength) {
+    if (body.length !== parseInt(contentLengthString)) {
       throw Error('ERR_CONTENT_LENGTH_MISMATCH');
     }
-  }
 
-  if (body) {
-    const contentType = headers[HTTP2_HEADER_CONTENT_TYPE] as string;
+    const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
 
-    if (options.parseText && contentType.startsWith('text')) {
-      body = body.length <= options.parseText ? body.toString() : '';
-    }
+    if (contentType) {
+      const { parseText, parseJson, parseUrlEncoded } = options;
 
-    else if (options.parseJson && contentType === 'application/json') {
-      body = body.length <= options.parseJson ? JSON.parse(body) : {};
-    }
+      if (parseText && contentType.startsWith('text')) {
+        body = body.length <= parseText ? body.toString() : '';
+      }
 
-    else if (options.parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
-      body = body.length <= options.parseUrlEncoded ? parseUrlEncoded(body.toString()) : {};
+      else if (parseJson && contentType === 'application/json') {
+        body = body.length <= parseJson ? JSON.parse(body.toString()) : {};
+      }
+
+      else if (parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
+        body = body.length <= parseUrlEncoded ? parseUrlEncodedStr(body.toString()) : {};
+      }
     }
   }
 
@@ -190,62 +201,42 @@ export async function createContext(
   });
 }
 
-function parseCookies(cookiesStr: string): { [name: string]: string } {
-  const cookies: { [name: string]: string } = {};
+function parseCookiesStr(cookiesStr: string): { [name: string]: string } {
+  const result: { [name: string]: string } = {};
 
-  let begin, end;
+  let begin, end, str, i, name, value;
 
   for (begin = 0; end !== -1; begin = end + 1) {
     end = cookiesStr.indexOf(';', begin);
 
-    const str = cookiesStr.slice(begin, end >= 0 ? end : undefined).trim();
+    str = cookiesStr.slice(begin, end < 0 ? undefined : end);
 
-    const i = str.indexOf('=');
-    const name = str.slice(0, i);
-    const value = str.slice(i + 1);
+    i = str.indexOf('=');
+    name = str.slice(0, i);
+    value = str.slice(i + 1);
 
-    cookies[name] = value;
+    result[name] = value;
   }
 
-  return cookies;
+  return result;
 }
 
-function parseUrlEncoded(urlEncodedStr: string): { [key: string]: string } {
-  const obj: { [key: string]: string } = {};
+function parseUrlEncodedStr(urlEncodedStr: string): { [key: string]: string } {
+  const result: { [key: string]: string } = {};
 
-  let begin, end;
+  let begin, end, str, i, name, value;
 
   for (begin = 0, end; end !== -1; begin = end + 1) {
     end = urlEncodedStr.indexOf('&', begin);
 
-    const str = urlEncodedStr.slice(begin, end >= 0 ? end : undefined);
+    str = urlEncodedStr.slice(begin, end < 0 ? undefined : end);
 
-    const i = str.indexOf('=');
-    const name = str.slice(0, i);
-    const value = str.slice(i + 1);
+    i = str.indexOf('=');
+    name = str.slice(0, i);
+    value = str.slice(i + 1);
 
-    obj[name] = value;
+    result[name] = value;
   }
-
-  return obj;
-}
-
-function extractPathSegments(path: string) {
-  let result = '';
-
-  let begin = 1;
-  let end = path.indexOf('/', begin);
-  let i = 10;
-
-  while (end >= 0 && i < 99) {
-    result += '#' + i + path.slice(begin, end) + '\n';
-
-    begin = end + 1;
-    end = path.indexOf('/', begin);
-    i++;
-  }
-
-  result += '#' + i + path.slice(begin) + '\n';
 
   return result;
 }

@@ -1,17 +1,18 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHandler, TuftErrorHandler } from './route-map';
-import type { TuftContext, TuftContextOptions } from './context';
+import type { TuftContext, TuftContextOptions } from './tuft-context';
 
 import { promises as fsPromises } from 'fs';
-import { createContext } from './context';
+import { createTuftContext } from './tuft-context';
 
-const HTTP2_HEADER_STATUS         = ':status';
-const HTTP2_HEADER_CONTENT_TYPE   = 'content-type';
-const HTTP2_HEADER_CONTENT_LENGTH = 'content-length';
-
-const HTTP_STATUS_OK                    = 200;
-const HTTP_STATUS_BAD_REQUEST           = 400;
-const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+import {
+  HTTP2_HEADER_STATUS,
+  HTTP2_HEADER_CONTENT_TYPE,
+  HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP_STATUS_OK,
+  HTTP_STATUS_LENGTH_REQUIRED,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
+} from './constants';
 
 const mimeTypeMap: { [key: string]: string } = {
   'text':                     'text/plain',
@@ -439,34 +440,41 @@ async function handleResponseWithContext(
   headers: IncomingHttpHeaders,
 ) {
   try {
-    const t = await createContext(stream, headers, options);
+    const t = await createTuftContext(stream, headers, options);
     const err = await handleResponse(stream, t);
 
     if (err) {
-      handleErrorResponse(err, stream, t);
       console.error(err);
+      handleErrorResponse(err, stream, t);
     }
   }
 
   catch (err) {
-    if (err.message === 'ERR_CONTENT_LENGTH_MISMATCH') {
-      stream.respond({ [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST });
-      stream.end('An incomplete request body was received.');
-      return;
-    }
+    console.error(err);
 
     if (stream.destroyed) {
       return;
     }
 
+    if (err.message === 'ERR_MISSING_METHOD_HEADER' || err.message === 'ERR_MISSING_PATH_HEADER') {
+      stream.close();
+      return;
+    }
+
+    else if (err.message === 'ERR_CONTENT_LENGTH_REQUIRED') {
+      const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
+      stream.respond(outgoingHeaders, { endStream: true });
+      return;
+    }
+
+    else if (err.message === 'ERR_CONTENT_LENGTH_MISMATCH') {
+      stream.close();
+      return;
+    }
+
     const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
     stream.respond(outgoingHeaders, { endStream: true });
-    console.error(err);
   }
-}
-
-function defaultErrorHandler() {
-  return { status: HTTP_STATUS_INTERNAL_SERVER_ERROR };
 }
 
 export function createRouteHandler({
@@ -586,4 +594,8 @@ export function createRouteHandler({
 
     return handleEmptyResponse.bind(null, response);
   }
+}
+
+function defaultErrorHandler() {
+  return { status: HTTP_STATUS_INTERNAL_SERVER_ERROR };
 }

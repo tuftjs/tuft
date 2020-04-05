@@ -55,6 +55,8 @@ class RouteStore {
   private readonly _routeTree: RouteTreeNode = {};
 
   set(path: string, route: TuftRoute) {
+    const routeHandlerParams = Object.assign({}, route);
+
     const params: { [key: string]: string } = {};
     const pathSegments = path.split('/').slice(1);
 
@@ -73,7 +75,7 @@ class RouteStore {
 
       if (str.startsWith('{') && str.endsWith('}')) {
         if (!wildcardRegexp.test(str)) {
-          params['#' + (i + 10)] = str.slice(1, str.length - 1);
+          params[i] = str.slice(1, str.length - 1);
         }
 
         segment = str === '{**}' ? sym_doubleWildcard : sym_wildcard;
@@ -86,7 +88,7 @@ class RouteStore {
       const hasParams = Object.keys(params).length > 0;
 
       if (hasParams) {
-        route.params = params;
+        routeHandlerParams.params = params;
       }
 
       if (node[segment] === undefined) {
@@ -94,7 +96,7 @@ class RouteStore {
       }
 
       if (i === pathSegments.length - 1) {
-        node[segment]![sym_handler] = createRouteHandler(route);
+        node[segment]![sym_handler] = createRouteHandler(routeHandlerParams);
         break;
       }
 

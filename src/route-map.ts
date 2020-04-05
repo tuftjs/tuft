@@ -1,11 +1,23 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { promises } from 'fs';
 import type { ServerOptions, SecureServerOptions } from './server';
-import type { TuftContext } from './context';
+import type { TuftContext } from './tuft-context';
 
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { requestMethods, findInvalidSchemaEntry } from './utils';
+
+import {
+  ROUTE_MAP_DEFAULT_TRAILING_SLASH,
+  ROUTE_MAP_DEFAULT_PARSE_COOKIES,
+  ROUTE_MAP_DEFAULT_PARSE_JSON,
+  ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT,
+  ROUTE_MAP_DEFAULT_BASE_PATH,
+  ROUTE_MAP_DEFAULT_PATH,
+  ROUTE_MAP_DEFAULT_ERROR_HANDLER,
+  HTTP2_HEADER_METHOD,
+  HTTP2_HEADER_PATH,
+} from './constants';
 
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | Promise<TuftResponse>;
@@ -64,17 +76,6 @@ type RouteMapOptions = {
   errorHandler?: TuftErrorHandler,
 }
 
-const HTTP2_HEADER_METHOD = ':method';
-const HTTP2_HEADER_PATH   = ':path';
-
-const DEFAULT_TRAILING_SLASH    = null;
-const DEFAULT_PARSE_COOKIES     = null;
-const DEFAULT_PARSE_JSON        = null;
-const DEFAULT_PARSE_BODY_LIMIT  = 10_485_760; //bytes
-const DEFAULT_BASE_PATH         = '';
-const DEFAULT_PATH              = '/';
-const DEFAULT_ERROR_HANDLER     = null;
-
 export class RouteMap extends Map {
   readonly #trailingSlash: boolean | null;
 
@@ -92,17 +93,17 @@ export class RouteMap extends Map {
   constructor(options: RouteMapOptions = {}) {
     super();
 
-    this.#trailingSlash = options.trailingSlash ?? DEFAULT_TRAILING_SLASH;
-    this.#parseCookies = options.parseCookies ?? DEFAULT_PARSE_COOKIES;
-    this.#basePath = options.basePath ?? DEFAULT_BASE_PATH;
-    this.#path = options.path ?? DEFAULT_PATH;
+    this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
+    this.#parseCookies = options.parseCookies ?? ROUTE_MAP_DEFAULT_PARSE_COOKIES;
+    this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
+    this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
     this.#methods = ([options.method ?? requestMethods]).flat();
     this.#preHandlers = options.preHandlers ?? [];
-    this.#errorHandler = options.errorHandler ?? DEFAULT_ERROR_HANDLER;
+    this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
 
     // Determine the value of 'parseText'
     if (options.parseText === true) {
-      this.#parseText = DEFAULT_PARSE_BODY_LIMIT;
+      this.#parseText = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
 
     else if (options.parseText === false) {
@@ -114,12 +115,12 @@ export class RouteMap extends Map {
     }
 
     else {
-      this.#parseText = DEFAULT_PARSE_JSON;
+      this.#parseText = ROUTE_MAP_DEFAULT_PARSE_JSON;
     }
 
     // Determine the value of 'parseJson'
     if (options.parseJson === true) {
-      this.#parseJson = DEFAULT_PARSE_BODY_LIMIT;
+      this.#parseJson = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
 
     else if (options.parseJson === false) {
@@ -131,12 +132,12 @@ export class RouteMap extends Map {
     }
 
     else {
-      this.#parseJson = DEFAULT_PARSE_JSON;
+      this.#parseJson = ROUTE_MAP_DEFAULT_PARSE_JSON;
     }
 
     // Determine the value of 'parseUrlEncoded'
     if (options.parseUrlEncoded === true) {
-      this.#parseUrlEncoded = DEFAULT_PARSE_BODY_LIMIT;
+      this.#parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
 
     else if (options.parseUrlEncoded === false) {
@@ -148,7 +149,7 @@ export class RouteMap extends Map {
     }
 
     else {
-      this.#parseUrlEncoded = DEFAULT_PARSE_JSON;
+      this.#parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_JSON;
     }
   }
 
@@ -262,12 +263,24 @@ export class RouteMap extends Map {
       route.parseText = this.#parseText;
     }
 
+    if (route.parseText === true) {
+      route.parseText = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
+    }
+
     if (this.#parseJson !== null) {
       route.parseJson = this.#parseJson;
     }
 
+    if (route.parseJson === true) {
+      route.parseJson = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
+    }
+
     if (this.#parseUrlEncoded !== null) {
       route.parseUrlEncoded = this.#parseUrlEncoded;
+    }
+
+    if (route.parseUrlEncoded === true) {
+      route.parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
 
     for (const method of methods) {
@@ -306,8 +319,22 @@ function createPrimaryHandler(routeMap: RouteMap) {
   const routes = new RouteManager(routeMap);
 
   return function primaryHandler(stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
-    const method = headers[HTTP2_HEADER_METHOD] as string;
-    let pathname = headers[HTTP2_HEADER_PATH] as string;
+    const method = headers[HTTP2_HEADER_METHOD];
+    let pathname = headers[HTTP2_HEADER_PATH];
+
+    if (!method) {
+      stream.close();
+      const err = Error('Missing incoming header: ' + HTTP2_HEADER_METHOD);
+      console.error(err);
+      return;
+    }
+
+    if (!pathname) {
+      stream.close();
+      const err = Error('Missing incoming header: ' + HTTP2_HEADER_PATH);
+      console.error(err);
+      return;
+    }
 
     let separatorIndex = pathname.indexOf('?');
 
