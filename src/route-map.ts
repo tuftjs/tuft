@@ -18,6 +18,7 @@ import {
   ROUTE_MAP_DEFAULT_ERROR_HANDLER,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
+  HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
 export interface TuftHandler {
@@ -78,6 +79,8 @@ type RouteMapOptions = {
   preHandlers?: TuftPreHandler[],
   errorHandler?: TuftErrorHandler,
 }
+
+const validRequestMethods = new Set(getValidRequestMethods());
 
 export class RouteMap extends Map {
   readonly #trailingSlash: boolean | null;
@@ -327,6 +330,12 @@ function createPrimaryHandler(routeMap: RouteMap) {
       return;
     }
 
+    if (!validRequestMethods.has(method)) {
+      stream.respond({
+        [HTTP2_HEADER_METHOD]: HTTP_STATUS_METHOD_NOT_ALLOWED,
+      }, { endStream: true });
+    }
+
     let separatorIndex = pathname.indexOf('?');
 
     if (separatorIndex > 0) {
@@ -334,7 +343,13 @@ function createPrimaryHandler(routeMap: RouteMap) {
     }
 
     const routeHandler = routes.find(method, pathname);
-    routeHandler?.(stream, headers);
+
+    if (!routeHandler) {
+      stream.close();
+      return;
+    }
+
+    routeHandler(stream, headers);
   };
 }
 
