@@ -1,6 +1,6 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
-import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHandler, TuftErrorHandler } from './route-map';
 import type { TuftContext, TuftContextOptions } from './tuft-context';
+import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHandler, TuftErrorHandler } from './route-map';
 
 import { promises as fsPromises } from 'fs';
 import { createTuftContext } from './tuft-context';
@@ -46,10 +46,6 @@ async function handleEmptyResponseWithPreHandlers(
     return err;
   }
 
-  if (stream.destroyed) {
-    return;
-  }
-
   t.setHeader(HTTP2_HEADER_STATUS, response.status);
   stream.respond(t.outgoingHeaders, { endStream: true });
 }
@@ -57,10 +53,6 @@ async function handleEmptyResponseWithPreHandlers(
 async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const fileHandle = await fsPromises.open(response.file as string, 'r');
   const stat = await fileHandle.stat();
-
-  if (stream.destroyed) {
-    return;
-  }
 
   const outgoingHeaders = {
     [HTTP2_HEADER_STATUS]: response.status,
@@ -88,10 +80,6 @@ async function handleFileResponseWithPreHandlers(
   const fileHandle = await fsPromises.open(response.file as string, 'r');
   const stat = await fileHandle.stat();
 
-  if (stream.destroyed) {
-    return;
-  }
-
   t.setHeader(HTTP2_HEADER_STATUS, response.status);
   t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
   stream.respondWithFD(fileHandle, t.outgoingHeaders);
@@ -100,10 +88,6 @@ async function handleFileResponseWithPreHandlers(
 async function handleFDResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const fileHandle = response.file as fsPromises.FileHandle;
   const stat = await fileHandle.stat();
-
-  if (stream.destroyed) {
-    return;
-  }
 
   const outgoingHeaders = {
     [HTTP2_HEADER_STATUS]: response.status,
@@ -130,10 +114,6 @@ async function handleFDResponseWithPreHandlers(
 
   const fileHandle = response.file as fsPromises.FileHandle;
   const stat = await fileHandle.stat();
-
-  if (stream.destroyed) {
-    return;
-  }
 
   t.setHeader(HTTP2_HEADER_STATUS, status);
   t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
@@ -170,10 +150,6 @@ async function handleStreamResponseWithPreHandlers(
 
   catch (err) {
     return err;
-  }
-
-  if (stream.destroyed) {
-    return;
   }
 
   t.setHeader(HTTP2_HEADER_STATUS, status);
@@ -220,10 +196,6 @@ async function handleBodyResponseWithPreHandlers(
     return err;
   }
 
-  if (stream.destroyed) {
-    return;
-  }
-
   const { status, contentType, body } = response;
 
   t.setHeader(HTTP2_HEADER_STATUS, status);
@@ -264,16 +236,28 @@ async function handleUnknownResponse(
   }
 
   if (body !== undefined) {
-    contentType = contentType && mimeTypeMap[contentType];
+    if (contentType) {
+      contentType = mimeTypeMap[contentType];
 
-    if (!contentType) {
+      if (contentType === 'text/plain' || contentType === 'text/html') {
+        body = body.toString();
+      }
+
+      else if (contentType === 'application/json') {
+        body = JSON.stringify(body);
+      }
+    }
+
+    else {
       switch (typeof body) {
         case 'boolean': {
           contentType = 'application/json';
+          body = JSON.stringify(body);
           break;
         }
         case 'number': {
           contentType = 'text/plain';
+          body = body.toString();
           break;
         }
         case 'string': {
@@ -281,10 +265,13 @@ async function handleUnknownResponse(
           break;
         }
         case 'object': {
-          contentType = Buffer.isBuffer(body)
-            ? 'application/octet-stream'
-            : 'application/json';
+          if (Buffer.isBuffer(body)) {
+            contentType = 'application/octet-stream';
+            break;
+          }
 
+          contentType = 'application/json';
+          body = JSON.stringify(body);
           break;
         }
         default: {
@@ -293,19 +280,6 @@ async function handleUnknownResponse(
       }
     }
 
-    if (contentType === 'text/plain') {
-      body = body.toString();
-    }
-
-    else if (contentType === 'application/json') {
-      body = JSON.stringify(body);
-    }
-
-    if (stream.destroyed) {
-      return;
-    }
-
-    t.setHeader(HTTP2_HEADER_STATUS, status);
     t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
     t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
     stream.respond(t.outgoingHeaders);
@@ -321,10 +295,6 @@ async function handleUnknownResponse(
 
     const stat = await fileHandle.stat();
 
-    if (stream.destroyed) {
-      return;
-    }
-
     t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
     stream.respondWithFD(fileHandle, t.outgoingHeaders);
 
@@ -332,10 +302,6 @@ async function handleUnknownResponse(
   }
 
   if (streamHandler) {
-    if (stream.destroyed) {
-      return;
-    }
-
     stream.respond(t.outgoingHeaders);
 
     await streamHandler((chunk: any, encoding?: string) => {
@@ -350,10 +316,6 @@ async function handleUnknownResponse(
     return;
   }
 
-  if (stream.destroyed) {
-    return;
-  }
-
   stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
@@ -365,7 +327,7 @@ async function handleErrorResponse(
 ) {
   const result = await errorHandler(err, t);
 
-  if (!result || typeof result !== 'object') {
+  if (result === null || typeof result !== 'object') {
     return;
   }
 
@@ -376,16 +338,28 @@ async function handleErrorResponse(
   }
 
   if (body !== undefined) {
-    contentType = contentType && mimeTypeMap[contentType];
+    if (contentType) {
+      contentType = mimeTypeMap[contentType];
 
-    if (!contentType) {
+      if (contentType === 'text/plain' || contentType === 'text/html') {
+        body = body.toString();
+      }
+
+      else if (contentType === 'application/json') {
+        body = JSON.stringify(body);
+      }
+    }
+
+    else {
       switch (typeof body) {
         case 'boolean': {
           contentType = 'application/json';
+          body = JSON.stringify(body);
           break;
         }
         case 'number': {
           contentType = 'text/plain';
+          body = body.toString();
           break;
         }
         case 'string': {
@@ -393,10 +367,13 @@ async function handleErrorResponse(
           break;
         }
         case 'object': {
-          contentType = Buffer.isBuffer(body)
-            ? 'application/octet-stream'
-            : 'application/json';
+          if (Buffer.isBuffer(body)) {
+            contentType = 'application/octet-stream';
+            break;
+          }
 
+          contentType = 'application/json';
+          body = JSON.stringify(body);
           break;
         }
         default: {
@@ -405,27 +382,11 @@ async function handleErrorResponse(
       }
     }
 
-    if (contentType === 'text/plain') {
-      body = body.toString();
-    }
-
-    else if (contentType === 'application/json') {
-      body = JSON.stringify(body);
-    }
-
-    if (stream.destroyed) {
-      return;
-    }
-
     t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
     t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
     stream.respond(t.outgoingHeaders);
     stream.end(body);
 
-    return;
-  }
-
-  if (stream.destroyed) {
     return;
   }
 
@@ -451,10 +412,6 @@ async function handleResponseWithContext(
 
   catch (err) {
     console.error(err);
-
-    if (stream.destroyed) {
-      return;
-    }
 
     if (err.message === 'ERR_MISSING_METHOD_HEADER' || err.message === 'ERR_MISSING_PATH_HEADER') {
       stream.close();

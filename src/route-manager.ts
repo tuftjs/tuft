@@ -44,12 +44,11 @@ export class RouteManager {
   }
 
   find(method: string, path: string) {
-    return this._routes[method]?.get(path);
+    return this._routes[method].get(path);
   }
 }
 
 const wildcardRegexp = /{\*\*?}/;
-const defaultDoubleWildcard = { [sym_next]: {} };
 
 class RouteStore {
   private readonly _routeTree: RouteTreeNode = {};
@@ -105,10 +104,8 @@ class RouteStore {
   }
 
   get(path: string) {
-    let routeHandler;
-
     let node: RouteTreeNode = this._routeTree;
-    let doubleWildcard: RouteTreeBranch = defaultDoubleWildcard;
+    let doubleWildcard = {};
     let branch: RouteTreeBranch;
 
     let begin = 1;
@@ -124,11 +121,8 @@ class RouteStore {
       const isDoubleWildcard = branch === doubleWildcard;
 
       if (isDoubleWildcard) {
-        routeHandler = branch[sym_handler];
-
-        if (routeHandler !== undefined) {
-          return routeHandler ?? doubleWildcard[sym_handler];
-        }
+        const routeHandler = branch[sym_handler];
+        return routeHandler;
       }
 
       node = branch[sym_next];
@@ -142,8 +136,7 @@ class RouteStore {
     doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
     branch = node[pathSegment] ?? node[sym_wildcard] ?? doubleWildcard;
 
-    routeHandler = branch[sym_handler];
-
-    return routeHandler ?? doubleWildcard[sym_handler];
+    const routeHandler = branch[sym_handler];
+    return routeHandler;
   }
 }
