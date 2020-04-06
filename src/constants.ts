@@ -28,5 +28,6 @@ export const HTTP2_HEADER_COOKIE                  = 'cookie';
 export const HTTP2_HEADER_SET_COOKIE              = 'set-cookie';
 
 export const HTTP_STATUS_OK                       = 200;
+export const HTTP_STATUS_METHOD_NOT_ALLOWED       = 405;
 export const HTTP_STATUS_LENGTH_REQUIRED          = 411;
 export const HTTP_STATUS_INTERNAL_SERVER_ERROR    = 500;
