@@ -1,29 +1,64 @@
 import { createRouteMap } from '../src';
 
 void async function() {
-  const foo = createRouteMap();
+  const routes = createRouteMap({ parseJson: true });
 
-  foo.set('GET /x', {
+  routes.set('GET /foo/bar/baz', {
     response: {
-      body: 'hey there'
-    }
-  });
-  foo.set('GET /a/b/c/d/e/f', {
-    response: {
-      body: 'hey there again'
-    }
+      status: 200,
+      body: 'AAA',
+    },
   });
 
-  foo.add({
+  routes.set('GET /foo/{**}/baz', {
+    response: {
+      status: 200,
+      body: 'BBB',
+    },
+  });
+
+  routes.set('GET /xyz/{id}', {
+    response: () => {
+      return {
+        status: 200,
+      };
+    },
+  });
+
+  routes.set('GET /json', {
+    response: () => {
+      return {
+        body: {
+          hello: 'world',
+        },
+      };
+    },
+  });
+
+  routes.set('GET /hello', {
+    response: {
+      status: 200,
+      body: 'Hello, world!',
+    },
+  });
+
+  routes.set('GET /a/b/c/d/e/f', {
+    response: {
+      status: 200,
+      body: 'Hello, world!',
+    },
+  });
+
+  routes.add({
     path: '/{**}',
     response: {
       status: 404,
     },
   });
 
-  const server = foo.createServer({ host: 'localhost', port: 3000 });
+  const server = routes.createServer();
 
   await server.start();
 
-  console.log('Server started!');
+  console.log(`Server listening at http://${server.host}:${server.port}`);
 }();
