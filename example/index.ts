@@ -3,6 +3,21 @@ import { createRouteMap } from '../src';
 void async function() {
   const routes = createRouteMap({ parseJson: true });
 
+  routes.set('GET /a', {
+    response: () => {
+      return { status: 204 };
+    },
+  });
+
+  routes.set('GET /b', {
+    preHandlers: [() => {}],
+    response: { status: 204 },
+  });
+
+  routes.set('GET /c', {
+    response: { status: 204 },
+  });
+
   routes.set('GET /foo/bar/baz', {
     response: {
       status: 200,
@@ -45,6 +60,15 @@ void async function() {
   routes.set('GET /a/b/c/d/e/f', {
     response: {
       status: 200,
+      body: 'Hello, world!',
+    },
+  });
+
+
+  routes.set('GET /content_type', {
+    response: {
+      status: 200,
+      contentType: 'text',
       body: 'Hello, world!',
     },
   });
