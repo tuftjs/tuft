@@ -5,3 +5,5 @@
 [![Known Vulnerabilities](https://snyk.io/test/github/tuftjs/tuft/badge.svg?targetFile=package.json)](https://snyk.io/test/github/tuftjs/tuft?targetFile=package.json)
 
 A lightweight web framework for Node.js.
+
+ ⚠ *Work in progress...*
