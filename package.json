@@ -1,7 +1,7 @@
 {
-  "name": "@tuft/tuft",
+  "name": "tuft",
   "version": "1.0.0-alpha.0",
-  "description": "A lightweight web framework for Node.js.",
+  "description": "A lightweight HTTP/2 web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
   "homepage": "https://github.com/tuftjs/tuft",
@@ -16,6 +16,8 @@
     "tuft",
     "tuftjs",
     "node",
+    "http2",
+    "HTTP/2",
     "web",
     "framework"
   ],
