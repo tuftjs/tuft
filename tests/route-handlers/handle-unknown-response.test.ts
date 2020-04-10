@@ -1,8 +1,18 @@
+import fs = require('fs');
 import { constants } from 'http2';
 import { handleUnknownResponse } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH, HTTP2_HEADER_CONTENT_TYPE } from '../../src/constants';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
+
+//@ts-ignore
+const mockFsOpen = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
+  return {
+    stat: () => {
+      return { size: 42 };
+    },
+  };
+});
 
 const mockStream = {
   respond: jest.fn(),
@@ -336,6 +346,10 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('with a file path', () => {
+    afterAll(() => {
+      mockFsOpen.mockRestore();
+    });
+
     test('calls stream.respondWithFD()', async () => {
       const file = __filename;
       const handler = () => {
