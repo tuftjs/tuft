@@ -338,21 +338,21 @@ export async function handleResponseWithContext(
   }
 
   catch (err) {
-    console.error(err);
-
-    if (err.message === 'ERR_CONTENT_LENGTH_REQUIRED') {
-      const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
-      stream.respond(outgoingHeaders, { endStream: true });
-      return;
+    switch (err.message) {
+      case 'ERR_CONTENT_LENGTH_REQUIRED': {
+        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
+        stream.respond(outgoingHeaders, { endStream: true });
+        break;
+      }
+      case 'ERR_CONTENT_LENGTH_MISMATCH': {
+        stream.close(NGHTTP2_STREAM_CLOSED);
+        break;
+      }
+      default: {
+        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
+        stream.respond(outgoingHeaders, { endStream: true });
+      }
     }
-
-    else if (err.message === 'ERR_CONTENT_LENGTH_MISMATCH') {
-      stream.close(NGHTTP2_STREAM_CLOSED);
-      return;
-    }
-
-    const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
-    stream.respond(outgoingHeaders, { endStream: true });
   }
 }
 
