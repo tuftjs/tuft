@@ -1,8 +1,8 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
-import type { promises } from 'fs';
 import type { ServerOptions, SecureServerOptions } from './server';
-import type { TuftContext } from './tuft-context';
+import type { TuftContext } from './context';
 
+import { constants } from 'http2';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { findInvalidSchemaEntry } from './schema-validation';
@@ -18,11 +18,12 @@ import {
   ROUTE_MAP_DEFAULT_ERROR_HANDLER,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
+  HTTP2_HEADER_STATUS,
   HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
 export interface TuftHandler {
-  (t: TuftContext): TuftResponse | Promise<TuftResponse>;
+  (t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
 }
 
 export interface TuftPreHandler {
@@ -30,7 +31,7 @@ export interface TuftPreHandler {
 }
 
 export interface TuftErrorHandler {
-  (err: Error, t: TuftContext): TuftResponse | Promise<TuftResponse>;
+  (err: Error, t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
 }
 
 export interface TuftStreamHandler {
@@ -42,8 +43,9 @@ export interface TuftResponse {
   contentType?: string;
   body?: any;
   stream?: TuftStreamHandler,
-  file?: string | promises.FileHandle;
+  file?: string;
 }
+
 
 export interface TuftRoute {
   trailingSlash?: boolean;
@@ -62,6 +64,7 @@ type RequestMethod = 'CONNECT' | 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH'
 export interface TuftRouteSchema {
   path?: string;
   method?: RequestMethod | RequestMethod[];
+  contentType?: string;
   preHandlers?: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
   errorHandler?: TuftErrorHandler;
@@ -79,6 +82,8 @@ type RouteMapOptions = {
   preHandlers?: TuftPreHandler[],
   errorHandler?: TuftErrorHandler,
 }
+
+const { NGHTTP2_REFUSED_STREAM } = constants;
 
 const validRequestMethods = new Set(getValidRequestMethods());
 
@@ -227,10 +232,10 @@ export class RouteMap extends Map {
       return this;
     }
 
-    const err = findInvalidSchemaEntry(schema);
+    const errorMessage = findInvalidSchemaEntry(schema);
 
-    if (err) {
-      console.error(err);
+    if (errorMessage) {
+      console.error(TypeError(errorMessage));
       return process.exit(1);
     }
 
@@ -311,47 +316,41 @@ export class RouteMap extends Map {
 
 function createPrimaryHandler(routeMap: RouteMap) {
   const routes = new RouteManager(routeMap);
-
-  return function primaryHandler(stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
-    const method = headers[HTTP2_HEADER_METHOD];
-    let pathname = headers[HTTP2_HEADER_PATH];
-
-    if (!method) {
-      stream.close();
-      const err = Error('Missing incoming header: ' + HTTP2_HEADER_METHOD);
-      console.error(err);
-      return;
-    }
-
-    if (!pathname) {
-      stream.close();
-      const err = Error('Missing incoming header: ' + HTTP2_HEADER_PATH);
-      console.error(err);
-      return;
-    }
-
-    if (!validRequestMethods.has(method)) {
-      stream.respond({
-        [HTTP2_HEADER_METHOD]: HTTP_STATUS_METHOD_NOT_ALLOWED,
-      }, { endStream: true });
-    }
-
-    let separatorIndex = pathname.indexOf('?');
-
-    if (separatorIndex > 0) {
-      pathname = pathname.slice(0, separatorIndex);
-    }
-
-    const routeHandler = routes.find(method, pathname);
-
-    if (!routeHandler) {
-      stream.close();
-      return;
-    }
-
-    routeHandler(stream, headers);
-  };
+  return primaryHandler.bind(null, routes);
 }
+
+export function primaryHandler(routes: RouteManager, stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
+  const method = headers[HTTP2_HEADER_METHOD];
+  let pathname = headers[HTTP2_HEADER_PATH];
+
+  if (!method || !pathname) {
+    stream.close(NGHTTP2_REFUSED_STREAM);
+    return;
+  }
+
+  if (!validRequestMethods.has(method)) {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
+    }, { endStream: true });
+
+    return;
+  }
+
+  let separatorIndex = pathname.indexOf('?');
+
+  if (separatorIndex > 0) {
+    pathname = pathname.slice(0, separatorIndex);
+  }
+
+  const routeHandler = routes.find(method, pathname);
+
+  if (!routeHandler) {
+    stream.close(NGHTTP2_REFUSED_STREAM);
+    return;
+  }
+
+  routeHandler(stream, headers);
+};
 
 export function createRouteMap(options?: RouteMapOptions) {
   return new RouteMap(options);

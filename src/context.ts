@@ -36,7 +36,7 @@ const methodsWithBody = new Set([
   'PUT',
 ]);
 
-class TuftContext extends EventEmitter {
+export class TuftContext extends EventEmitter {
   private readonly _stream: ServerHttp2Stream;
   private _outgoingHeaders: OutgoingHttpHeaders;
 
@@ -240,5 +240,3 @@ function parseUrlEncodedStr(urlEncodedStr: string): { [key: string]: string } {
 
   return result;
 }
-
-export type { TuftContext };

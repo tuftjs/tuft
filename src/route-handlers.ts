@@ -1,9 +1,10 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
-import type { TuftContext, TuftContextOptions } from './tuft-context';
+import type { TuftContext, TuftContextOptions } from './context';
 import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHandler, TuftErrorHandler } from './route-map';
 
 import { promises as fsPromises } from 'fs';
-import { createTuftContext } from './tuft-context';
+import { constants } from 'http2';
+import { createTuftContext } from './context';
 
 import {
   HTTP2_HEADER_STATUS,
@@ -13,6 +14,9 @@ import {
   HTTP_STATUS_LENGTH_REQUIRED,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } from './constants';
+
+const { NGHTTP2_STREAM_CLOSED } = constants;
+const DEFAULT_HTTP_STATUS = HTTP_STATUS_OK;
 
 const mimeTypeMap: { [key: string]: string } = {
   'text':                     'text/plain',
@@ -25,12 +29,12 @@ const mimeTypeMap: { [key: string]: string } = {
   'application/octet-stream': 'application/octet-stream',
 };
 
-function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
+export function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const outgoingHeaders = { [HTTP2_HEADER_STATUS]: response.status };
   stream.respond(outgoingHeaders, { endStream: true });
 }
 
-async function handleEmptyResponseWithPreHandlers(
+export async function handleEmptyResponseWithPreHandlers(
   response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
@@ -50,7 +54,7 @@ async function handleEmptyResponseWithPreHandlers(
   stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
-async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Stream) {
+export async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const fileHandle = await fsPromises.open(response.file as string, 'r');
   const stat = await fileHandle.stat();
 
@@ -61,7 +65,7 @@ async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Str
   stream.respondWithFD(fileHandle, outgoingHeaders);
 }
 
-async function handleFileResponseWithPreHandlers(
+export async function handleFileResponseWithPreHandlers(
   response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
@@ -85,42 +89,7 @@ async function handleFileResponseWithPreHandlers(
   stream.respondWithFD(fileHandle, t.outgoingHeaders);
 }
 
-async function handleFDResponse(response: TuftResponse, stream: ServerHttp2Stream) {
-  const fileHandle = response.file as fsPromises.FileHandle;
-  const stat = await fileHandle.stat();
-
-  const outgoingHeaders = {
-    [HTTP2_HEADER_STATUS]: response.status,
-    [HTTP2_HEADER_CONTENT_LENGTH]: stat.size,
-  };
-  stream.respondWithFD(fileHandle, outgoingHeaders);
-}
-
-async function handleFDResponseWithPreHandlers(
-  response: TuftResponse,
-  preHandlers: TuftPreHandler[],
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
-    }
-  }
-
-  catch (err) {
-    return err;
-  }
-
-  const fileHandle = response.file as fsPromises.FileHandle;
-  const stat = await fileHandle.stat();
-
-  t.setHeader(HTTP2_HEADER_STATUS, status);
-  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
-  stream.respondWithFD(fileHandle, t.outgoingHeaders);
-}
-
-async function handleStreamResponse(response: TuftResponse, stream: ServerHttp2Stream) {
+export async function handleStreamResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   stream.respond({ [HTTP2_HEADER_STATUS]: response.status });
 
   const streamHandler = response.stream as TuftStreamHandler;
@@ -136,7 +105,7 @@ async function handleStreamResponse(response: TuftResponse, stream: ServerHttp2S
   stream.end();
 }
 
-async function handleStreamResponseWithPreHandlers(
+export async function handleStreamResponseWithPreHandlers(
   response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
@@ -152,7 +121,7 @@ async function handleStreamResponseWithPreHandlers(
     return err;
   }
 
-  t.setHeader(HTTP2_HEADER_STATUS, status);
+  t.setHeader(HTTP2_HEADER_STATUS, response.status);
   stream.respond(t.outgoingHeaders);
 
   const streamHandler = response.stream as TuftStreamHandler;
@@ -168,7 +137,7 @@ async function handleStreamResponseWithPreHandlers(
   stream.end();
 }
 
-function handleBodyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
+export function handleBodyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   const { status, contentType, body } = response;
 
   const outgoingHeaders = {
@@ -180,7 +149,7 @@ function handleBodyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
   stream.end(body);
 }
 
-async function handleBodyResponseWithPreHandlers(
+export async function handleBodyResponseWithPreHandlers(
   response: TuftResponse,
   preHandlers: TuftPreHandler[],
   stream: ServerHttp2Stream,
@@ -205,13 +174,66 @@ async function handleBodyResponseWithPreHandlers(
   stream.end(body);
 }
 
-async function handleUnknownResponse(
+function handleUnknownBodyResponse(
+  stream: ServerHttp2Stream,
+  t: TuftContext,
+  body: any,
+  contentType?: string,
+) {
+  if (contentType) {
+    contentType = mimeTypeMap[contentType];
+
+    if (contentType === 'text/plain' || contentType === 'text/html') {
+      body = body.toString();
+    }
+
+    else if (contentType === 'application/json') {
+      body = JSON.stringify(body);
+    }
+  }
+
+  else {
+    switch (typeof body) {
+      case 'boolean':
+      case 'number': {
+        contentType = 'application/json';
+        body = body.toString();
+        break;
+      }
+      case 'string': {
+        contentType = 'text/plain';
+        break;
+      }
+      case 'object': {
+        if (Buffer.isBuffer(body)) {
+          contentType = 'application/octet-stream';
+          break;
+        }
+
+        contentType = 'application/json';
+        body = JSON.stringify(body);
+        break;
+      }
+      default: {
+        stream.close(NGHTTP2_STREAM_CLOSED);
+        throw TypeError(`'${typeof body}' is not a supported response body type.`);
+      }
+    }
+  }
+
+  t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
+  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
+  stream.respond(t.outgoingHeaders);
+  stream.end(body);
+}
+
+export async function handleUnknownResponse(
   preHandlers: TuftPreHandler[],
   handler: TuftHandler,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
-  let result: TuftResponse | undefined;
+  let result: TuftResponse | null;
 
   try {
     for (let i = 0; i < preHandlers.length; i++) {
@@ -226,6 +248,7 @@ async function handleUnknownResponse(
   }
 
   if (result === null || typeof result !== 'object') {
+    stream.close(NGHTTP2_STREAM_CLOSED);
     return;
   }
 
@@ -236,55 +259,7 @@ async function handleUnknownResponse(
   }
 
   if (body !== undefined) {
-    if (contentType) {
-      contentType = mimeTypeMap[contentType];
-
-      if (contentType === 'text/plain' || contentType === 'text/html') {
-        body = body.toString();
-      }
-
-      else if (contentType === 'application/json') {
-        body = JSON.stringify(body);
-      }
-    }
-
-    else {
-      switch (typeof body) {
-        case 'boolean': {
-          contentType = 'application/json';
-          body = JSON.stringify(body);
-          break;
-        }
-        case 'number': {
-          contentType = 'text/plain';
-          body = body.toString();
-          break;
-        }
-        case 'string': {
-          contentType = 'text/plain';
-          break;
-        }
-        case 'object': {
-          if (Buffer.isBuffer(body)) {
-            contentType = 'application/octet-stream';
-            break;
-          }
-
-          contentType = 'application/json';
-          body = JSON.stringify(body);
-          break;
-        }
-        default: {
-          return;
-        }
-      }
-    }
-
-    t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
-    stream.respond(t.outgoingHeaders);
-    stream.end(body);
-
+    handleUnknownBodyResponse(stream, t, body, contentType);
     return;
   }
 
@@ -319,7 +294,7 @@ async function handleUnknownResponse(
   stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
-async function handleErrorResponse(
+export async function handleErrorResponse(
   errorHandler: TuftErrorHandler,
   err: Error,
   stream: ServerHttp2Stream,
@@ -328,6 +303,7 @@ async function handleErrorResponse(
   const result = await errorHandler(err, t);
 
   if (result === null || typeof result !== 'object') {
+    stream.close(NGHTTP2_STREAM_CLOSED);
     return;
   }
 
@@ -338,9 +314,76 @@ async function handleErrorResponse(
   }
 
   if (body !== undefined) {
-    if (contentType) {
-      contentType = mimeTypeMap[contentType];
+    handleUnknownBodyResponse(stream, t, body, contentType);
+    return;
+  }
 
+  stream.respond(t.outgoingHeaders, { endStream: true });
+}
+
+export async function handleResponseWithContext(
+  handleResponse: (stream: ServerHttp2Stream, t: TuftContext) => void | Error | Promise<void | Error>,
+  handleErrorResponse: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
+  options: TuftContextOptions,
+  stream: ServerHttp2Stream,
+  headers: IncomingHttpHeaders,
+) {
+  try {
+    const t = await createTuftContext(stream, headers, options);
+    const err = await handleResponse(stream, t);
+
+    if (err) {
+      handleErrorResponse(err, stream, t);
+    }
+  }
+
+  catch (err) {
+    console.error(err);
+
+    if (err.message === 'ERR_CONTENT_LENGTH_REQUIRED') {
+      const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
+      stream.respond(outgoingHeaders, { endStream: true });
+      return;
+    }
+
+    else if (err.message === 'ERR_CONTENT_LENGTH_MISMATCH') {
+      stream.close(NGHTTP2_STREAM_CLOSED);
+      return;
+    }
+
+    const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
+    stream.respond(outgoingHeaders, { endStream: true });
+  }
+}
+
+export function createRouteHandler(route: TuftRoute) {
+  const { response, preHandlers, errorHandler } = route;
+
+  const options = {
+    params: route.params,
+    parseCookies: route.parseCookies,
+    parseText: route.parseText,
+    parseJson: route.parseJson,
+    parseUrlEncoded: route.parseUrlEncoded,
+  };
+
+  const boundHandleErrorResponse = handleErrorResponse.bind(null, errorHandler ?? defaultErrorHandler);
+
+  if (typeof response === 'function') {
+    const boundHandleResponse = handleUnknownResponse.bind(null, preHandlers, response);
+    return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
+  }
+
+  if (!response.status) {
+    response.status = DEFAULT_HTTP_STATUS;
+  }
+
+  if (response.body) {
+    let { contentType, body } = response;
+
+    contentType = contentType && mimeTypeMap[contentType];
+
+    if (contentType) {
       if (contentType === 'text/plain' || contentType === 'text/html') {
         body = body.toString();
       }
@@ -352,13 +395,9 @@ async function handleErrorResponse(
 
     else {
       switch (typeof body) {
-        case 'boolean': {
-          contentType = 'application/json';
-          body = JSON.stringify(body);
-          break;
-        }
+        case 'boolean':
         case 'number': {
-          contentType = 'text/plain';
+          contentType = 'application/json';
           body = body.toString();
           break;
         }
@@ -377,136 +416,17 @@ async function handleErrorResponse(
           break;
         }
         default: {
-          return;
+          const err = TypeError(`'${typeof body}' is not a supported response body type.`);
+          console.error(err);
+          return process.exit(1);
         }
       }
-    }
-
-    t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
-    stream.respond(t.outgoingHeaders);
-    stream.end(body);
-
-    return;
-  }
-
-  stream.respond(t.outgoingHeaders, { endStream: true });
-}
-
-async function handleResponseWithContext(
-  handleResponse: (stream: ServerHttp2Stream, t: TuftContext) => void | Error | Promise<void | Error>,
-  handleErrorResponse: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  options: TuftContextOptions,
-  stream: ServerHttp2Stream,
-  headers: IncomingHttpHeaders,
-) {
-  try {
-    const t = await createTuftContext(stream, headers, options);
-    const err = await handleResponse(stream, t);
-
-    if (err) {
-      console.error(err);
-      handleErrorResponse(err, stream, t);
-    }
-  }
-
-  catch (err) {
-    console.error(err);
-
-    if (err.message === 'ERR_MISSING_METHOD_HEADER' || err.message === 'ERR_MISSING_PATH_HEADER') {
-      stream.close();
-      return;
-    }
-
-    else if (err.message === 'ERR_CONTENT_LENGTH_REQUIRED') {
-      const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
-      stream.respond(outgoingHeaders, { endStream: true });
-      return;
-    }
-
-    else if (err.message === 'ERR_CONTENT_LENGTH_MISMATCH') {
-      stream.close();
-      return;
-    }
-
-    const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
-    stream.respond(outgoingHeaders, { endStream: true });
-  }
-}
-
-export function createRouteHandler({
-  response,
-  preHandlers,
-  errorHandler,
-  params,
-  parseCookies,
-  parseText,
-  parseJson,
-  parseUrlEncoded,
-}: TuftRoute) {
-  const boundHandleErrorResponse = handleErrorResponse.bind(null, errorHandler ?? defaultErrorHandler);
-
-  const options = {
-    params,
-    parseCookies,
-    parseText,
-    parseJson,
-    parseUrlEncoded,
-  };
-
-  if (typeof response === 'function') {
-    const boundHandleResponse = handleUnknownResponse.bind(null, preHandlers, response);
-    return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
-  }
-
-  if (!response.status) {
-    response.status = HTTP_STATUS_OK;
-  }
-
-  if (response.body) {
-    let { contentType, body } = response;
-
-    contentType = contentType && mimeTypeMap[contentType];
-
-    if (!contentType) {
-      switch (typeof body) {
-        case 'boolean': {
-          contentType = 'application/json';
-          break;
-        }
-        case 'number': {
-          contentType = 'text/plain';
-          break;
-        }
-        case 'string': {
-          contentType = 'text/plain';
-          break;
-        }
-        case 'object': {
-          contentType = Buffer.isBuffer(body)
-            ? 'application/octet-stream'
-            : 'application/json';
-
-          break;
-        }
-        default: {
-          throw TypeError('Invalid body type.');
-        }
-      }
-    }
-
-    if (contentType === 'application/json') {
-      body = JSON.stringify(body);
-    }
-
-    else if (contentType !== 'application/octet-stream') {
-      body = body.toString();
     }
 
     response.contentType = contentType;
     response.body = body;
 
-    if (preHandlers) {
+    if (preHandlers.length > 0) {
       const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(null, response, preHandlers);
       return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
@@ -515,27 +435,16 @@ export function createRouteHandler({
   }
 
   else if (response.file) {
-    if (typeof response.file === 'string') {
-      if (preHandlers) {
-        const boundHandleResponse = handleFileResponseWithPreHandlers.bind(null, response, preHandlers);
-        return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
-      }
-
-      return handleFileResponse.bind(null, response);
+    if (preHandlers.length > 0) {
+      const boundHandleResponse = handleFileResponseWithPreHandlers.bind(null, response, preHandlers);
+      return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
 
-    else {
-      if (preHandlers) {
-        const boundHandleResponse = handleFDResponseWithPreHandlers.bind(null, response, preHandlers);
-        return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
-      }
-
-      return handleFDResponse.bind(null, response);
-    }
+    return handleFileResponse.bind(null, response);
   }
 
   else if (response.stream) {
-    if (preHandlers) {
+    if (preHandlers.length > 0) {
       const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(null, response, preHandlers);
       return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
@@ -544,7 +453,7 @@ export function createRouteHandler({
   }
 
   else {
-    if (preHandlers) {
+    if (preHandlers.length > 0) {
       const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(null, response, preHandlers);
       return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
     }
@@ -553,6 +462,6 @@ export function createRouteHandler({
   }
 }
 
-function defaultErrorHandler() {
+export function defaultErrorHandler() {
   return { status: HTTP_STATUS_INTERNAL_SERVER_ERROR };
 }
