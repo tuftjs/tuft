@@ -4,7 +4,7 @@ import { handleFileResponse, handleFileResponseWithPreHandlers } from '../../src
 //@ts-ignore
 const mockFsOpen = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
   return {
-    stat: () => {
+    stat: async () => {
       return { size: 42 };
     },
   };
