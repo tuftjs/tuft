@@ -10,7 +10,7 @@ describe('RouteStore', () => {
           store.set('/foo', {
             preHandlers: [],
             response: {},
-          });
+          },);
         }
 
         expect(setRoute).not.toThrow();

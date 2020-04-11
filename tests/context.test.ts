@@ -1,4 +1,4 @@
-import { TuftContext, createTuftContext } from '../src/context';
+import { TuftContext, createTuftContext, createTuftContextWithBody } from '../src/context';
 import { HTTP2_HEADER_STATUS, HTTP_STATUS_OK, HTTP2_HEADER_METHOD, HTTP2_METHOD_GET, HTTP2_HEADER_PATH, HTTP2_HEADER_COOKIE, HTTP2_METHOD_POST, HTTP2_HEADER_CONTENT_LENGTH, HTTP2_HEADER_CONTENT_TYPE } from '../src/constants';
 
 describe('TuftContext', () => {
@@ -58,6 +58,80 @@ describe('TuftContext', () => {
 });
 
 describe('createTuftContext()', () => {
+  const mockStream = {
+    on: jest.fn((_, callback) => {
+      callback();
+    }),
+  };
+
+  beforeAll(() => {
+    mockStream.on.mockClear();
+  });
+
+  describe('with no options', () => {
+    const mockHeaders = {
+      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+      [HTTP2_HEADER_PATH]: '/',
+    };
+
+    test('returns an instance of TuftContext', async () => {
+      //@ts-ignore
+      const result = createTuftContext(mockStream, mockHeaders);
+      await expect(result).resolves.toBeInstanceOf(TuftContext);
+    });
+  });
+
+  describe('with a path that includes a query string', () => {
+    const mockHeaders = {
+      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+      [HTTP2_HEADER_PATH]: '/foo?bar=baz',
+    };
+
+    test('returns an instance of TuftContext', async () => {
+      //@ts-ignore
+      const result = createTuftContext(mockStream, mockHeaders);
+      await expect(result).resolves.toBeInstanceOf(TuftContext);
+    });
+  });
+
+  describe('with option \'params\' set', () => {
+    const mockHeaders = {
+      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+      [HTTP2_HEADER_PATH]: '/foo/bar/baz',
+    };
+
+    const options = {
+      params: {
+        0: 'one',
+        2: 'three',
+      },
+    };
+
+    test('returns an instance of TuftContext', async () => {
+      //@ts-ignore
+      const result = createTuftContext(mockStream, mockHeaders, options);
+      await expect(result).resolves.toBeInstanceOf(TuftContext);
+    });
+  });
+
+  describe('with option \'parseCookies\' set to true', () => {
+    const mockHeaders = {
+      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+      [HTTP2_HEADER_PATH]: '/foo/bar/baz',
+      [HTTP2_HEADER_COOKIE]: 'cookie-name-0=cookie-value-0;cookie-name-1=cookie-value-1',
+    };
+
+    const options = { parseCookies: true };
+
+    test('returns an instance of TuftContext', async () => {
+      //@ts-ignore
+      const result = createTuftContext(mockStream, mockHeaders, options);
+      await expect(result).resolves.toBeInstanceOf(TuftContext);
+    });
+  });
+});
+
+describe('createTuftContextWithBody()', () => {
   const mockStream = {
     on: jest.fn((_, callback) => {
       callback();
@@ -127,69 +201,62 @@ describe('createTuftContext()', () => {
     mockStreamWithTwoBodyChunks.on.mockClear();
   });
 
-  describe('with no options', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/',
-    };
-
-    test('returns an instance of TuftContext', async () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
-    });
-  });
-
-  describe('with a path that includes a query string', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/foo?bar=baz',
-    };
-
-    test('returns an instance of TuftContext', async () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
-    });
-  });
-
-  describe('with option \'params\' set', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/foo/bar/baz',
-    };
-
-    const options = {
-      params: {
-        0: 'one',
-        2: 'three',
-      },
-    };
-
-    test('returns an instance of TuftContext', async () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders, options);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
-    });
-  });
-
-  describe('with option \'parseCookies\' set to true', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/foo/bar/baz',
-      [HTTP2_HEADER_COOKIE]: 'cookie-name-0=cookie-value-0;cookie-name-1=cookie-value-1',
-    };
-
-    const options = { parseCookies: true };
-
-    test('returns an instance of TuftContext', async () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders, options);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
-    });
-  });
-
   describe('with \'method\' header set to \'POST\'', () => {
+    describe('with a path that includes a query string', () => {
+      const mockHeaders = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_POST,
+        [HTTP2_HEADER_PATH]: '/foo?bar=baz',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_CONTENT_LENGTH]: '5',
+      };
+
+      test('returns an instance of TuftContext', async () => {
+        //@ts-ignore
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders);
+        await expect(result).resolves.toBeInstanceOf(TuftContext);
+      });
+    });
+
+    describe('with option \'params\' set', () => {
+      const mockHeaders = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_POST,
+        [HTTP2_HEADER_PATH]: '/foo/bar/baz',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_CONTENT_LENGTH]: '5',
+      };
+
+      const options = {
+        params: {
+          0: 'one',
+          2: 'three',
+        },
+      };
+
+      test('returns an instance of TuftContext', async () => {
+        //@ts-ignore
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
+        await expect(result).resolves.toBeInstanceOf(TuftContext);
+      });
+    });
+
+    describe('with option \'parseCookies\' set to true', () => {
+      const mockHeaders = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_POST,
+        [HTTP2_HEADER_PATH]: '/foo/bar/baz',
+        [HTTP2_HEADER_COOKIE]: 'cookie-name-0=cookie-value-0;cookie-name-1=cookie-value-1',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_CONTENT_LENGTH]: '5',
+      };
+
+      const options = { parseCookies: true };
+
+      test('returns an instance of TuftContext', async () => {
+        //@ts-ignore
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
+        await expect(result).resolves.toBeInstanceOf(TuftContext);
+      });
+    });
+
     describe('and a body with one chunk', () => {
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: HTTP2_METHOD_POST,
@@ -200,7 +267,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -215,7 +282,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithTwoBodyChunks, mockHeaders);
+        const result = createTuftContextWithBody(mockStreamWithTwoBodyChunks, mockHeaders);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -229,7 +296,7 @@ describe('createTuftContext()', () => {
 
       test('throws an error', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStream, mockHeaders);
+        const result = createTuftContextWithBody(mockStream, mockHeaders);
         await expect(result).rejects.toThrow('ERR_CONTENT_LENGTH_REQUIRED');
       });
     });
@@ -244,7 +311,7 @@ describe('createTuftContext()', () => {
 
       test('throws an error', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders);
         await expect(result).rejects.toThrow('ERR_CONTENT_LENGTH_MISMATCH');
       });
     });
@@ -258,7 +325,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -275,7 +342,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders, options);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -292,7 +359,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders, options);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -309,7 +376,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders, options);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -326,7 +393,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamWithOneBodyChunk, mockHeaders, options);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -343,7 +410,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamUrlEncoded, mockHeaders, options);
+        const result = createTuftContextWithBody(mockStreamUrlEncoded, mockHeaders, options);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });
@@ -360,7 +427,7 @@ describe('createTuftContext()', () => {
 
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
-        const result = createTuftContext(mockStreamUrlEncoded, mockHeaders, options);
+        const result = createTuftContextWithBody(mockStreamUrlEncoded, mockHeaders, options);
         await expect(result).resolves.toBeInstanceOf(TuftContext);
       });
     });

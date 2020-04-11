@@ -1,6 +1,8 @@
 import { handleEmptyResponse, handleEmptyResponseWithPreHandlers } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
+const mockErrorHandler = jest.fn();
+
 const mockStream = {
   respond: jest.fn(),
   respondWithFD: jest.fn(),
@@ -39,6 +41,7 @@ describe('handleEmptyResponse()', () => {
 
 describe('handleEmptyResponseWithPreHandlers()', () => {
   beforeEach(() => {
+    mockErrorHandler.mockClear();
     mockTuftContext.outgoingHeaders = {};
     mockTuftContext.setHeader.mockClear();
     mockStream.respond.mockClear();
@@ -49,14 +52,16 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
     const preHandlers = [() => {}];
 
     const result = handleEmptyResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStream,
       mockTuftContext,
     );
 
     await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).not.toHaveBeenCalled();
     expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
     expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
   });
@@ -67,14 +72,16 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
     const preHandlers = [() => { throw err }];
 
     const result = handleEmptyResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStream,
       mockTuftContext,
     );
 
-    await expect(result).resolves.toEqual(err);
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
     expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
     expect(mockStream.respond).not.toHaveBeenCalled();
   });

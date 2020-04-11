@@ -1,5 +1,6 @@
 import { constants } from 'http2';
 import { handleResponseWithContext } from '../../src/route-handlers';
+import { createTuftContext, createTuftContextWithBody } from '../../src/context';
 
 import {
   HTTP2_HEADER_METHOD,
@@ -42,7 +43,6 @@ describe('handleResponseWithContext()', () => {
     test('when the handler returns an error', async () => {
       const err = Error('handler error');
       const mockHandler = jest.fn(() => { return err });
-      const mockErrorHandler = jest.fn();
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'GET',
@@ -50,8 +50,8 @@ describe('handleResponseWithContext()', () => {
       };
 
       const result = handleResponseWithContext(
+        createTuftContext,
         mockHandler,
-        mockErrorHandler,
         {},
         //@ts-ignore
         mockStream,
@@ -59,7 +59,6 @@ describe('handleResponseWithContext()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).toHaveBeenCalled();
       expect(mockStream.close).not.toHaveBeenCalled();
       expect(mockStream.respond).not.toHaveBeenCalled();
     });
@@ -68,7 +67,6 @@ describe('handleResponseWithContext()', () => {
   describe('handleErrorResponse() is NOT called', () => {
     test('when the handler does not return or throw an error', async () => {
       const mockHandler = jest.fn(() => {});
-      const mockErrorHandler = jest.fn();
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'GET',
@@ -76,8 +74,8 @@ describe('handleResponseWithContext()', () => {
       };
 
       const result = handleResponseWithContext(
+        createTuftContext,
         mockHandler,
-        mockErrorHandler,
         {},
         //@ts-ignore
         mockStream,
@@ -85,7 +83,6 @@ describe('handleResponseWithContext()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockStream.close).not.toHaveBeenCalled();
       expect(mockStream.respond).not.toHaveBeenCalled();
     });
@@ -94,7 +91,6 @@ describe('handleResponseWithContext()', () => {
   describe('stream.respond() is called', () => {
     test('when \'content-length\' header is missing', async () => {
       const mockHandler = jest.fn(() => {});
-      const mockErrorHandler = jest.fn();
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'POST',
@@ -102,8 +98,8 @@ describe('handleResponseWithContext()', () => {
       };
 
       const result = handleResponseWithContext(
+        createTuftContextWithBody,
         mockHandler,
-        mockErrorHandler,
         {},
         //@ts-ignore
         mockStream,
@@ -115,7 +111,6 @@ describe('handleResponseWithContext()', () => {
       };
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockStream.close).not.toHaveBeenCalled();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
@@ -123,7 +118,6 @@ describe('handleResponseWithContext()', () => {
     test('when the handler throws an error', async () => {
       const err = Error('handler error');
       const mockHandler = jest.fn(() => { throw err });
-      const mockErrorHandler = jest.fn();
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'GET',
@@ -131,8 +125,8 @@ describe('handleResponseWithContext()', () => {
       };
 
       const result = handleResponseWithContext(
+        createTuftContext,
         mockHandler,
-        mockErrorHandler,
         {},
         //@ts-ignore
         mockStream,
@@ -144,7 +138,6 @@ describe('handleResponseWithContext()', () => {
       };
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockStream.close).not.toHaveBeenCalled();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
@@ -153,7 +146,6 @@ describe('handleResponseWithContext()', () => {
   describe('stream.close() is called', () => {
     test('when \'content-length\' header does not match body length', async () => {
       const mockHandler = jest.fn(() => {});
-      const mockErrorHandler = jest.fn();
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'POST',
@@ -162,8 +154,8 @@ describe('handleResponseWithContext()', () => {
       };
 
       const result = handleResponseWithContext(
+        createTuftContextWithBody,
         mockHandler,
-        mockErrorHandler,
         {},
         //@ts-ignore
         mockStream,
@@ -171,7 +163,6 @@ describe('handleResponseWithContext()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_STREAM_CLOSED);
       expect(mockStream.respond).not.toHaveBeenCalled();
     });

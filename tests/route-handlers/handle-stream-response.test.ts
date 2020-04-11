@@ -1,6 +1,8 @@
 import { handleStreamResponse, handleStreamResponseWithPreHandlers } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
+const mockErrorHandler = jest.fn();
+
 const mockStream = {
   respond: jest.fn(),
   respondWithFD: jest.fn(),
@@ -86,6 +88,7 @@ describe('handleStreamResponse()', () => {
 
 describe('handleStreamResponseWithPreHandlers()', () => {
   beforeEach(() => {
+    mockErrorHandler.mockClear();
     mockStream.respond.mockClear();
     mockStream.write.mockClear();
     mockStream.end.mockClear();
@@ -105,8 +108,9 @@ describe('handleStreamResponseWithPreHandlers()', () => {
     const preHandlers = [() => {}];
 
     const result = handleStreamResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStream,
       mockTuftContext,
@@ -128,8 +132,9 @@ describe('handleStreamResponseWithPreHandlers()', () => {
     const preHandlers = [() => {}];
 
     const result = handleStreamResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStreamWithError,
       mockTuftContext,
@@ -143,20 +148,22 @@ describe('handleStreamResponseWithPreHandlers()', () => {
     expect(mockStreamWithError.end).not.toHaveBeenCalled();
   });
 
-  test('returns an error when a pre-handler throws an error', async () => {
+  test('calls the error handler when a pre-handler throws an error', async () => {
     const err = Error('pre-handler error');
     const responseObj = { stream: mockStreamHandler };
     const preHandlers =[() => { throw err }];
 
     const result = handleStreamResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStream,
       mockTuftContext,
     );
 
-    await expect(result).resolves.toEqual(err);
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
     expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
     expect(mockStreamHandler).not.toHaveBeenCalled();
     expect(mockStream.respond).not.toHaveBeenCalled();

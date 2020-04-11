@@ -11,6 +11,21 @@ describe('defaultErrorHandler()', () => {
 describe('createRouteHandler()', () => {
   const errorHandler = () => { return {} };
 
+  describe('when the body argument is set to true', () => {
+    const route = {
+      response: () => {
+        return {};
+      },
+      preHandlers: [],
+      errorHandler,
+    };
+
+    test('returns bound handleResponseWithContext', () => {
+      const result = createRouteHandler(route, true);
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
   describe('when passed a response handler', () => {
     const route = {
       response: () => {

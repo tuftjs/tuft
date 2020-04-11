@@ -5,6 +5,8 @@ import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH, HTTP2_HEADER_CONTENT_
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
 
+const mockErrorHandler = jest.fn();
+
 const mockStream = {
   respond: jest.fn(),
   respondWithFD: jest.fn(),
@@ -42,6 +44,7 @@ const mockStreamHandler = jest.fn(async (write: any) => {
 
 describe('handleUnknownResponse()', () => {
   beforeEach(() => {
+    mockErrorHandler.mockClear();
     mockTuftContext.outgoingHeaders = {};
     mockTuftContext.setHeader.mockClear();
     mockStream.respond.mockClear();
@@ -58,6 +61,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -65,7 +69,8 @@ describe('handleUnknownResponse()', () => {
         mockTuftContext,
       );
 
-      await expect(result).resolves.toBe(err);
+      await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
       expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
       expect(mockStream.close).not.toHaveBeenCalled();
       expect(mockStream.respond).not.toHaveBeenCalled();
@@ -79,6 +84,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -87,6 +93,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
       expect(mockStream.respond).not.toHaveBeenCalled();
       expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_STREAM_CLOSED);
@@ -101,6 +108,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -109,6 +117,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
     });
@@ -126,6 +135,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -137,6 +147,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'text/plain';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -156,6 +167,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -167,6 +179,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'application/json';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -186,6 +199,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -197,6 +211,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'application/octet-stream';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -213,6 +228,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -224,6 +240,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'application/json';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -240,6 +257,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -251,6 +269,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'text/plain';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -267,6 +286,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -278,6 +298,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'application/octet-stream';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -294,6 +315,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -305,6 +327,7 @@ describe('handleUnknownResponse()', () => {
       const expectedContentType = 'application/json';
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
@@ -321,6 +344,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -329,6 +353,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).rejects.toThrow('\'symbol\' is not a supported response body type.');
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
       expect(mockStream.respond).not.toHaveBeenCalled();
       expect(mockStream.end).not.toHaveBeenCalled();
@@ -358,6 +383,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -366,6 +392,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalled();
       expect(mockStream.respondWithFD).toHaveBeenCalled();
     });
@@ -380,6 +407,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         //@ts-ignore
         handler,
@@ -388,6 +416,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 42);
       expect(mockStream.respondWithFD).toHaveBeenCalledWith(mockFileHandle, mockTuftContext.outgoingHeaders);
     });
@@ -402,6 +431,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -410,6 +440,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockStreamHandler).toHaveBeenCalled();
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.write).toHaveBeenCalled();
@@ -424,6 +455,7 @@ describe('handleUnknownResponse()', () => {
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
+        mockErrorHandler,
         preHandlers,
         handler,
         //@ts-ignore
@@ -432,6 +464,7 @@ describe('handleUnknownResponse()', () => {
       );
 
       await expect(result).rejects.toThrow('mock stream error');
+      expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockStreamHandler).toHaveBeenCalled();
       expect(mockStreamWithError.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStreamWithError.write).toHaveBeenCalled();

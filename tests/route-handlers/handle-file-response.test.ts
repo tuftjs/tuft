@@ -1,6 +1,8 @@
 import fs = require('fs');
 import { handleFileResponse, handleFileResponseWithPreHandlers } from '../../src/route-handlers';
 
+const mockErrorHandler = jest.fn();
+
 const mockStream = {
   respond: jest.fn(),
   respondWithFD: jest.fn(),
@@ -50,6 +52,7 @@ describe('handleFileResponse()', () => {
 
 describe('handleFileResponseWithPreHandlers()', () => {
   beforeEach(() => {
+    mockErrorHandler.mockClear();
     mockTuftContext.setHeader.mockClear();
     mockStream.respondWithFD.mockClear();
   });
@@ -59,14 +62,16 @@ describe('handleFileResponseWithPreHandlers()', () => {
     const preHandlers = [() => {}];
 
     const result = handleFileResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStream,
       mockTuftContext,
     );
 
     await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).not.toHaveBeenCalled();
     expect(mockTuftContext.setHeader).toHaveBeenCalled();
     expect(mockStream.respondWithFD).toHaveBeenCalled();
   });
@@ -77,14 +82,16 @@ describe('handleFileResponseWithPreHandlers()', () => {
     const preHandlers = [() => { throw err }];
 
     const result = handleFileResponseWithPreHandlers(
-      responseObj,
+      mockErrorHandler,
       preHandlers,
+      responseObj,
       //@ts-ignore
       mockStream,
       mockTuftContext,
     );
 
-    await expect(result).resolves.toEqual(err);
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
     expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
     expect(mockStream.respondWithFD).not.toHaveBeenCalled();
   });
