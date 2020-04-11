@@ -24,7 +24,7 @@ const wildcardRegexp = /{\*\*?}/;
 export class RouteStore {
   private readonly _routeTree: RouteTreeNode = {};
 
-  set(path: string, route: TuftRoute) {
+  set(path: string, route: TuftRoute, body: boolean = false) {
     const routeHandlerParams = Object.assign({}, route);
 
     const params: { [key: string]: string } = {};
@@ -66,7 +66,7 @@ export class RouteStore {
       }
 
       if (i === pathSegments.length - 1) {
-        node[segment]![sym_handler] = createRouteHandler(routeHandlerParams);
+        node[segment]![sym_handler] = createRouteHandler(routeHandlerParams, body);
         break;
       }
 

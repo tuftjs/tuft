@@ -29,13 +29,6 @@ export type TuftContextOptions = {
   parseUrlEncoded?: boolean | number,
 }
 
-const methodsWithBody = new Set([
-  'DELETE',
-  'PATCH',
-  'POST',
-  'PUT',
-]);
-
 export class TuftContext extends EventEmitter {
   private readonly _stream: ServerHttp2Stream;
   private _outgoingHeaders: OutgoingHttpHeaders;
@@ -147,45 +140,100 @@ export async function createTuftContext(
     ? parseCookiesStr(cookieHeader)
     : null;
 
+  const body = null;
+
+  return new TuftContext({
+    stream,
+    headers,
+    method,
+    pathname,
+    searchParams,
+    params,
+    cookies,
+    body,
+  });
+}
+
+export async function createTuftContextWithBody(
+  stream: ServerHttp2Stream,
+  headers: IncomingHttpHeaders,
+  options: TuftContextOptions = {},
+) {
+  const method = headers[HTTP2_HEADER_METHOD] as string;
+  const path = headers[HTTP2_HEADER_PATH] as string;
+
+  let pathname: string = path;
+  let queryString: string | undefined = undefined;
+
+  let separatorIndex = path.indexOf('?');
+
+  if (separatorIndex > 0) {
+    pathname = path.slice(0, separatorIndex);
+    queryString = path.slice(separatorIndex + 1);
+  }
+
+  const searchParams = new URLSearchParams(queryString);
+
+  const params: { [key: string]: string } = {};
+
+  const paramKeys = options.params;
+
+  if (paramKeys) {
+    let i, begin, end, key;
+
+    for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
+      end = path.indexOf('/', begin);
+
+      if (paramKeys[i]) {
+        key = paramKeys[i];
+        params[key] = path.slice(begin, end < 0 ? undefined : end);
+      }
+    }
+  }
+
+  const cookieHeader = headers[HTTP2_HEADER_COOKIE];
+
+  const cookies = options.parseCookies && cookieHeader
+    ? parseCookiesStr(cookieHeader)
+    : null;
+
   let body: Buffer | string | { [key: string]: any } | null;
 
   body = null;
 
-  if (methodsWithBody.has(method)) {
-    const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
+  const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
 
-    if (!contentLengthString) {
-      throw Error('ERR_CONTENT_LENGTH_REQUIRED');
+  if (!contentLengthString) {
+    throw Error('ERR_CONTENT_LENGTH_REQUIRED');
+  }
+
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+
+  body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+
+  if (body.length !== parseInt(contentLengthString)) {
+    throw Error('ERR_CONTENT_LENGTH_MISMATCH');
+  }
+
+  const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
+
+  if (contentType) {
+    const { parseText, parseJson, parseUrlEncoded } = options;
+
+    if (parseText && contentType.startsWith('text')) {
+      body = body.length <= parseText ? body.toString() : '';
     }
 
-    const chunks: Buffer[] = [];
-
-    for await (const chunk of stream) {
-      chunks.push(chunk);
+    else if (parseJson && contentType === 'application/json') {
+      body = body.length <= parseJson ? JSON.parse(body.toString()) : {};
     }
 
-    body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
-
-    if (body.length !== parseInt(contentLengthString)) {
-      throw Error('ERR_CONTENT_LENGTH_MISMATCH');
-    }
-
-    const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
-
-    if (contentType) {
-      const { parseText, parseJson, parseUrlEncoded } = options;
-
-      if (parseText && contentType.startsWith('text')) {
-        body = body.length <= parseText ? body.toString() : '';
-      }
-
-      else if (parseJson && contentType === 'application/json') {
-        body = body.length <= parseJson ? JSON.parse(body.toString()) : {};
-      }
-
-      else if (parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
-        body = body.length <= parseUrlEncoded ? parseUrlEncodedStr(body.toString()) : {};
-      }
+    else if (parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
+      body = body.length <= parseUrlEncoded ? parseUrlEncodedStr(body.toString()) : {};
     }
   }
 

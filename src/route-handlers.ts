@@ -4,7 +4,7 @@ import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHa
 
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
-import { createTuftContext } from './context';
+import { createTuftContext, createTuftContextWithBody } from './context';
 
 import {
   HTTP2_HEADER_STATUS,
@@ -35,8 +35,9 @@ export function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2S
 }
 
 export async function handleEmptyResponseWithPreHandlers(
-  response: TuftResponse,
+  handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
   preHandlers: TuftPreHandler[],
+  response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
@@ -47,7 +48,8 @@ export async function handleEmptyResponseWithPreHandlers(
   }
 
   catch (err) {
-    return err;
+    handleError(err, stream, t);
+    return;
   }
 
   t.setHeader(HTTP2_HEADER_STATUS, response.status);
@@ -66,8 +68,9 @@ export async function handleFileResponse(response: TuftResponse, stream: ServerH
 }
 
 export async function handleFileResponseWithPreHandlers(
-  response: TuftResponse,
+  handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
   preHandlers: TuftPreHandler[],
+  response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
@@ -78,7 +81,8 @@ export async function handleFileResponseWithPreHandlers(
   }
 
   catch (err) {
-    return err;
+    handleError(err, stream, t);
+    return;
   }
 
   const fileHandle = await fsPromises.open(response.file as string, 'r');
@@ -106,8 +110,9 @@ export async function handleStreamResponse(response: TuftResponse, stream: Serve
 }
 
 export async function handleStreamResponseWithPreHandlers(
-  response: TuftResponse,
+  handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
   preHandlers: TuftPreHandler[],
+  response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
@@ -118,7 +123,8 @@ export async function handleStreamResponseWithPreHandlers(
   }
 
   catch (err) {
-    return err;
+    handleError(err, stream, t);
+    return;
   }
 
   t.setHeader(HTTP2_HEADER_STATUS, response.status);
@@ -150,8 +156,9 @@ export function handleBodyResponse(response: TuftResponse, stream: ServerHttp2St
 }
 
 export async function handleBodyResponseWithPreHandlers(
-  response: TuftResponse,
+  handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
   preHandlers: TuftPreHandler[],
+  response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
@@ -162,7 +169,8 @@ export async function handleBodyResponseWithPreHandlers(
   }
 
   catch (err) {
-    return err;
+    handleError(err, stream, t);
+    return;
   }
 
   const { status, contentType, body } = response;
@@ -228,6 +236,7 @@ function handleUnknownBodyResponse(
 }
 
 export async function handleUnknownResponse(
+  handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
   preHandlers: TuftPreHandler[],
   handler: TuftHandler,
   stream: ServerHttp2Stream,
@@ -244,7 +253,8 @@ export async function handleUnknownResponse(
   }
 
   catch (err) {
-    return err;
+    handleError(err, stream, t);
+    return;
   }
 
   if (result === null || typeof result !== 'object') {
@@ -322,19 +332,19 @@ export async function handleErrorResponse(
 }
 
 export async function handleResponseWithContext(
+  createTuftContext: (
+    stream: ServerHttp2Stream,
+    headers: IncomingHttpHeaders,
+    options: TuftContextOptions,
+  ) => Promise<TuftContext>,
   handleResponse: (stream: ServerHttp2Stream, t: TuftContext) => void | Error | Promise<void | Error>,
-  handleErrorResponse: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
   options: TuftContextOptions,
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
 ) {
   try {
     const t = await createTuftContext(stream, headers, options);
-    const err = await handleResponse(stream, t);
-
-    if (err) {
-      handleErrorResponse(err, stream, t);
-    }
+    await handleResponse(stream, t);
   }
 
   catch (err) {
@@ -356,7 +366,7 @@ export async function handleResponseWithContext(
   }
 }
 
-export function createRouteHandler(route: TuftRoute) {
+export function createRouteHandler(route: TuftRoute, body: boolean = false) {
   const { response, preHandlers, errorHandler } = route;
 
   const options = {
@@ -367,11 +377,19 @@ export function createRouteHandler(route: TuftRoute) {
     parseUrlEncoded: route.parseUrlEncoded,
   };
 
+  const createContext = body ? createTuftContextWithBody : createTuftContext;
+
   const boundHandleErrorResponse = handleErrorResponse.bind(null, errorHandler ?? defaultErrorHandler);
 
   if (typeof response === 'function') {
-    const boundHandleResponse = handleUnknownResponse.bind(null, preHandlers, response);
-    return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
+    const boundHandleResponse = handleUnknownResponse.bind(
+      null,
+      boundHandleErrorResponse,
+      preHandlers,
+      response
+    );
+
+    return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
   }
 
   if (!response.status) {
@@ -427,8 +445,14 @@ export function createRouteHandler(route: TuftRoute) {
     response.body = body;
 
     if (preHandlers.length > 0) {
-      const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(null, response, preHandlers);
-      return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
+      const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(
+        null,
+        boundHandleErrorResponse,
+        preHandlers,
+        response,
+      );
+
+      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
     }
 
     return handleBodyResponse.bind(null, response);
@@ -436,8 +460,14 @@ export function createRouteHandler(route: TuftRoute) {
 
   else if (response.file) {
     if (preHandlers.length > 0) {
-      const boundHandleResponse = handleFileResponseWithPreHandlers.bind(null, response, preHandlers);
-      return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
+      const boundHandleResponse = handleFileResponseWithPreHandlers.bind(
+        null,
+        boundHandleErrorResponse,
+        preHandlers,
+        response,
+      );
+
+      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
     }
 
     return handleFileResponse.bind(null, response);
@@ -445,8 +475,14 @@ export function createRouteHandler(route: TuftRoute) {
 
   else if (response.stream) {
     if (preHandlers.length > 0) {
-      const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(null, response, preHandlers);
-      return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
+      const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(
+        null,
+        boundHandleErrorResponse,
+        preHandlers,
+        response,
+      );
+
+      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
     }
 
     return handleStreamResponse.bind(null, response);
@@ -454,8 +490,14 @@ export function createRouteHandler(route: TuftRoute) {
 
   else {
     if (preHandlers.length > 0) {
-      const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(null, response, preHandlers);
-      return handleResponseWithContext.bind(null, boundHandleResponse, boundHandleErrorResponse, options);
+      const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(
+        null,
+        boundHandleErrorResponse,
+        preHandlers,
+        response,
+      );
+
+      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
     }
 
     return handleEmptyResponse.bind(null, response);
