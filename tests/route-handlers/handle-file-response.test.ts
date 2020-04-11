@@ -1,15 +1,6 @@
 import fs = require('fs');
 import { handleFileResponse, handleFileResponseWithPreHandlers } from '../../src/route-handlers';
 
-//@ts-ignore
-const mockFsOpen = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
-  return {
-    stat: async () => {
-      return { size: 42 };
-    },
-  };
-});
-
 const mockStream = {
   respond: jest.fn(),
   respondWithFD: jest.fn(),
@@ -25,13 +16,22 @@ const mockTuftContext: any = {
   }),
 };
 
+//@ts-ignore
+const mockFsOpen = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
+  return {
+    stat: async () => {
+      return { size: 42 };
+    },
+  };
+});
+
+afterAll(() => {
+  mockFsOpen.mockRestore();
+});
+
 describe('handleFileResponse()', () => {
   beforeEach(() => {
     mockStream.respondWithFD.mockClear();
-  });
-
-  afterAll(() => {
-    mockFsOpen.mockRestore();
   });
 
   test('stream.respondWithFD() is called', async () => {
@@ -52,10 +52,6 @@ describe('handleFileResponseWithPreHandlers()', () => {
   beforeEach(() => {
     mockTuftContext.setHeader.mockClear();
     mockStream.respondWithFD.mockClear();
-  });
-
-  afterAll(() => {
-    mockFsOpen.mockRestore();
   });
 
   test('stream.respondWithFD() is called', async () => {
