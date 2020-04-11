@@ -23,3 +23,15 @@ export function getValidRequestMethods() {
     HTTP2_METHOD_TRACE,
   ];
 }
+
+type DoneCallback = (err?: Error | null, ...args: any[]) => void;
+
+export function createPromise(callback: (done: DoneCallback) => void) {
+  return new Promise((resolve, reject) => {
+    const done: DoneCallback = (err, ...args) => {
+      err ? reject(err) : resolve(args);
+    };
+
+    callback(done);
+  });
+}
