@@ -12,7 +12,7 @@ export function findInvalidSchemaEntry(schema: any): string | null {
       case 'method': {
         for (const method of [value].flat()) {
           const methods = getValidRequestMethods();
-          const isValidMethod = typeof method === 'string' && methods.includes(method.toUpperCase());
+          const isValidMethod = methods.includes(method.toUpperCase?.());
 
           if (!isValidMethod) {
             return `${formatValue(method)} is not a valid request method.`;

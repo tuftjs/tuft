@@ -2,11 +2,7 @@ import type { Http2Server, Http2SecureServer, ServerHttp2Stream, IncomingHttpHea
 import type { KeyObject } from 'tls';
 
 import { createServer, createSecureServer } from 'http2';
-
-import {
-  HTTP2_SERVER_DEFAULT_HOST,
-  HTTP2_SERVER_DEFAULT_PORT,
-} from './constants';
+import { HTTP2_SERVER_DEFAULT_HOST, HTTP2_SERVER_DEFAULT_PORT } from './constants';
 
 export type ServerOptions = {
   host?: string,

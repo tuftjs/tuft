@@ -1,11 +1,17 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { TuftContext, TuftContextOptions } from './context';
-import type { TuftRoute, TuftResponse, TuftHandler, TuftPreHandler, TuftStreamHandler, TuftErrorHandler } from './route-map';
+import type {
+  TuftRoute,
+  TuftResponse,
+  TuftHandler,
+  TuftPreHandler,
+  TuftStreamHandler,
+  TuftErrorHandler,
+} from './route-map';
 
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
 import { createTuftContext, createTuftContextWithBody } from './context';
-
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_TYPE,
@@ -19,14 +25,14 @@ const { NGHTTP2_STREAM_CLOSED } = constants;
 const DEFAULT_HTTP_STATUS = HTTP_STATUS_OK;
 
 const mimeTypeMap: { [key: string]: string } = {
-  'text':                     'text/plain',
-  'text/plain':               'text/plain',
-  'html':                     'text/html',
-  'text/html':                'text/html',
-  'json':                     'application/json',
-  'application/json':         'application/json',
-  'buffer':                   'application/octet-stream',
-  'application/octet-stream': 'application/octet-stream',
+  'text':                       'text/plain',
+  'text/plain':                 'text/plain',
+  'html':                       'text/html',
+  'text/html':                  'text/html',
+  'json':                       'application/json',
+  'application/json':           'application/json',
+  'buffer':                     'application/octet-stream',
+  'application/octet-stream':   'application/octet-stream',
 };
 
 export function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
@@ -337,7 +343,10 @@ export async function handleResponseWithContext(
     headers: IncomingHttpHeaders,
     options: TuftContextOptions,
   ) => Promise<TuftContext>,
-  handleResponse: (stream: ServerHttp2Stream, t: TuftContext) => void | Error | Promise<void | Error>,
+  handleResponse: (
+    stream: ServerHttp2Stream,
+    t: TuftContext
+  ) => void | Error | Promise<void | Error>,
   options: TuftContextOptions,
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
@@ -379,7 +388,10 @@ export function createRouteHandler(route: TuftRoute, body: boolean = false) {
 
   const createContext = body ? createTuftContextWithBody : createTuftContext;
 
-  const boundHandleErrorResponse = handleErrorResponse.bind(null, errorHandler ?? defaultErrorHandler);
+  const boundHandleErrorResponse = handleErrorResponse.bind(
+    null,
+    errorHandler ?? defaultErrorHandler,
+  );
 
   if (typeof response === 'function') {
     const boundHandleResponse = handleUnknownResponse.bind(

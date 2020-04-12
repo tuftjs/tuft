@@ -1,6 +1,6 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
-import { EventEmitter } from 'events';
 
+import { EventEmitter } from 'events';
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
@@ -65,10 +65,9 @@ export class TuftContext extends EventEmitter {
 
     this._stream = contextParams.stream;
     this._outgoingHeaders = {};
-
     this.request = {
       headers: contextParams.headers,
-      secure:contextParams.secure,
+      secure: contextParams.secure,
       method: contextParams.method,
       pathname: contextParams.pathname,
       searchParams: contextParams.searchParams,
@@ -142,15 +141,15 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
   },
   sameSite: (value: string) => {
     if (value.toLowerCase() === 'strict') {
-      return '; SameSite=Strict'
+      return '; SameSite=Strict';
     }
 
     if (value.toLowerCase() === 'lax') {
-      return '; SameSite=Lax'
+      return '; SameSite=Lax';
     }
 
     if (value.toLowerCase() === 'none') {
-      return '; SameSite=None'
+      return '; SameSite=None';
     }
 
     return '';

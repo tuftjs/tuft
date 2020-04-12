@@ -2,7 +2,6 @@ import type { RouteMap } from './route-map';
 
 import { RouteStore } from './route-store';
 import { getValidRequestMethods } from './utils';
-
 import {
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_PATCH,

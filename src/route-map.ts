@@ -7,7 +7,6 @@ import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { findInvalidSchemaEntry } from './schema-validation';
 import { getValidRequestMethods } from './utils';
-
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_PARSE_COOKIES,
@@ -59,7 +58,8 @@ export interface TuftRoute {
   errorHandler?: TuftErrorHandler;
 }
 
-type RequestMethod = 'CONNECT' | 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
+type RequestMethod =
+  'CONNECT' | 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
 
 export interface TuftRouteSchema {
   path?: string;
@@ -168,7 +168,9 @@ export class RouteMap extends Map {
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
 
-      const mergedKey = method + ' ' + this.#basePath + (this.#basePath.length > 0 && path === '/' ? '' : path);
+      const isRedundantSlash = this.#basePath.length > 0 && path === '/';
+      const mergedKey = method + ' ' + this.#basePath + (isRedundantSlash ? '' : path);
+
       const mergedRoute: TuftRoute = {
         preHandlers: this.#preHandlers.concat(route.preHandlers),
         response: route.response,
@@ -319,7 +321,11 @@ function createPrimaryHandler(routeMap: RouteMap) {
   return primaryHandler.bind(null, routes);
 }
 
-export function primaryHandler(routes: RouteManager, stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
+export function primaryHandler(
+  routes: RouteManager,
+  stream: ServerHttp2Stream,
+  headers: IncomingHttpHeaders
+) {
   const method = headers[HTTP2_HEADER_METHOD];
   const path = headers[HTTP2_HEADER_PATH];
 
@@ -350,7 +356,7 @@ export function primaryHandler(routes: RouteManager, stream: ServerHttp2Stream, 
   }
 
   routeHandler(stream, headers);
-};
+}
 
 export function createRouteMap(options?: RouteMapOptions) {
   return new RouteMap(options);
