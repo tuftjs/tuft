@@ -2,6 +2,11 @@ import { getValidRequestMethods } from './utils';
 
 const validPathRegexp = /^\/([0-9A-Za-z-_.~%:[\]@!$&'()*+,;=/{}]+)?$/;
 
+/**
+ * Iterates over each property of the provided route schema and determines if there are any
+ * invalid entries. Returns an error message string if any are found, or null otherwise.
+ */
+
 export function findInvalidSchemaEntry(schema: any): string | null {
   if (typeof schema !== 'object' || schema === null || Buffer.isBuffer(schema)) {
     return `${formatValue(schema)} is not a valid route schema object.`;
@@ -60,6 +65,10 @@ export function findInvalidSchemaEntry(schema: any): string | null {
 
   return null;
 }
+
+/**
+ * Converts the provided value to a string that is suitable for including in an error message.
+ */
 
 function formatValue(value: any): string {
   let result: string;

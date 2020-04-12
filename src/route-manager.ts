@@ -17,6 +17,11 @@ const methodsWithBody = [
   HTTP2_METHOD_PUT,
 ];
 
+/**
+ * Creates an instance of RouteStore for each valid HTTP request method, and adds the routes in the
+ * provided route map to one of the stores based on its method.
+ */
+
 export class RouteManager {
   private readonly _routes: { [method: string]: RouteStore } = {};
 
@@ -35,6 +40,11 @@ export class RouteManager {
       }
     }
   }
+
+  /**
+   * Searches for and returns a route handler based on the provided method and path. Returns
+   * undefined if no route exists.
+   */
 
   find(method: string, path: string) {
     return this._routes[method].get(path);
@@ -59,8 +69,17 @@ type RouteTreeNode = {
 
 const wildcardRegexp = /{\*\*?}/;
 
+/**
+ * Stores route handlers in a tree data structure, where each node in the tree represents a path
+ * segment.
+ */
+
 export class RouteStore {
   private readonly _routeTree: RouteTreeNode = {};
+
+  /**
+   * Adds a route handler to the store, indexed by the given path.
+   */
 
   set(path: string, route: TuftRoute, body: boolean = false) {
     const routeHandlerParams = Object.assign({}, route);
@@ -71,25 +90,31 @@ export class RouteStore {
     const doubleWildcardIndex = pathSegments.indexOf('{**}');
 
     if (doubleWildcardIndex >= 0) {
+      // A double wildcard was found, so ignore any successive path segments.
       pathSegments.splice(doubleWildcardIndex + 1);
     }
 
     let i, node;
 
+    // Iterate over each path segment, adding them as nodes in the route tree.
     for (i = 0, node = this._routeTree; i < pathSegments.length; i++) {
       const str = pathSegments[i];
 
       let segment;
 
       if (str.startsWith('{') && str.endsWith('}')) {
+        // This is a wildcard segment.
         if (!wildcardRegexp.test(str)) {
+          // This is a named wildcard segment, extract the param name.
           params[i] = str.slice(1, str.length - 1);
         }
 
+        // Index the wildcard path segment using the corresponding symbol.
         segment = str === '{**}' ? sym_doubleWildcard : sym_wildcard;
       }
 
       else {
+        // This is not a wildcard, so index by the given path segment directly.
         segment = str;
       }
 
@@ -100,17 +125,25 @@ export class RouteStore {
       }
 
       if (node[segment] === undefined) {
+        // A node does not exist for this path segment, so create one.
         node[segment] = { [sym_next]: {} };
       }
 
       if (i === pathSegments.length - 1) {
+        // This is the last path segment, so create a handler and add it to the current node.
         node[segment]![sym_handler] = createRouteHandler(routeHandlerParams, body);
         break;
       }
 
+      // Update the node pointer to point to the next node.
       node = node[segment]![sym_next];
     }
   }
+
+  /**
+   * Retrieve the route handler for the given path from the store. Returns undefined if no such
+   * route exists.
+   */
 
   get(path: string) {
     let begin = 1;
@@ -120,6 +153,7 @@ export class RouteStore {
     let branch: RouteTreeBranch;
     let pathSegment: string;
 
+    // Traverse the route tree, checking to see if a node for each path segment exists.
     while (end >= 0) {
       pathSegment = path.slice(begin, end);
 
@@ -127,9 +161,11 @@ export class RouteStore {
       branch = node[pathSegment] ?? node[sym_wildcard] ?? doubleWildcard;
 
       if (branch === doubleWildcard) {
+        // The current branch points to a double wildcard handler only, so return it.
         return doubleWildcard[sym_handler];
       }
 
+      // Update the node pointer to point to the next node.
       node = branch[sym_next];
       begin = end + 1;
       end = path.indexOf('/', begin);
@@ -139,6 +175,9 @@ export class RouteStore {
 
     doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
 
+    // This is the final path segment, so retrieve the route handler from the current node that
+    // best matches the path segment. A specific match is preferred over a wildcard match. A single
+    // wildcard match is preferred over a double wildcard match.
     const routeHandler = node[pathSegment]?.[sym_handler]
       ?? node[sym_wildcard]?.[sym_handler]
       ?? doubleWildcard[sym_handler];

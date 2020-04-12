@@ -2,6 +2,7 @@ import type { Http2Server, Http2SecureServer, ServerHttp2Stream, IncomingHttpHea
 import type { KeyObject } from 'tls';
 
 import { createServer, createSecureServer } from 'http2';
+import { createPromise } from './utils';
 import { HTTP2_SERVER_DEFAULT_HOST, HTTP2_SERVER_DEFAULT_PORT } from './constants';
 
 export type ServerOptions = {
@@ -15,6 +16,11 @@ export type SecureServerOptions = {
   key?: string | Buffer | Array<Buffer | KeyObject>,
   cert?: string | Buffer | Array<string | Buffer>,
 }
+
+/**
+ * Creates an instance of Http2Server and adds a listener for the 'stream' event, using the
+ * provided handler function.
+ */
 
 export class TuftServer {
   readonly #http2Server: Http2Server;
@@ -42,20 +48,34 @@ export class TuftServer {
     this.#port = options.port ?? HTTP2_SERVER_DEFAULT_PORT;
   }
 
-  start() {
-    return new Promise((resolve) => {
-      this.#http2Server.listen(this.port, resolve);
+  /**
+   * Returns a promise that resolves once the server has started.
+   */
+
+  async start() {
+    await createPromise(done => {
+      this.#http2Server.listen(this.port, done);
     });
   }
 
-  stop() {
-    return new Promise((resolve, reject) => {
+  /**
+   * Returns a promise that resolves once all connections are ended and the server has closed, or
+   * rejects with an error if the server was not running.
+   */
+
+  async stop() {
+    await createPromise(done => {
       this.#http2Server.close((err) => {
-        err ? reject(err) : resolve();
+        err ? done(err) : done();
       });
     });
   }
 }
+
+/**
+ * Creates an instance of Http2SecureServer and adds a listener for the 'stream' event, using the
+ * provided handler function.
+ */
 
 export class TuftSecureServer {
   readonly #http2SecureServer: Http2SecureServer;
@@ -83,16 +103,25 @@ export class TuftSecureServer {
     this.#port = options.port ?? HTTP2_SERVER_DEFAULT_PORT;
   }
 
-  start() {
-    return new Promise((resolve) => {
-      this.#http2SecureServer.listen(this.port, resolve);
+  /**
+   * Returns a promise that resolves once the server has started.
+   */
+
+  async start() {
+    await createPromise(done => {
+      this.#http2SecureServer.listen(this.port, done);
     });
   }
 
-  stop() {
-    return new Promise((resolve, reject) => {
+  /**
+   * Returns a promise that resolves once all connections are ended and the server has closed, or
+   * rejects with an error if the server was not running.
+   */
+
+  async stop() {
+    await createPromise(done => {
       this.#http2SecureServer.close((err) => {
-        err ? reject(err) : resolve();
+        err ? done(err) : done();
       });
     });
   }

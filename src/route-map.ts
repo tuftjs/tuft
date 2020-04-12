@@ -45,7 +45,6 @@ export interface TuftResponse {
   file?: string;
 }
 
-
 export interface TuftRoute {
   trailingSlash?: boolean;
   parseCookies?: boolean;
@@ -87,7 +86,15 @@ const { NGHTTP2_REFUSED_STREAM } = constants;
 
 const validRequestMethods = getValidRequestMethods();
 
+/**
+ * Stores route data indexed by method and path. Instances of RouteMap can be added to other route
+ * maps, which results in entries being merged and traits from the parent route map being inherited.
+ * The createServer() and createSecureServer() methods can then be used to create a server that
+ * utilizes the routes currently present in the route map.
+ */
+
 export class RouteMap extends Map {
+  // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
 
   readonly #parseCookies: boolean | null;
@@ -96,10 +103,10 @@ export class RouteMap extends Map {
   readonly #parseUrlEncoded: boolean | number | null;
   readonly #errorHandler: TuftErrorHandler | null;
 
-  readonly #basePath: string;
-  readonly #path: string;
-  readonly #methods: string[];
-  readonly #preHandlers: TuftPreHandler[];
+  readonly #basePath: string;               // Prepended to any path added to the route map.
+  readonly #path: string;                   // Default path.
+  readonly #methods: string[];              // Default methods.
+  readonly #preHandlers: TuftPreHandler[];  // Default pre-handlers.
 
   constructor(options: RouteMapOptions = {}) {
     super();
@@ -116,15 +123,12 @@ export class RouteMap extends Map {
     if (options.parseText === true) {
       this.#parseText = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
-
     else if (options.parseText === false) {
       this.#parseText = false;
     }
-
     else if (typeof options.parseText === 'number') {
       this.#parseText = options.parseText;
     }
-
     else {
       this.#parseText = ROUTE_MAP_DEFAULT_PARSE_JSON;
     }
@@ -133,15 +137,12 @@ export class RouteMap extends Map {
     if (options.parseJson === true) {
       this.#parseJson = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
-
     else if (options.parseJson === false) {
       this.#parseJson = false;
     }
-
     else if (typeof options.parseJson === 'number') {
       this.#parseJson = options.parseJson;
     }
-
     else {
       this.#parseJson = ROUTE_MAP_DEFAULT_PARSE_JSON;
     }
@@ -150,25 +151,29 @@ export class RouteMap extends Map {
     if (options.parseUrlEncoded === true) {
       this.#parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
     }
-
     else if (options.parseUrlEncoded === false) {
       this.#parseUrlEncoded = false;
     }
-
     else if (typeof options.parseUrlEncoded === 'number') {
       this.#parseUrlEncoded = options.parseUrlEncoded;
     }
-
     else {
       this.#parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_JSON;
     }
   }
 
+  /**
+   * Merges the provided instance of RouteMap with the current instance.
+   */
+
   private _merge(routes: RouteMap) {
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
 
+      // If there is an existing base path and the current path is a lone slash, then it can safely
+      // be ignored.
       const isRedundantSlash = this.#basePath.length > 0 && path === '/';
+
       const mergedKey = method + ' ' + this.#basePath + (isRedundantSlash ? '' : path);
 
       const mergedRoute: TuftRoute = {
@@ -176,10 +181,12 @@ export class RouteMap extends Map {
         response: route.response,
       };
 
+      // Below, certain properties are inherited from the added route if they exist. Otherwise,
+      // the current route map's values are used, unless they are null.
+
       if (route.errorHandler !== undefined) {
         mergedRoute.errorHandler = route.errorHandler;
       }
-
       else if (this.#errorHandler !== null) {
         mergedRoute.errorHandler = this.#errorHandler;
       }
@@ -187,7 +194,6 @@ export class RouteMap extends Map {
       if (route.trailingSlash !== undefined) {
         mergedRoute.trailingSlash = route.trailingSlash;
       }
-
       else if (this.#trailingSlash !== null) {
         mergedRoute.trailingSlash = this.#trailingSlash;
       }
@@ -195,7 +201,6 @@ export class RouteMap extends Map {
       if (route.parseCookies !== undefined) {
         mergedRoute.parseCookies = route.parseCookies;
       }
-
       else if (this.#parseCookies !== null) {
         mergedRoute.parseCookies = this.#parseCookies;
       }
@@ -203,7 +208,6 @@ export class RouteMap extends Map {
       if (route.parseText !== undefined) {
         mergedRoute.parseText = route.parseText;
       }
-
       else if (this.#parseText !== null) {
         mergedRoute.parseText = this.#parseText;
       }
@@ -211,7 +215,6 @@ export class RouteMap extends Map {
       if (route.parseJson !== undefined) {
         mergedRoute.parseJson = route.parseJson;
       }
-
       else if (this.#parseJson !== null) {
         mergedRoute.parseJson = this.#parseJson;
       }
@@ -219,14 +222,20 @@ export class RouteMap extends Map {
       if (route.parseUrlEncoded !== undefined) {
         mergedRoute.parseUrlEncoded = route.parseUrlEncoded;
       }
-
       else if (this.#parseUrlEncoded !== null) {
         mergedRoute.parseUrlEncoded = this.#parseUrlEncoded;
       }
 
+      // Add the merged route to the route map.
       super.set(mergedKey, mergedRoute);
     }
   }
+
+  /**
+   * If a route schema is provided, then a new route entry is created and added based on its
+   * properties. If another instance of RouteMap is provided, its route entries are merged with the
+   * current instance.
+   */
 
   add(schema: TuftRouteSchema | RouteMap) {
     if (schema instanceof RouteMap) {
@@ -237,15 +246,15 @@ export class RouteMap extends Map {
     const errorMessage = findInvalidSchemaEntry(schema);
 
     if (errorMessage) {
-      console.error(TypeError(errorMessage));
+      // An invalid schema entry was detected, so pipe the relevent error to stderr and exit.
+      const err = TypeError(errorMessage);
+      console.error(err);
       return process.exit(1);
     }
 
     const path = this.#basePath + (schema.path ?? this.#path);
 
-    const methods = schema.method
-      ? [schema.method].flat()
-      : this.#methods;
+    const methods = schema.method ? [schema.method].flat() : this.#methods;
 
     const preHandlers = schema.preHandlers
       ? this.#preHandlers.concat([schema.preHandlers].flat())
@@ -259,7 +268,6 @@ export class RouteMap extends Map {
     if (schema.errorHandler) {
       route.errorHandler = schema.errorHandler;
     }
-
     else if (this.#errorHandler) {
       route.errorHandler = this.#errorHandler;
     }
@@ -284,6 +292,7 @@ export class RouteMap extends Map {
       route.parseUrlEncoded = this.#parseUrlEncoded;
     }
 
+    // Add a copy of the route data for each method.
     for (const method of methods) {
       const key = method + ' ' + path;
       super.set(key, route);
@@ -291,6 +300,11 @@ export class RouteMap extends Map {
 
     return this;
   }
+
+  /**
+   * An alternative method to .add(), where the provided route schema is added to the route map
+   * based on the provided string, which should be in the format of '{request method} {path}'.
+   */
 
   set(key: string, route: TuftRouteSchema) {
     const [method, path] = key.split(/[ ]+/);
@@ -305,10 +319,18 @@ export class RouteMap extends Map {
     return this;
   }
 
+  /**
+   * Create and return an instance of TuftServer that utilizes the current route map.
+   */
+
   createServer(options?: ServerOptions) {
     const handler = createPrimaryHandler(this);
     return new TuftServer(handler, options);
   }
+
+  /**
+   * Create and return an instance of TuftSecureServer that utilizes the current route map.
+   */
 
   createSecureServer(options?: SecureServerOptions) {
     const handler = createPrimaryHandler(this);
@@ -316,10 +338,21 @@ export class RouteMap extends Map {
   }
 }
 
+/**
+ * Create and return a main handler function that has access to an instance of RouteManager, which
+ * in turn contains all the route handlers for the application.
+ */
+
 function createPrimaryHandler(routeMap: RouteMap) {
   const routes = new RouteManager(routeMap);
   return primaryHandler.bind(null, routes);
 }
+
+/**
+ * primaryHandler() is the solitary function that gets added as a listener to the 'stream' event in
+ * the underlying HTTP/2 server. It serves to determine if there is a matching route, and then pass
+ * any further operations on to the route handler that exists for that route.
+ */
 
 export function primaryHandler(
   routes: RouteManager,
@@ -330,11 +363,13 @@ export function primaryHandler(
   const path = headers[HTTP2_HEADER_PATH];
 
   if (!method || !path) {
+    // Either the 'method' or 'path' header is missing, so close the stream.
     stream.close(NGHTTP2_REFUSED_STREAM);
     return;
   }
 
   if (!validRequestMethods.includes(method)) {
+    // The request method is not supported, so respond with HTTP status code 405.
     stream.respond({
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
     }, { endStream: true });
@@ -351,12 +386,17 @@ export function primaryHandler(
   const routeHandler = routes.find(method, pathname);
 
   if (!routeHandler) {
+    // There is no matching route, so close the stream.
     stream.close(NGHTTP2_REFUSED_STREAM);
     return;
   }
 
   routeHandler(stream, headers);
 }
+
+/**
+ * Create and return a new instance of RouteMap with the provided options.
+ */
 
 export function createRouteMap(options?: RouteMapOptions) {
   return new RouteMap(options);

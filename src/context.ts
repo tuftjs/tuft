@@ -42,10 +42,16 @@ type SetCookieOptions = {
   [key: string]: any,
 }
 
+/**
+ * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
+ * and only argument to a route handler.
+ */
+
 export class TuftContext extends EventEmitter {
   private readonly _stream: ServerHttp2Stream;
   private _outgoingHeaders: OutgoingHttpHeaders;
 
+  // The request object contains properties relevant to the current request.
   readonly request: {
     headers: IncomingHttpHeaders;
     secure: boolean;
@@ -56,6 +62,9 @@ export class TuftContext extends EventEmitter {
     cookies: { [key: string]: string } | null;
     body: any;
   };
+
+  // The props object is intended for user-defined values to be passed down from pre-handler
+  // functions to the main route handler.
   props: {
     [key in string | number | symbol]: any;
   };
@@ -120,6 +129,8 @@ export class TuftContext extends EventEmitter {
   }
 }
 
+// An array of functions that each represent a cookie option. Each function accept a value that
+// corresponds to a cookie option, and returns a string to be appended to the final cookie string.
 const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | undefined } = {
   expires: (value: Date) => {
     return '; Expires=' + value.toUTCString();
@@ -156,6 +167,10 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
   },
 };
 
+/**
+ * Creates an instance of TuftContext using the provided parameters.
+ */
+
 export async function createTuftContext(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
@@ -172,6 +187,7 @@ export async function createTuftContext(
   let separatorIndex = path.indexOf('?');
 
   if (separatorIndex > 0) {
+    // The path has a query string
     pathname = path.slice(0, separatorIndex);
     queryString = path.slice(separatorIndex + 1);
   }
@@ -185,6 +201,8 @@ export async function createTuftContext(
   if (paramKeys) {
     let i, begin, end, key;
 
+    // Iterate over each path segment, adding that segment as a param if it exists for the current
+    // route.
     for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
       end = path.indexOf('/', begin);
 
@@ -216,6 +234,10 @@ export async function createTuftContext(
   });
 }
 
+/**
+ * Same as createTuftContext(), with the single exception that the request body is not ignored.
+ */
+
 export async function createTuftContextWithBody(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
@@ -232,6 +254,7 @@ export async function createTuftContextWithBody(
   let separatorIndex = path.indexOf('?');
 
   if (separatorIndex > 0) {
+    // The path has a query string
     pathname = path.slice(0, separatorIndex);
     queryString = path.slice(separatorIndex + 1);
   }
@@ -245,6 +268,8 @@ export async function createTuftContextWithBody(
   if (paramKeys) {
     let i, begin, end, key;
 
+    // Iterate over each path segment, adding that segment as a param if it exists for the current
+    // route.
     for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
       end = path.indexOf('/', begin);
 
@@ -268,6 +293,7 @@ export async function createTuftContextWithBody(
   const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
 
   if (!contentLengthString) {
+    // The 'content-length' header is missing.
     throw Error('ERR_CONTENT_LENGTH_REQUIRED');
   }
 
@@ -280,6 +306,7 @@ export async function createTuftContextWithBody(
   body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
 
   if (body.length !== parseInt(contentLengthString)) {
+    // The value of the 'content-length' header does not match the size of the request body.
     throw Error('ERR_CONTENT_LENGTH_MISMATCH');
   }
 
@@ -314,6 +341,11 @@ export async function createTuftContextWithBody(
   });
 }
 
+/**
+ * Accepts a string that represents an incoming 'cookie' header, and returns the cookies in that
+ * string in the form of an object.
+ */
+
 function parseCookiesStr(cookiesStr: string): { [name: string]: string } {
   const result: { [name: string]: string } = {};
 
@@ -333,6 +365,11 @@ function parseCookiesStr(cookiesStr: string): { [name: string]: string } {
 
   return result;
 }
+
+/**
+ * Accepts a string that represents an 'application/x-www-form-urlencoded' request body, and returns
+ * the key/value pairs in that string in the form of an object.
+ */
 
 function parseUrlEncodedStr(urlEncodedStr: string): { [key: string]: string } {
   const result: { [key: string]: string } = {};
