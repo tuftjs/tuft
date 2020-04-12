@@ -21,28 +21,37 @@ describe('TuftContext', () => {
     body: null,
   };
 
-  //@ts-ignore
-  const t = new TuftContext(params);
-
   test('has the expected properties', () => {
+    //@ts-ignore
+    const t = new TuftContext(params);
     expect(t).toHaveProperty('outgoingHeaders', {});
     expect(t).toHaveProperty('sentHeaders', mockStream.sentHeaders);
     expect(t).toHaveProperty('pushAllowed', false);
   });
 
   describe('TuftContext.prototype.setHeader()', () => {
+    //@ts-ignore
+    const t = new TuftContext(params);
+
     test('returns undefined', () => {
       expect(t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK)).toBeUndefined();
     });
   });
 
   describe('TuftContext.prototype.getHeader()', () => {
+    //@ts-ignore
+    const t = new TuftContext(params);
+    t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
+
     test('returns the expected value', () => {
       expect(t.getHeader(HTTP2_HEADER_STATUS)).toBe(HTTP_STATUS_OK);
     });
   });
 
   describe('TuftContext.prototype.setCookie()', () => {
+    //@ts-ignore
+    const t = new TuftContext(params);
+
     test('adds \'set-cookie\' to the \'outgoingHeaders\' property', () => {
       expect(t.outgoingHeaders).not.toHaveProperty('set-cookie');
       expect(t.setCookie('a', 'foo')).toBeUndefined();
@@ -51,8 +60,96 @@ describe('TuftContext', () => {
 
     test('updates the \'set-cookie\' entry of the \'outgoingHeaders\' property', () => {
       expect(t.outgoingHeaders).toHaveProperty('set-cookie');
-      expect(t.setCookie('b', 'bar')).toBeUndefined();
-      expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo', 'b=bar']);
+      expect(t.setCookie('b', 'foo')).toBeUndefined();
+      expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo', 'b=foo']);
+    });
+  });
+
+  describe('TuftContext.prototype.setCookie()', () => {
+    describe('when passed an options object', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        const expires = new Date();
+
+        t.setCookie('a', 'foo', {
+          expires,
+          maxAge: 1000,
+          domain: 'example.com',
+          path: '/',
+          secure: true,
+          httpOnly: true,
+        });
+
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', [
+          `a=foo; Expires=${expires.toUTCString()}; Max-Age=1000; Domain=example.com; Path=/; Secure; HttpOnly`,
+        ]);
+      });
+    });
+
+    describe('when passed an options object with an invalid property', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        t.setCookie('a', 'foo', { invalidProperty: 42 });
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+      });
+    });
+
+    describe('when passed an options object with \'secure\' and \'httpOnly\' set to false', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        t.setCookie('a', 'foo', {
+          secure: false,
+          httpOnly: false,
+        });
+
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+      });
+    });
+
+    describe('when passed an options object with \'sameSite\' set to \'strict\'', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        t.setCookie('a', 'foo', { sameSite: 'strict' });
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Strict']);
+      });
+    });
+
+    describe('when passed an options object with \'sameSite\' set to \'lax\'', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        t.setCookie('a', 'foo', { sameSite: 'lax' });
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Lax']);
+      });
+    });
+
+    describe('when passed an options object with \'sameSite\' set to \'none\'', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        t.setCookie('a', 'foo', { sameSite: 'none' });
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=None']);
+      });
+    });
+
+    describe('when passed an options object with \'sameSite\' set to an invalid value', () => {
+      //@ts-ignore
+      const t = new TuftContext(params);
+
+      test('adds the expected cookie entry', () => {
+        t.setCookie('a', 'foo', { sameSite: 'foo' });
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+      });
     });
   });
 });
