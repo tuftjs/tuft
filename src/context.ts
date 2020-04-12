@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
+  HTTP2_HEADER_SCHEME,
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_COOKIE,
@@ -13,6 +14,7 @@ import {
 type TuftContextParams = {
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
+  secure: boolean,
   method: string,
   pathname: string,
   searchParams: URLSearchParams,
@@ -29,12 +31,24 @@ export type TuftContextOptions = {
   parseUrlEncoded?: boolean | number,
 }
 
+type SetCookieOptions = {
+  expires?: Date,
+  maxAge?: number,
+  domain?: string,
+  path?: string,
+  secure?: boolean,
+  httpOnly?: boolean,
+  sameSite?: 'Strict' | 'Lax' | 'None',
+  [key: string]: any,
+}
+
 export class TuftContext extends EventEmitter {
   private readonly _stream: ServerHttp2Stream;
   private _outgoingHeaders: OutgoingHttpHeaders;
 
   readonly request: {
     headers: IncomingHttpHeaders;
+    secure: boolean;
     method: string;
     pathname: string;
     searchParams: URLSearchParams;
@@ -54,6 +68,7 @@ export class TuftContext extends EventEmitter {
 
     this.request = {
       headers: contextParams.headers,
+      secure:contextParams.secure,
       method: contextParams.method,
       pathname: contextParams.pathname,
       searchParams: contextParams.searchParams,
@@ -78,24 +93,69 @@ export class TuftContext extends EventEmitter {
     return this._stream.pushAllowed;
   }
 
-  getHeader(name: string) {
-    return this._outgoingHeaders[name];
-  }
-
   setHeader(name: string, value: number | string | string[] | undefined) {
     this._outgoingHeaders[name] = value;
   }
 
-  setCookie(name: string, value: string) {
+  getHeader(name: string) {
+    return this._outgoingHeaders[name];
+  }
+
+  setCookie(name: string, value: string, options: SetCookieOptions = {}) {
     if (this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] === undefined) {
       this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] = [];
     }
 
-    const outgoingHeaders = this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] as string[];
-    const cookie = name + '=' + value;
-    outgoingHeaders.push(cookie);
+    const cookieHeader = this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] as string[];
+    let cookie = name + '=' + value;
+
+    for (const option in options) {
+      const addCookieOptionString = cookieOptionStringGenerators[option];
+
+      if (addCookieOptionString) {
+        cookie += addCookieOptionString(options[option]);
+      }
+    }
+
+    cookieHeader.push(cookie);
   }
 }
+
+const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | undefined } = {
+  expires: (value: Date) => {
+    return '; Expires=' + value.toUTCString();
+  },
+  maxAge: (value: number) => {
+    return '; Max-Age=' + value;
+  },
+  domain: (value: string) => {
+    return '; Domain=' + value;
+  },
+  path: (value: string) => {
+    return '; Path=' + value;
+  },
+  secure: (value: boolean) => {
+    return value === true ? '; Secure' : '';
+  },
+  httpOnly: (value: boolean) => {
+    return value === true ? '; HttpOnly' : '';
+  },
+  sameSite: (value: string) => {
+    if (value.toLowerCase() === 'strict') {
+      return '; SameSite=Strict'
+    }
+
+    if (value.toLowerCase() === 'lax') {
+      return '; SameSite=Lax'
+    }
+
+    if (value.toLowerCase() === 'none') {
+      return '; SameSite=None'
+    }
+
+    return '';
+  },
+};
 
 export async function createTuftContext(
   stream: ServerHttp2Stream,
@@ -104,6 +164,8 @@ export async function createTuftContext(
 ) {
   const method = headers[HTTP2_HEADER_METHOD] as string;
   const path = headers[HTTP2_HEADER_PATH] as string;
+
+  const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
 
   let pathname: string = path;
   let queryString: string | undefined = undefined;
@@ -145,6 +207,7 @@ export async function createTuftContext(
   return new TuftContext({
     stream,
     headers,
+    secure,
     method,
     pathname,
     searchParams,
@@ -161,6 +224,8 @@ export async function createTuftContextWithBody(
 ) {
   const method = headers[HTTP2_HEADER_METHOD] as string;
   const path = headers[HTTP2_HEADER_PATH] as string;
+
+  const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
 
   let pathname: string = path;
   let queryString: string | undefined = undefined;
@@ -240,6 +305,7 @@ export async function createTuftContextWithBody(
   return new TuftContext({
     stream,
     headers,
+    secure,
     method,
     pathname,
     searchParams,
