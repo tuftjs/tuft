@@ -85,7 +85,7 @@ type RouteMapOptions = {
 
 const { NGHTTP2_REFUSED_STREAM } = constants;
 
-const validRequestMethods = new Set(getValidRequestMethods());
+const validRequestMethods = getValidRequestMethods();
 
 export class RouteMap extends Map {
   readonly #trailingSlash: boolean | null;
@@ -321,14 +321,14 @@ function createPrimaryHandler(routeMap: RouteMap) {
 
 export function primaryHandler(routes: RouteManager, stream: ServerHttp2Stream, headers: IncomingHttpHeaders) {
   const method = headers[HTTP2_HEADER_METHOD];
-  let pathname = headers[HTTP2_HEADER_PATH];
+  const path = headers[HTTP2_HEADER_PATH];
 
-  if (!method || !pathname) {
+  if (!method || !path) {
     stream.close(NGHTTP2_REFUSED_STREAM);
     return;
   }
 
-  if (!validRequestMethods.has(method)) {
+  if (!validRequestMethods.includes(method)) {
     stream.respond({
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
     }, { endStream: true });
@@ -336,11 +336,11 @@ export function primaryHandler(routes: RouteManager, stream: ServerHttp2Stream, 
     return;
   }
 
-  let separatorIndex = pathname.indexOf('?');
+  const queryStringSeparatorIndex = path.indexOf('?');
 
-  if (separatorIndex > 0) {
-    pathname = pathname.slice(0, separatorIndex);
-  }
+  const pathname = queryStringSeparatorIndex > 0
+    ? path.slice(0, queryStringSeparatorIndex)
+    : path;
 
   const routeHandler = routes.find(method, pathname);
 
