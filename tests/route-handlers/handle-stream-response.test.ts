@@ -1,4 +1,7 @@
-import { handleStreamResponse, handleStreamResponseWithPreHandlers } from '../../src/route-handlers';
+import {
+  handleStreamResponse,
+  handleStreamResponseWithPreHandlers,
+} from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
 const mockErrorHandler = jest.fn();
@@ -151,7 +154,7 @@ describe('handleStreamResponseWithPreHandlers()', () => {
   test('calls the error handler when a pre-handler throws an error', async () => {
     const err = Error('pre-handler error');
     const responseObj = { stream: mockStreamHandler };
-    const preHandlers =[() => { throw err }];
+    const preHandlers =[() => { throw err; }];
 
     const result = handleStreamResponseWithPreHandlers(
       mockErrorHandler,

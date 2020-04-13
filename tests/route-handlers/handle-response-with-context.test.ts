@@ -28,6 +28,10 @@ const mockStream = {
   }
 };
 
+afterAll(() => {
+  mockConsoleError.mockRestore();
+});
+
 describe('handleResponseWithContext()', () => {
   beforeEach(() => {
     mockStream.respond.mockClear();
@@ -35,14 +39,10 @@ describe('handleResponseWithContext()', () => {
     mockStream.on.mockClear();
   });
 
-  afterAll(() => {
-    mockConsoleError.mockRestore();
-  });
-
   describe('handleErrorResponse() is called', () => {
     test('when the handler returns an error', async () => {
       const err = Error('handler error');
-      const mockHandler = jest.fn(() => { return err });
+      const mockHandler = jest.fn(() => { return err; });
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'GET',
@@ -117,7 +117,7 @@ describe('handleResponseWithContext()', () => {
 
     test('when the handler throws an error', async () => {
       const err = Error('handler error');
-      const mockHandler = jest.fn(() => { throw err });
+      const mockHandler = jest.fn(() => { throw err; });
 
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: 'GET',

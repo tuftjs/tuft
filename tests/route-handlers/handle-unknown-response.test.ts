@@ -1,7 +1,11 @@
 import fs = require('fs');
 import { constants } from 'http2';
 import { handleUnknownResponse } from '../../src/route-handlers';
-import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH, HTTP2_HEADER_CONTENT_TYPE } from '../../src/constants';
+import {
+  HTTP2_HEADER_STATUS,
+  HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP2_HEADER_CONTENT_TYPE,
+} from '../../src/constants';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
 
@@ -57,7 +61,7 @@ describe('handleUnknownResponse()', () => {
   describe('with a handler that throws an error', () => {
     test('rejects with an error', async () => {
       const err = Error('handler error');
-      const handler = () => { throw err };
+      const handler = () => { throw err; };
       const preHandlers = [() => {}];
 
       const result = handleUnknownResponse(
@@ -119,7 +123,8 @@ describe('handleUnknownResponse()', () => {
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-      expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
+      expect(mockStream.respond)
+        .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
     });
   });
 
@@ -148,8 +153,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });
@@ -180,8 +187,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });
@@ -212,8 +221,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });
@@ -241,8 +252,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });
@@ -270,8 +283,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });
@@ -299,8 +314,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });
@@ -328,8 +345,10 @@ describe('handleUnknownResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });

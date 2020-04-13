@@ -1,6 +1,10 @@
 import { constants } from 'http2';
 import { handleErrorResponse } from '../../src/route-handlers';
-import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH, HTTP2_HEADER_CONTENT_TYPE } from '../../src/constants';
+import {
+  HTTP2_HEADER_STATUS,
+  HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP2_HEADER_CONTENT_TYPE
+} from '../../src/constants';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
 
@@ -65,7 +69,8 @@ describe('handleErrorResponse()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-      expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
+      expect(mockStream.respond)
+        .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
     });
   });
 
@@ -88,8 +93,10 @@ describe('handleErrorResponse()', () => {
       const expectedContentType = 'text/plain';
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, expectedContentType);
+      expect(mockTuftContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, expectedContent.length);
       expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStream.end).toHaveBeenCalledWith(expectedContent);
     });

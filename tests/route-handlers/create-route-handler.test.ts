@@ -2,6 +2,15 @@ import type { TuftRoute } from '../../src/route-map';
 import { defaultErrorHandler, createRouteHandler } from '../../src/route-handlers';
 import { HTTP_STATUS_INTERNAL_SERVER_ERROR } from '../../src/constants';
 
+const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+afterAll(() => {
+  mockConsoleError.mockRestore();
+  mockExit.mockRestore();
+});
+
+
 describe('defaultErrorHandler()', () => {
   test('returns an object with a status property', () => {
     expect(defaultErrorHandler()).toEqual({ status: HTTP_STATUS_INTERNAL_SERVER_ERROR });
@@ -9,7 +18,7 @@ describe('defaultErrorHandler()', () => {
 });
 
 describe('createRouteHandler()', () => {
-  const errorHandler = () => { return {} };
+  const errorHandler = () => { return {}; };
 
   describe('when the body argument is set to true', () => {
     const route = {
@@ -182,14 +191,6 @@ describe('createRouteHandler()', () => {
   });
 
   describe('when passed a response object with a symbol body property', () => {
-    const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-
-    afterAll(() => {
-      mockConsoleError.mockRestore();
-      mockExit.mockRestore();
-    });
-
     const route = {
       response: {
         body: Symbol(),

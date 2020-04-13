@@ -80,7 +80,8 @@ describe('handleBodyResponseWithPreHandlers()', () => {
     await expect(result).resolves.toBeUndefined();
     expect(mockErrorHandler).not.toHaveBeenCalled();
     expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, body.length);
+    expect(mockTuftContext.setHeader)
+      .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, body.length);
     expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
     expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
     expect(mockStream.end).toHaveBeenCalled();
@@ -94,7 +95,7 @@ describe('handleBodyResponseWithPreHandlers()', () => {
       contentType: 'text/plain',
       body,
     };
-    const preHandlers = [() => { throw err }];
+    const preHandlers = [() => { throw err; }];
 
     const result = handleBodyResponseWithPreHandlers(
       mockErrorHandler,

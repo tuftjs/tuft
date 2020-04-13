@@ -79,7 +79,7 @@ describe('handleFileResponseWithPreHandlers()', () => {
   test('returns an error when a pre-handler throws an error', async () => {
     const err = Error('pre-handler error');
     const responseObj = { file: __filename };
-    const preHandlers = [() => { throw err }];
+    const preHandlers = [() => { throw err; }];
 
     const result = handleFileResponseWithPreHandlers(
       mockErrorHandler,

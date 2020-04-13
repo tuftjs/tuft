@@ -63,13 +63,14 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
     await expect(result).resolves.toBeUndefined();
     expect(mockErrorHandler).not.toHaveBeenCalled();
     expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-    expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
+    expect(mockStream.respond)
+      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
   });
 
   test('returns an error when a pre-handler throws an error', async () => {
     const err = Error('pre-handler error');
     const responseObj = { status: 418 };
-    const preHandlers = [() => { throw err }];
+    const preHandlers = [() => { throw err; }];
 
     const result = handleEmptyResponseWithPreHandlers(
       mockErrorHandler,

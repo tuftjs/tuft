@@ -1,11 +1,15 @@
-import { TuftServer, TuftSecureServer } from '../src/server';
+import { TuftServer, TuftSecureServer, logServerError } from '../src/server';
 
-const mockHandler = () => {};
+const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+afterAll(() => {
+  mockConsoleError.mockRestore();
+});
 
 describe('TuftServer', () => {
   describe('RouteMap.prototype.createServer()', () => {
     describe('without an options argument', () => {
-      const server = new TuftServer(mockHandler);
+      const server = new TuftServer(() => {});
 
       test('returns an instance of TuftServer with default options', () => {
         expect(server).toBeInstanceOf(TuftServer);
@@ -15,7 +19,7 @@ describe('TuftServer', () => {
     });
 
     describe('with an options argument', () => {
-      const server = new TuftServer(mockHandler, {
+      const server = new TuftServer(() => {}, {
         host: 'example.com',
         port: 8080,
       });
@@ -29,7 +33,7 @@ describe('TuftServer', () => {
   });
 
   describe('TuftServer.prototype.start()', () => {
-    const server = new TuftServer(mockHandler);
+    const server = new TuftServer(() => {});
 
     afterAll(async () => await server.stop());
 
@@ -39,7 +43,7 @@ describe('TuftServer', () => {
   });
 
   describe('TuftServer.prototype.stop()', () => {
-    const server = new TuftServer(mockHandler);
+    const server = new TuftServer(() => {});
 
     describe('when the server is running', () => {
       beforeAll(async () => await server.start());
@@ -51,20 +55,20 @@ describe('TuftServer', () => {
   });
 
   describe('TuftServer.prototype.stop()', () => {
-    const server = new TuftServer(mockHandler);
+    const server = new TuftServer(() => {});
 
     describe('when the server is NOT running', () => {
       test('returns a promise that rejects with an error', async () => {
         await expect(server.stop()).rejects.toThrow('Server is not running.');
       });
     });
-  })
+  });
 });
 
 describe('TuftSecureServer', () => {
   describe('RouteMap.prototype.createSecureServer()', () => {
     describe('without an options argument', () => {
-      const server = new TuftSecureServer(mockHandler);
+      const server = new TuftSecureServer(() => {});
 
       test('returns an instance of TuftSecureServer with default options', () => {
         expect(server).toBeInstanceOf(TuftSecureServer);
@@ -74,7 +78,7 @@ describe('TuftSecureServer', () => {
     });
 
     describe('with an options argument', () => {
-      const server = new TuftSecureServer(mockHandler, {
+      const server = new TuftSecureServer(() => {}, {
         host: 'example.com',
         port: 8080,
       });
@@ -88,7 +92,7 @@ describe('TuftSecureServer', () => {
   });
 
   describe('TuftSecureServer.prototype.start()', () => {
-    const server = new TuftSecureServer(mockHandler);
+    const server = new TuftSecureServer(() => {});
 
     afterAll(async () => await server.stop());
 
@@ -98,7 +102,7 @@ describe('TuftSecureServer', () => {
   });
 
   describe('TuftSecureServer.prototype.stop()', () => {
-    const server = new TuftSecureServer(mockHandler);
+    const server = new TuftSecureServer(() => {});
 
     describe('when the server is running', () => {
       beforeAll(async () => await server.start());
@@ -110,12 +114,21 @@ describe('TuftSecureServer', () => {
   });
 
   describe('TuftSecureServer.prototype.stop()', () => {
-    const server = new TuftSecureServer(mockHandler);
+    const server = new TuftSecureServer(() => {});
 
     describe('when the server is NOT running', () => {
       test('returns a promise that rejects with an error', async () => {
         await expect(server.stop()).rejects.toThrow('Server is not running.');
       });
     });
-  })
+  });
+});
+
+describe('logServerError()', () => {
+  const mockError = Error('mock error');
+
+  test('calls console.error() with an error', () => {
+    expect(logServerError(mockError)).toBeUndefined();
+    expect(mockConsoleError).toHaveBeenCalledWith(mockError);
+  });
 });

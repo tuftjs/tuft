@@ -1,10 +1,22 @@
 import { constants } from 'http2';
-import { RouteMap, createRouteMap, primaryHandler } from '../src/route-map';
+import { RouteMap, createRouteMap, primaryHandler, logStreamError } from '../src/route-map';
 import { RouteManager } from '../src/route-manager';
 import { TuftServer, TuftSecureServer } from '../src/server';
-import { HTTP2_HEADER_STATUS, HTTP_STATUS_METHOD_NOT_ALLOWED, HTTP_STATUS_OK } from '../src/constants';
+import {
+  HTTP2_HEADER_STATUS,
+  HTTP_STATUS_METHOD_NOT_ALLOWED,
+  HTTP_STATUS_OK
+} from '../src/constants';
 
-const { NGHTTP2_REFUSED_STREAM } = constants;
+const { NGHTTP2_NO_ERROR } = constants;
+
+const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+afterAll(() => {
+  mockConsoleError.mockRestore();
+  mockExit.mockRestore();
+});
 
 describe('createRouteMap()', () => {
   test('returns an instance of RouteMap', () => {
@@ -26,7 +38,7 @@ describe('RouteMap.prototype.add()', () => {
       expect(routes.get('HEAD /')).toBeDefined();
       expect(routes.get('POST /')).toBeDefined();
 
-      expect(routes.get('CONNECT /')).toBeUndefined()
+      expect(routes.get('CONNECT /')).toBeUndefined();
       expect(routes.get('DELETE /')).toBeUndefined();
       expect(routes.get('OPTIONS /')).toBeUndefined();
       expect(routes.get('PATCH /')).toBeUndefined();
@@ -91,7 +103,7 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when \'errorHandler\' is set', () => {
-      const errorHandler = () => { return {} };
+      const errorHandler = () => { return {}; };
 
       const routes = createRouteMap();
 
@@ -106,7 +118,7 @@ describe('RouteMap.prototype.add()', () => {
 
     test('when custom RouteMap options are set', () => {
       const preHandlers = [() => {}];
-      const errorHandler = () => { return {} };
+      const errorHandler = () => { return {}; };
 
       const routes = createRouteMap({
         method: 'POST',
@@ -171,7 +183,7 @@ describe('RouteMap.prototype.add()', () => {
 
     test('when passed another instance of RouteMap with its own custom options as the first argument', () => {
       const preHandlers = [() => {}];
-      const errorHandler = () => { return {} };
+      const errorHandler = () => { return {}; };
 
       const routes1 = createRouteMap({
         method: 'POST',
@@ -207,7 +219,7 @@ describe('RouteMap.prototype.add()', () => {
 
     test('when custom RouteMap options are set AND when passed another instance of RouteMap', () => {
       const preHandlers = [() => {}];
-      const errorHandler = () => { return {} };
+      const errorHandler = () => { return {}; };
 
       const routes1 = createRouteMap();
 
@@ -268,14 +280,6 @@ describe('RouteMap.prototype.add()', () => {
 
 describe('RouteMap.prototype.add()', () => {
   describe('when an invalid schema is passed as the first argument', () => {
-    const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-
-    afterAll(() => {
-      mockConsoleError.mockRestore();
-      mockExit.mockRestore();
-    });
-
     test('the program exits with error code 1', () => {
       const routes = createRouteMap();
 
@@ -300,7 +304,7 @@ describe('RouteMap.prototype.set()', () => {
       expect(routes.get('HEAD /foo')).toBeDefined();
       expect(routes.get('POST /foo')).toBeDefined();
 
-      expect(routes.get('CONNECT /foo')).toBeUndefined()
+      expect(routes.get('CONNECT /foo')).toBeUndefined();
       expect(routes.get('DELETE /foo')).toBeUndefined();
       expect(routes.get('OPTIONS /foo')).toBeUndefined();
       expect(routes.get('PATCH /foo')).toBeUndefined();
@@ -316,7 +320,7 @@ describe('RouteMap.prototype.set()', () => {
       expect(routes.get('GET /foo')).toBeDefined();
       expect(routes.get('HEAD /foo')).toBeDefined();
       expect(routes.get('POST /foo')).toBeDefined();
-      expect(routes.get('CONNECT /foo')).toBeDefined()
+      expect(routes.get('CONNECT /foo')).toBeDefined();
       expect(routes.get('DELETE /foo')).toBeDefined();
       expect(routes.get('OPTIONS /foo')).toBeDefined();
       expect(routes.get('PATCH /foo')).toBeDefined();
@@ -344,6 +348,7 @@ describe('RouteMap.prototype.createSecureServer()', () => {
 
 describe('primaryHandler()', () => {
   const mockStream = {
+    on: jest.fn(),
     close: jest.fn(),
   };
 
@@ -359,32 +364,22 @@ describe('primaryHandler()', () => {
 
   const routes = new RouteManager(routeMap);
 
-  describe('stream.close() is called with 7 when', () => {
-    test('there is no \':method\' header property', () => {
-      //@ts-ignore
-      primaryHandler(routes, mockStream, { ':path': '/foo' });
-      expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_REFUSED_STREAM);
-    });
-
-    test('there is no \':path\' header property', () => {
-      //@ts-ignore
-      primaryHandler(routes, mockStream, { ':method': 'GET' });
-      expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_REFUSED_STREAM);
-    });
-
-    test('the value of \':path\' does not match a route', () => {
+  describe('stream.close() is called with 0 when', () => {
+    test('the value of the \':path\' header does not match a route', () => {
       //@ts-ignore
       primaryHandler(routes, mockStream, {
         ':method': 'GET',
         ':path': '/does_not_exist',
       });
-      expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_REFUSED_STREAM);
+      expect(mockStream.on).toHaveBeenCalledWith('error', logStreamError);
+      expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_NO_ERROR);
     });
   });
 });
 
 describe('primaryHandler()', () => {
   const mockStream = {
+    on: jest.fn(),
     respond: jest.fn(),
   };
 
@@ -404,6 +399,7 @@ describe('primaryHandler()', () => {
         ':path': '/foo',
       });
 
+      expect(mockStream.on).toHaveBeenCalledWith('error', logStreamError);
       expect(mockStream.respond).toHaveBeenCalledWith({
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED
       }, { endStream: true });
@@ -413,6 +409,7 @@ describe('primaryHandler()', () => {
 
 describe('primaryHandler()', () => {
   const mockStream = {
+    on: jest.fn(),
     respond: jest.fn(),
   };
 
@@ -432,9 +429,19 @@ describe('primaryHandler()', () => {
         ':path': '/foo?bar=baz',
       });
 
+      expect(mockStream.on).toHaveBeenCalledWith('error', logStreamError);
       expect(mockStream.respond).toHaveBeenCalledWith({
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
       }, { endStream: true });
     });
+  });
+});
+
+describe('logStreamError()', () => {
+  const mockError = Error('mock error');
+
+  test('calls console.error() with an error', () => {
+    expect(logStreamError(mockError)).toBeUndefined();
+    expect(mockConsoleError).toHaveBeenCalledWith(mockError);
   });
 });
