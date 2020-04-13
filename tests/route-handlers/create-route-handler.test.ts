@@ -10,7 +10,6 @@ afterAll(() => {
   mockExit.mockRestore();
 });
 
-
 describe('defaultErrorHandler()', () => {
   test('returns an object with a status property', () => {
     expect(defaultErrorHandler()).toEqual({ status: HTTP_STATUS_INTERNAL_SERVER_ERROR });
@@ -64,7 +63,6 @@ describe('createRouteHandler()', () => {
     });
   });
 
-
   describe('when passed a response object with a status property', () => {
     const route = {
       response: {
@@ -77,6 +75,36 @@ describe('createRouteHandler()', () => {
     test('returns bound handleEmptyResponse', () => {
       const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleEmptyResponse');
+    });
+  });
+
+  describe('when passed a response object with a redirect property', () => {
+    const route = {
+      response: {
+        redirect: '/foo',
+      },
+      preHandlers: [],
+      errorHandler,
+    };
+
+    test('returns bound handleRedirectResponse', () => {
+      const result = createRouteHandler(route);
+      expect(result.name).toBe('bound handleRedirectResponse');
+    });
+  });
+
+  describe('when passed a response object with a redirect property and pre-handlers', () => {
+    const route = {
+      response: {
+        redirect: '/foo',
+      },
+      preHandlers: [() => {}],
+      errorHandler,
+    };
+
+    test('returns bound handleResponseWithContext', () => {
+      const result = createRouteHandler(route);
+      expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
 

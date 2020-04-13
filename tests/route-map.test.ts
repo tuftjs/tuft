@@ -330,6 +330,28 @@ describe('RouteMap.prototype.set()', () => {
   });
 });
 
+
+describe('RouteMap.prototype.redirect()', () => {
+  describe('adds a value to the map', () => {
+    test('when passed \'GET /foo\', \'/bar\'', () => {
+      const routes = createRouteMap();
+
+      routes.redirect('GET /foo', '/bar');
+
+      expect(routes.get('GET /foo')).toBeDefined();
+
+      expect(routes.get('HEAD /foo')).toBeUndefined();
+      expect(routes.get('POST /foo')).toBeUndefined();
+      expect(routes.get('CONNECT /foo')).toBeUndefined();
+      expect(routes.get('DELETE /foo')).toBeUndefined();
+      expect(routes.get('OPTIONS /foo')).toBeUndefined();
+      expect(routes.get('PATCH /foo')).toBeUndefined();
+      expect(routes.get('PUT /foo')).toBeUndefined();
+      expect(routes.get('TRACE /foo')).toBeUndefined();
+    });
+  });
+});
+
 describe('RouteMap.prototype.createServer()', () => {
   const routes = createRouteMap();
 

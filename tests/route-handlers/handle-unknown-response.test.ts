@@ -52,9 +52,9 @@ describe('handleUnknownResponse()', () => {
     mockTuftContext.outgoingHeaders = {};
     mockTuftContext.setHeader.mockClear();
     mockStream.respond.mockClear();
+    mockStream.respondWithFD.mockClear();
     mockStream.end.mockClear();
     mockStream.close.mockClear();
-    mockStream.respondWithFD.mockClear();
     mockFileHandle.stat.mockClear();
   });
 

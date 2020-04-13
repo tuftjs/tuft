@@ -8,10 +8,8 @@ const mockErrorHandler = jest.fn();
 
 const mockStream = {
   respond: jest.fn(),
-  respondWithFD: jest.fn(),
   write: jest.fn((_, __, callback) => callback()),
   end: jest.fn(),
-  close: jest.fn(),
 };
 
 const mockStreamWithError = {
