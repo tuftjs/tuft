@@ -82,7 +82,7 @@ type RouteMapOptions = {
   errorHandler?: TuftErrorHandler,
 }
 
-const { NGHTTP2_REFUSED_STREAM } = constants;
+const { NGHTTP2_NO_ERROR } = constants;
 
 const validRequestMethods = getValidRequestMethods();
 
@@ -359,17 +359,13 @@ export function primaryHandler(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders
 ) {
-  const method = headers[HTTP2_HEADER_METHOD];
-  const path = headers[HTTP2_HEADER_PATH];
+  stream.on('error', logStreamError);
 
-  if (!method || !path) {
-    // Either the 'method' or 'path' header is missing, so close the stream.
-    stream.close(NGHTTP2_REFUSED_STREAM);
-    return;
-  }
+  const method = headers[HTTP2_HEADER_METHOD] as string;
+  const path = headers[HTTP2_HEADER_PATH] as string;
 
   if (!validRequestMethods.includes(method)) {
-    // The request method is not supported, so respond with HTTP status code 405.
+    // The request method is not supported, respond with HTTP status code 405.
     stream.respond({
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
     }, { endStream: true });
@@ -386,12 +382,16 @@ export function primaryHandler(
   const routeHandler = routes.find(method, pathname);
 
   if (!routeHandler) {
-    // There is no matching route, so close the stream.
-    stream.close(NGHTTP2_REFUSED_STREAM);
+    // There is no matching route, close the stream.
+    stream.close(NGHTTP2_NO_ERROR);
     return;
   }
 
   routeHandler(stream, headers);
+}
+
+export function logStreamError(err: Error) {
+  console.error(err);
 }
 
 /**
