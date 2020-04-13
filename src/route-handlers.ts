@@ -16,7 +16,9 @@ import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP2_HEADER_LOCATION,
   HTTP_STATUS_OK,
+  HTTP_STATUS_FOUND,
   HTTP_STATUS_LENGTH_REQUIRED,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } from './constants';
@@ -75,7 +77,23 @@ export function createRouteHandler(route: TuftRoute, body: boolean = false) {
   }
 
   if (!response.status) {
-    response.status = DEFAULT_HTTP_STATUS;
+    response.status = response.redirect ? HTTP_STATUS_FOUND : DEFAULT_HTTP_STATUS;
+  }
+
+  if (response.redirect) {
+    if (preHandlers.length > 0) {
+      const boundHandleResponse = handleRedirectResponseWithPreHandlers.bind(
+        null,
+        boundHandleErrorResponse,
+        preHandlers,
+        response,
+      );
+
+      // The route contains pre-handlers, so return a handler that uses TuftContext
+      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+    }
+
+    return handleRedirectResponse.bind(null, response);
   }
 
   if (response.body) {
@@ -88,7 +106,6 @@ export function createRouteHandler(route: TuftRoute, body: boolean = false) {
       if (contentType === 'text/plain' || contentType === 'text/html') {
         body = body.toString();
       }
-
       else if (contentType === 'application/json') {
         body = JSON.stringify(body);
       }
@@ -189,6 +206,37 @@ export function createRouteHandler(route: TuftRoute, body: boolean = false) {
 
     return handleEmptyResponse.bind(null, response);
   }
+}
+
+export function handleRedirectResponse(response: TuftResponse, stream: ServerHttp2Stream) {
+  const outgoingHeaders = {
+    [HTTP2_HEADER_STATUS]: response.status,
+    [HTTP2_HEADER_LOCATION]: response.redirect,
+  };
+  stream.respond(outgoingHeaders, { endStream: true });
+}
+
+export async function handleRedirectResponseWithPreHandlers(
+  handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
+  preHandlers: TuftPreHandler[],
+  response: TuftResponse,
+  stream: ServerHttp2Stream,
+  t: TuftContext,
+) {
+  try {
+    for (let i = 0; i < preHandlers.length; i++) {
+      await preHandlers[i](t);
+    }
+  }
+
+  catch (err) {
+    handleError(err, stream, t);
+    return;
+  }
+
+  t.setHeader(HTTP2_HEADER_STATUS, response.status);
+  t.setHeader(HTTP2_HEADER_LOCATION, response.redirect);
+  stream.respond(t.outgoingHeaders, { endStream: true });
 }
 
 // Handles routes that do not contain a response body, send a file, or implement a stream.

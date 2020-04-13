@@ -39,6 +39,7 @@ export interface TuftStreamHandler {
 
 export interface TuftResponse {
   status?: number;
+  redirect?: string;
   contentType?: string;
   body?: any;
   stream?: TuftStreamHandler,
@@ -317,6 +318,14 @@ export class RouteMap extends Map {
     this.add(schema);
 
     return this;
+  }
+
+  redirect(path1: string, path2: string) {
+    super.set(path1, {
+      response: {
+        redirect: path2,
+      },
+    });
   }
 
   /**
