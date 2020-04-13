@@ -26,10 +26,11 @@ describe('createRouteHandler()', () => {
       },
       preHandlers: [],
       errorHandler,
+      includeBody: true,
     };
 
     test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route, true);
+      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
