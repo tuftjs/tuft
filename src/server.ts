@@ -41,6 +41,7 @@ export class TuftServer {
   ) {
     const server = createServer();
 
+    server.on('error', logServerError);
     server.on('stream', handler);
 
     this.#http2Server = server;
@@ -96,6 +97,7 @@ export class TuftSecureServer {
   ) {
     const server = createSecureServer({ key: options.key, cert: options.cert });
 
+    server.on('error', logServerError);
     server.on('stream', handler);
 
     this.#http2SecureServer = server;
@@ -125,4 +127,8 @@ export class TuftSecureServer {
       });
     });
   }
+}
+
+export function logServerError(err: Error) {
+  console.error(err);
 }
