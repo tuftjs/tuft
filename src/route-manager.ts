@@ -61,11 +61,7 @@ type RouteTreeBranch = {
   [sym_next]: RouteTreeNode,
 };
 
-type RouteTreeNode = {
-  [key: string]: RouteTreeBranch,
-  [sym_wildcard]?: RouteTreeBranch,
-  [sym_doubleWildcard]?: RouteTreeBranch,
-}
+type RouteTreeNode = Map<string | symbol, RouteTreeBranch>;
 
 const wildcardRegexp = /{\*\*?}/;
 
@@ -75,7 +71,7 @@ const wildcardRegexp = /{\*\*?}/;
  */
 
 export class RouteStore {
-  private readonly _routeTree: RouteTreeNode = {};
+  private readonly _routeTree: RouteTreeNode = new Map();
 
   /**
    * Adds a route handler to the store, indexed by the given path.
@@ -118,25 +114,27 @@ export class RouteStore {
         segment = str;
       }
 
-      const hasParams = Object.keys(params).length > 0;
+      const branch: RouteTreeBranch = node.get(segment) ?? { [sym_next]: new Map() };
 
-      if (hasParams) {
-        routeHandlerParams.params = params;
-      }
-
-      if (node[segment] === undefined) {
-        // A node does not exist for this path segment, so create one.
-        node[segment] = { [sym_next]: {} };
+      if (!node.has(segment)) {
+        // Add the newly created branch to the current node.
+        node.set(segment, branch);
       }
 
       if (i === pathSegments.length - 1) {
-        // This is the last path segment, so create a handler and add it to the current node.
-        node[segment]![sym_handler] = createRouteHandler(routeHandlerParams, body);
+        // This is the last path segment.
+        if (Object.keys(params).length > 0) {
+          // Update the route handler object to include the params.
+          routeHandlerParams.params = params;
+        }
+
+        // Create a handler and add it to the current branch.
+        branch[sym_handler] = createRouteHandler(routeHandlerParams, body);
         break;
       }
 
-      // Update the node pointer to point to the next node.
-      node = node[segment]![sym_next];
+      // Update the pointer so that it points to the next node.
+      node = branch[sym_next];
     }
   }
 
@@ -149,7 +147,7 @@ export class RouteStore {
     let begin = 1;
     let end = path.indexOf('/', begin);
     let node = this._routeTree;
-    let doubleWildcard: RouteTreeBranch = { [sym_next]: {} };
+    let doubleWildcard: RouteTreeBranch = { [sym_next]: new Map() };
     let branch: RouteTreeBranch;
     let pathSegment: string;
 
@@ -157,8 +155,8 @@ export class RouteStore {
     while (end >= 0) {
       pathSegment = path.slice(begin, end);
 
-      doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
-      branch = node[pathSegment] ?? node[sym_wildcard] ?? doubleWildcard;
+      doubleWildcard = node.get(sym_doubleWildcard) ?? doubleWildcard;
+      branch = node.get(pathSegment) ?? node.get(sym_wildcard) ?? doubleWildcard;
 
       if (branch === doubleWildcard) {
         // The current branch points to a double wildcard handler only, so return it.
@@ -173,13 +171,13 @@ export class RouteStore {
 
     pathSegment = path.slice(begin);
 
-    doubleWildcard = node[sym_doubleWildcard] ?? doubleWildcard;
+    doubleWildcard = node.get(sym_doubleWildcard) ?? doubleWildcard;
 
     // This is the final path segment, so retrieve the route handler from the current node that
     // best matches the path segment. A specific match is preferred over a wildcard match. A single
     // wildcard match is preferred over a double wildcard match.
-    const routeHandler = node[pathSegment]?.[sym_handler]
-      ?? node[sym_wildcard]?.[sym_handler]
+    const routeHandler = node.get(pathSegment)?.[sym_handler]
+      ?? node.get(sym_wildcard)?.[sym_handler]
       ?? doubleWildcard[sym_handler];
 
     return routeHandler;
