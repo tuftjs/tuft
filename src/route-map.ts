@@ -320,10 +320,10 @@ export class RouteMap extends Map {
     return this;
   }
 
-  redirect(path1: string, path2: string) {
-    super.set(path1, {
+  redirect(key: string, url: string) {
+    this.set(key, {
       response: {
-        redirect: path2,
+        redirect: url,
       },
     });
   }
