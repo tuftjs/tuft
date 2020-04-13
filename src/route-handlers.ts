@@ -46,7 +46,7 @@ const mimeTypeMap: { [key: string]: string } = {
  * properties of the provided route passed as arguments.
  */
 
-export function createRouteHandler(route: TuftRoute, body: boolean = false) {
+export function createRouteHandler(route: TuftRoute) {
   const { response, preHandlers, errorHandler } = route;
 
   const options = {
@@ -57,7 +57,7 @@ export function createRouteHandler(route: TuftRoute, body: boolean = false) {
     parseUrlEncoded: route.parseUrlEncoded,
   };
 
-  const createContext = body ? createTuftContextWithBody : createTuftContext;
+  const createContext = route.includeBody ? createTuftContextWithBody : createTuftContext;
 
   const boundHandleErrorResponse = handleErrorResponse.bind(
     null,

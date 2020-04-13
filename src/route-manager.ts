@@ -32,11 +32,12 @@ export class RouteManager {
 
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
-      const includeBody = methodsWithBody.includes(method);
-      this._routes[method].set(path, route, includeBody);
+      route.includeBody = methodsWithBody.includes(method);
+
+      this._routes[method].set(path, route);
 
       if (route.trailingSlash) {
-        this._routes[method].set(path + '/', route, includeBody);
+        this._routes[method].set(path + '/', route);
       }
     }
   }
@@ -77,7 +78,7 @@ export class RouteStore {
    * Adds a route handler to the store, indexed by the given path.
    */
 
-  set(path: string, route: TuftRoute, body: boolean = false) {
+  set(path: string, route: TuftRoute) {
     const routeHandlerParams = Object.assign({}, route);
 
     const params: { [key: string]: string } = {};
@@ -129,7 +130,7 @@ export class RouteStore {
         }
 
         // Create a handler and add it to the current branch.
-        branch[sym_handler] = createRouteHandler(routeHandlerParams, body);
+        branch[sym_handler] = createRouteHandler(routeHandlerParams);
         break;
       }
 

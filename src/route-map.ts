@@ -56,6 +56,7 @@ export interface TuftRoute {
   preHandlers: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
   errorHandler?: TuftErrorHandler;
+  includeBody?: boolean;
 }
 
 type RequestMethod =
