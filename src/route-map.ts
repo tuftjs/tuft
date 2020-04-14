@@ -415,7 +415,7 @@ export function primaryHandler(
   const path = headers[HTTP2_HEADER_PATH] as string;
 
   if (!validRequestMethods.includes(method)) {
-    // The request method is not supported, respond with HTTP status code 405.
+    // The request method is not supported.
     stream.respond({
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
     }, { endStream: true });
@@ -432,10 +432,12 @@ export function primaryHandler(
   const routeHandler = routes.find(method, pathname);
 
   if (!routeHandler) {
-    // There is no matching route, close the stream.
+    // There is no matching route.
     stream.close(NGHTTP2_NO_ERROR);
     return;
   }
+
+  // plugins go here?
 
   routeHandler(stream, headers);
 }
