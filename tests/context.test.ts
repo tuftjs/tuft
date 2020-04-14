@@ -171,10 +171,10 @@ describe('createTuftContext()', () => {
       [HTTP2_HEADER_PATH]: '/',
     };
 
-    test('returns an instance of TuftContext', async () => {
+    test('returns an instance of TuftContext', () => {
       //@ts-ignore
       const result = createTuftContext(mockStream, mockHeaders);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
+      expect(result).toBeInstanceOf(TuftContext);
     });
   });
 
@@ -184,10 +184,10 @@ describe('createTuftContext()', () => {
       [HTTP2_HEADER_PATH]: '/foo?bar=baz',
     };
 
-    test('returns an instance of TuftContext', async () => {
+    test('returns an instance of TuftContext', () => {
       //@ts-ignore
       const result = createTuftContext(mockStream, mockHeaders);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
+      expect(result).toBeInstanceOf(TuftContext);
     });
   });
 
@@ -204,10 +204,10 @@ describe('createTuftContext()', () => {
       },
     };
 
-    test('returns an instance of TuftContext', async () => {
+    test('returns an instance of TuftContext', () => {
       //@ts-ignore
       const result = createTuftContext(mockStream, mockHeaders, options);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
+      expect(result).toBeInstanceOf(TuftContext);
     });
   });
 
@@ -220,10 +220,10 @@ describe('createTuftContext()', () => {
 
     const options = { parseCookies: true };
 
-    test('returns an instance of TuftContext', async () => {
+    test('returns an instance of TuftContext', () => {
       //@ts-ignore
       const result = createTuftContext(mockStream, mockHeaders, options);
-      await expect(result).resolves.toBeInstanceOf(TuftContext);
+      expect(result).toBeInstanceOf(TuftContext);
     });
   });
 });
@@ -233,6 +233,19 @@ describe('createTuftContextWithBody()', () => {
     on: jest.fn((_, callback) => {
       callback();
     }),
+  };
+
+  const mockStreamWithNoBody = {
+    on: jest.fn((_, callback) => {
+      callback();
+    }),
+    [Symbol.asyncIterator]() {
+      return {
+        next() {
+          return Promise.resolve({ done: true });
+        }
+      };
+    }
   };
 
   const mockStreamWithOneBodyChunk = {
@@ -294,6 +307,7 @@ describe('createTuftContextWithBody()', () => {
 
   beforeAll(() => {
     mockStream.on.mockClear();
+    mockStreamWithNoBody.on.mockClear();
     mockStreamWithOneBodyChunk.on.mockClear();
     mockStreamWithTwoBodyChunks.on.mockClear();
   });
@@ -354,6 +368,20 @@ describe('createTuftContextWithBody()', () => {
       });
     });
 
+
+    describe('and no body', () => {
+      const mockHeaders = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_POST,
+        [HTTP2_HEADER_PATH]: '/',
+      };
+
+      test('returns an instance of TuftContext', async () => {
+        //@ts-ignore
+        const result = createTuftContextWithBody(mockStreamWithNoBody, mockHeaders);
+        await expect(result).resolves.toBeInstanceOf(TuftContext);
+      });
+    });
+
     describe('and a body with one chunk', () => {
       const mockHeaders = {
         [HTTP2_HEADER_METHOD]: HTTP2_METHOD_POST,
@@ -393,7 +421,7 @@ describe('createTuftContextWithBody()', () => {
 
       test('throws an error', async () => {
         //@ts-ignore
-        const result = createTuftContextWithBody(mockStream, mockHeaders);
+        const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders);
         await expect(result).rejects.toThrow('ERR_CONTENT_LENGTH_REQUIRED');
       });
     });
@@ -440,7 +468,7 @@ describe('createTuftContextWithBody()', () => {
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
         const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
-        await expect(result).resolves.toBeInstanceOf(TuftContext);
+        await expect(result).rejects.toThrow('ERR_BODY_LIMIT_EXCEEDED');
       });
     });
 
@@ -474,7 +502,7 @@ describe('createTuftContextWithBody()', () => {
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
         const result = createTuftContextWithBody(mockStreamWithOneBodyChunk, mockHeaders, options);
-        await expect(result).resolves.toBeInstanceOf(TuftContext);
+        await expect(result).rejects.toThrow('ERR_BODY_LIMIT_EXCEEDED');
       });
     });
 
@@ -508,7 +536,7 @@ describe('createTuftContextWithBody()', () => {
       test('returns an instance of TuftContext', async () => {
         //@ts-ignore
         const result = createTuftContextWithBody(mockStreamUrlEncoded, mockHeaders, options);
-        await expect(result).resolves.toBeInstanceOf(TuftContext);
+        await expect(result).rejects.toThrow('ERR_BODY_LIMIT_EXCEEDED');
       });
     });
 

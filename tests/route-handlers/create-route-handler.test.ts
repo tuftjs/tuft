@@ -35,6 +35,24 @@ describe('createRouteHandler()', () => {
     });
   });
 
+  describe('when passed a response object with \'parseText\', \'parseJson\', and \'parseUrlEncoded\' set to 0', () => {
+    const route = {
+      response: () => {
+        return {};
+      },
+      preHandlers: [],
+      errorHandler,
+      parseText: 0,
+      parseJson: 0,
+      parseUrlEncoded: 0,
+    };
+
+    test('returns bound handleResponseWithContext', () => {
+      const result = createRouteHandler(route);
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
   describe('when passed a response handler', () => {
     const route = {
       response: () => {

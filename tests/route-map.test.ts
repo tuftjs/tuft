@@ -142,9 +142,9 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', true);
       expect(route).toHaveProperty('parseCookies', true);
-      expect(route).toHaveProperty('parseText', 10_485_760);
-      expect(route).toHaveProperty('parseJson', 10_485_760);
-      expect(route).toHaveProperty('parseUrlEncoded', 10_485_760);
+      expect(route).toHaveProperty('parseText', 1_048_576);
+      expect(route).toHaveProperty('parseJson', 1_048_576);
+      expect(route).toHaveProperty('parseUrlEncoded', 1_048_576);
     });
 
     test('when \'parseText\', \'parseJson\', and \'parseUrlEncoded\' are all set to false', () => {
@@ -192,6 +192,7 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
+        ignoreBody: false,
         parseCookies: false,
         parseText: false,
         parseJson: false,
@@ -211,6 +212,7 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
+      expect(route).toHaveProperty('ignoreBody', false);
       expect(route).toHaveProperty('parseCookies', false);
       expect(route).toHaveProperty('parseText', false);
       expect(route).toHaveProperty('parseJson', false);
@@ -234,6 +236,7 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
+        ignoreBody: false,
         parseCookies: false,
         parseText: false,
         parseJson: false,
@@ -247,6 +250,7 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
+      expect(route).toHaveProperty('ignoreBody', false);
       expect(route).toHaveProperty('parseCookies', false);
       expect(route).toHaveProperty('parseText', false);
       expect(route).toHaveProperty('parseJson', false);

@@ -6,9 +6,11 @@ import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
+  HTTP2_HEADER_CONTENT_TYPE,
+  HTTP2_HEADER_CONTENT_LENGTH,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_LENGTH_REQUIRED,
-  HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP_STATUS_PAYLOAD_TOO_LARGE,
 } from '../../src/constants';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
@@ -21,7 +23,13 @@ const mockStream = {
   on: jest.fn(),
   [Symbol.asyncIterator]() {
     return {
+      i: 0,
       next() {
+        if (this.i < 1) {
+          this.i++;
+          return Promise.resolve({ value: Buffer.from('"abc"'), done: false });
+        }
+
         return Promise.resolve({ done: true });
       }
     };
@@ -108,6 +116,34 @@ describe('handleResponseWithContext()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED,
+      };
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.close).not.toHaveBeenCalled();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+    });
+
+    test('when body size exceeds the set maximum', async () => {
+      const mockHandler = jest.fn(() => {});
+
+      const mockHeaders = {
+        [HTTP2_HEADER_METHOD]: 'POST',
+        [HTTP2_HEADER_PATH]: '/',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_CONTENT_LENGTH]: '5',
+      };
+
+      const result = handleResponseWithContext(
+        createTuftContextWithBody,
+        mockHandler,
+        { parseText: 1 },
+        //@ts-ignore
+        mockStream,
+        mockHeaders,
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_PAYLOAD_TOO_LARGE ,
       };
 
       await expect(result).resolves.toBeUndefined();
