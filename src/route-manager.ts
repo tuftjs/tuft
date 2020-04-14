@@ -3,19 +3,6 @@ import type { RouteMap, TuftRoute } from './route-map';
 
 import { createRouteHandler } from './route-handlers';
 import { getValidRequestMethods } from './utils';
-import {
-  HTTP2_METHOD_DELETE,
-  HTTP2_METHOD_PATCH,
-  HTTP2_METHOD_POST,
-  HTTP2_METHOD_PUT,
-} from './constants';
-
-const methodsWithBody = [
-  HTTP2_METHOD_DELETE,
-  HTTP2_METHOD_PATCH,
-  HTTP2_METHOD_POST,
-  HTTP2_METHOD_PUT,
-];
 
 /**
  * Creates an instance of RouteStore for each valid HTTP request method, and adds the routes in the
@@ -32,7 +19,6 @@ export class RouteManager {
 
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
-      route.includeBody = methodsWithBody.includes(method);
 
       this._routes[method].set(path, route);
 

@@ -9,6 +9,7 @@ import { findInvalidSchemaEntry } from './schema-validation';
 import { getValidRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
+  ROUTE_MAP_DEFAULT_IGNORE_BODY,
   ROUTE_MAP_DEFAULT_PARSE_COOKIES,
   ROUTE_MAP_DEFAULT_PARSE_JSON,
   ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT,
@@ -18,6 +19,10 @@ import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
+  HTTP2_METHOD_DELETE,
+  HTTP2_METHOD_PATCH,
+  HTTP2_METHOD_POST,
+  HTTP2_METHOD_PUT,
   HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
@@ -48,6 +53,7 @@ export interface TuftResponse {
 
 export interface TuftRoute {
   trailingSlash?: boolean;
+  ignoreBody?: boolean;
   parseCookies?: boolean;
   parseText?: boolean | number;
   parseJson?: boolean | number;
@@ -56,7 +62,6 @@ export interface TuftRoute {
   preHandlers: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
   errorHandler?: TuftErrorHandler;
-  includeBody?: boolean;
 }
 
 type RequestMethod =
@@ -73,20 +78,28 @@ export interface TuftRouteSchema {
 
 type RouteMapOptions = {
   trailingSlash?: boolean,
+  basePath?: string,
+  method?: RequestMethod | RequestMethod[],
+  path?: string,
+  preHandlers?: TuftPreHandler[],
+  errorHandler?: TuftErrorHandler,
+  ignoreBody?: boolean,
   parseCookies?: boolean,
   parseText?: boolean | number,
   parseJson?: boolean | number,
   parseUrlEncoded?: boolean | number,
-  basePath?: string,
-  path?: string,
-  method?: RequestMethod | RequestMethod[],
-  preHandlers?: TuftPreHandler[],
-  errorHandler?: TuftErrorHandler,
 }
 
 const { NGHTTP2_NO_ERROR } = constants;
 
 const validRequestMethods = getValidRequestMethods();
+
+const methodsWithBody = [
+  HTTP2_METHOD_DELETE,
+  HTTP2_METHOD_PATCH,
+  HTTP2_METHOD_POST,
+  HTTP2_METHOD_PUT,
+];
 
 /**
  * Stores route data indexed by method and path. Instances of RouteMap can be added to other route
@@ -99,6 +112,7 @@ export class RouteMap extends Map {
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
 
+  readonly #ignoreBody: boolean | null;
   readonly #parseCookies: boolean | null;
   readonly #parseText: boolean | number | null;
   readonly #parseJson: boolean | number | null;
@@ -106,8 +120,8 @@ export class RouteMap extends Map {
   readonly #errorHandler: TuftErrorHandler | null;
 
   readonly #basePath: string;               // Prepended to any path added to the route map.
-  readonly #path: string;                   // Default path.
   readonly #methods: string[];              // Default methods.
+  readonly #path: string;                   // Default path.
   readonly #preHandlers: TuftPreHandler[];  // Default pre-handlers.
 
   constructor(options: RouteMapOptions = {}) {
@@ -115,6 +129,7 @@ export class RouteMap extends Map {
 
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#parseCookies = options.parseCookies ?? ROUTE_MAP_DEFAULT_PARSE_COOKIES;
+    this.#ignoreBody = options.ignoreBody ?? ROUTE_MAP_DEFAULT_IGNORE_BODY;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
     this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
@@ -200,6 +215,13 @@ export class RouteMap extends Map {
         mergedRoute.trailingSlash = this.#trailingSlash;
       }
 
+      if (route.ignoreBody !== undefined) {
+        mergedRoute.ignoreBody = route.ignoreBody;
+      }
+      else if (this.#ignoreBody !== null) {
+        mergedRoute.ignoreBody = this.#ignoreBody;
+      }
+
       if (route.parseCookies !== undefined) {
         mergedRoute.parseCookies = route.parseCookies;
       }
@@ -227,6 +249,12 @@ export class RouteMap extends Map {
       else if (this.#parseUrlEncoded !== null) {
         mergedRoute.parseUrlEncoded = this.#parseUrlEncoded;
       }
+
+      if (!methodsWithBody.includes(method)) {
+        mergedRoute.ignoreBody = true;
+      }
+
+      Object.freeze(mergedRoute);
 
       // Add the merged route to the route map.
       super.set(mergedKey, mergedRoute);
@@ -262,41 +290,53 @@ export class RouteMap extends Map {
       ? this.#preHandlers.concat([schema.preHandlers].flat())
       : this.#preHandlers;
 
-    const route: TuftRoute = {
+    const routeProps: TuftRoute = {
       preHandlers,
       response: schema.response,
     };
 
     if (schema.errorHandler) {
-      route.errorHandler = schema.errorHandler;
+      routeProps.errorHandler = schema.errorHandler;
     }
     else if (this.#errorHandler) {
-      route.errorHandler = this.#errorHandler;
+      routeProps.errorHandler = this.#errorHandler;
     }
 
     if (this.#trailingSlash !== null) {
-      route.trailingSlash = this.#trailingSlash;
+      routeProps.trailingSlash = this.#trailingSlash;
+    }
+
+    if (this.#ignoreBody !== null) {
+      routeProps.ignoreBody = this.#ignoreBody;
     }
 
     if (this.#parseCookies !== null) {
-      route.parseCookies = this.#parseCookies;
+      routeProps.parseCookies = this.#parseCookies;
     }
 
     if (this.#parseText !== null) {
-      route.parseText = this.#parseText;
+      routeProps.parseText = this.#parseText;
     }
 
     if (this.#parseJson !== null) {
-      route.parseJson = this.#parseJson;
+      routeProps.parseJson = this.#parseJson;
     }
 
     if (this.#parseUrlEncoded !== null) {
-      route.parseUrlEncoded = this.#parseUrlEncoded;
+      routeProps.parseUrlEncoded = this.#parseUrlEncoded;
     }
 
     // Add a copy of the route data for each method.
     for (const method of methods) {
       const key = method + ' ' + path;
+      const route = Object.assign({}, routeProps);
+
+      if (!methodsWithBody.includes(method)) {
+        route.ignoreBody = true;
+      }
+
+      Object.freeze(route);
+
       super.set(key, route);
     }
 

@@ -21,6 +21,7 @@ import {
   HTTP_STATUS_FOUND,
   HTTP_STATUS_LENGTH_REQUIRED,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  HTTP_STATUS_PAYLOAD_TOO_LARGE,
 } from './constants';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
@@ -57,7 +58,19 @@ export function createRouteHandler(route: TuftRoute) {
     parseUrlEncoded: route.parseUrlEncoded,
   };
 
-  const createContext = route.includeBody ? createTuftContextWithBody : createTuftContext;
+  if (options.parseText === 0) {
+    options.parseText = Number.MAX_SAFE_INTEGER;
+  }
+
+  if (options.parseJson === 0) {
+    options.parseJson = Number.MAX_SAFE_INTEGER;
+  }
+
+  if (options.parseUrlEncoded === 0) {
+    options.parseUrlEncoded = Number.MAX_SAFE_INTEGER;
+  }
+
+  const createContext = route.ignoreBody ? createTuftContext : createTuftContextWithBody;
 
   const boundHandleErrorResponse = handleErrorResponse.bind(
     null,
@@ -205,6 +218,54 @@ export function createRouteHandler(route: TuftRoute) {
     }
 
     return handleEmptyResponse.bind(null, response);
+  }
+}
+
+// Creates an instance of TuftContext and passes it to the user-defined route handler.
+export async function handleResponseWithContext(
+  createTuftContext: (
+    stream: ServerHttp2Stream,
+    headers: IncomingHttpHeaders,
+    options: TuftContextOptions,
+  ) => TuftContext | Promise<TuftContext>,
+  handleResponse: (
+    stream: ServerHttp2Stream,
+    t: TuftContext
+  ) => void | Error | Promise<void | Error>,
+  options: TuftContextOptions,
+  stream: ServerHttp2Stream,
+  headers: IncomingHttpHeaders,
+) {
+  try {
+    const t = await createTuftContext(stream, headers, options);
+    await handleResponse(stream, t);
+  }
+
+  catch (err) {
+    switch (err.message) {
+      case 'ERR_CONTENT_LENGTH_REQUIRED': {
+        // The 'content-length' header is missing, respond with status code 411.
+        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
+        stream.respond(outgoingHeaders, { endStream: true });
+        break;
+      }
+      case 'ERR_CONTENT_LENGTH_MISMATCH': {
+        // Received payload size does not match 'content-length' header, close the stream.
+        stream.close(NGHTTP2_STREAM_CLOSED);
+        break;
+      }
+      case 'ERR_BODY_LIMIT_EXCEEDED': {
+        // Received payload size exceeds the defined body size limit, respond with status code 413.
+        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_PAYLOAD_TOO_LARGE };
+        stream.respond(outgoingHeaders, { endStream: true });
+        break;
+      }
+      default: {
+        // An unknown error occurred, respond with status code 500.
+        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
+        stream.respond(outgoingHeaders, { endStream: true });
+      }
+    }
   }
 }
 
@@ -552,48 +613,6 @@ export async function handleErrorResponse(
   }
 
   stream.respond(t.outgoingHeaders, { endStream: true });
-}
-
-// Creates an instance of TuftContext and passes it to the user-defined route handler.
-export async function handleResponseWithContext(
-  createTuftContext: (
-    stream: ServerHttp2Stream,
-    headers: IncomingHttpHeaders,
-    options: TuftContextOptions,
-  ) => Promise<TuftContext>,
-  handleResponse: (
-    stream: ServerHttp2Stream,
-    t: TuftContext
-  ) => void | Error | Promise<void | Error>,
-  options: TuftContextOptions,
-  stream: ServerHttp2Stream,
-  headers: IncomingHttpHeaders,
-) {
-  try {
-    const t = await createTuftContext(stream, headers, options);
-    await handleResponse(stream, t);
-  }
-
-  catch (err) {
-    switch (err.message) {
-      case 'ERR_CONTENT_LENGTH_REQUIRED': {
-        // 'content-length' header is missing, respond with HTTP status code 411
-        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
-        stream.respond(outgoingHeaders, { endStream: true });
-        break;
-      }
-      case 'ERR_CONTENT_LENGTH_MISMATCH': {
-        // Received data size does not match 'content-type' header, close the stream
-        stream.close(NGHTTP2_STREAM_CLOSED);
-        break;
-      }
-      default: {
-        // An unknown error occurred, respond with HTTP status code 500
-        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
-        stream.respond(outgoingHeaders, { endStream: true });
-      }
-    }
-  }
 }
 
 export function defaultErrorHandler() {
