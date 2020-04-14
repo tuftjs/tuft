@@ -167,6 +167,8 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
   },
 };
 
+const textMimeTypeRegexp = /^text\//;
+
 /**
  * Creates an instance of TuftContext using the provided parameters.
  */
@@ -316,7 +318,7 @@ export async function createTuftContextWithBody(
     if (contentType) {
       const { parseText, parseJson, parseUrlEncoded } = options;
 
-      if (parseText && contentType.startsWith('text/')) {
+      if (parseText && textMimeTypeRegexp.test(contentType)) {
         if (body.length > parseText) {
           throw Error('ERR_BODY_LIMIT_EXCEEDED');
         }
