@@ -286,13 +286,6 @@ export async function createTuftContextWithBody(
     ? parseCookiesStr(cookieHeader)
     : null;
 
-  const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
-
-  if (!contentLengthString) {
-    // The 'content-length' header is missing.
-    throw Error('ERR_CONTENT_LENGTH_REQUIRED');
-  }
-
   const chunks: Buffer[] = [];
 
   for await (const chunk of stream) {
@@ -301,18 +294,18 @@ export async function createTuftContextWithBody(
 
   let body: null | Buffer | string | { [key in string | number]: any };
 
-  switch (chunks.length) {
-    case 0:
-      body = null;
-      break;
-    case 1:
-      body = chunks[0];
-      break;
-    default:
-      body = Buffer.concat(chunks);
-  }
+  body = null;
 
-  if (body) {
+  if (chunks.length > 0) {
+    const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
+
+    if (!contentLengthString) {
+      // The 'content-length' header is missing.
+      throw Error('ERR_CONTENT_LENGTH_REQUIRED');
+    }
+
+    body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+
     if (body.length !== parseInt(contentLengthString)) {
       // Value of the 'content-length' header does not match the size of the request body.
       throw Error('ERR_CONTENT_LENGTH_MISMATCH');
