@@ -171,7 +171,7 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
  * Creates an instance of TuftContext using the provided parameters.
  */
 
-export async function createTuftContext(
+export function createTuftContext(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
   options: TuftContextOptions = {},
@@ -286,10 +286,6 @@ export async function createTuftContextWithBody(
     ? parseCookiesStr(cookieHeader)
     : null;
 
-  let body: Buffer | string | { [key: string]: any } | null;
-
-  body = null;
-
   const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
 
   if (!contentLengthString) {
@@ -303,28 +299,53 @@ export async function createTuftContextWithBody(
     chunks.push(chunk);
   }
 
-  body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+  let body: null | Buffer | string | { [key in string | number]: any };
 
-  if (body.length !== parseInt(contentLengthString)) {
-    // The value of the 'content-length' header does not match the size of the request body.
-    throw Error('ERR_CONTENT_LENGTH_MISMATCH');
+  switch (chunks.length) {
+    case 0:
+      body = null;
+      break;
+    case 1:
+      body = chunks[0];
+      break;
+    default:
+      body = Buffer.concat(chunks);
   }
 
-  const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
-
-  if (contentType) {
-    const { parseText, parseJson, parseUrlEncoded } = options;
-
-    if (parseText && contentType.startsWith('text')) {
-      body = body.length <= parseText ? body.toString() : '';
+  if (body) {
+    if (body.length !== parseInt(contentLengthString)) {
+      // Value of the 'content-length' header does not match the size of the request body.
+      throw Error('ERR_CONTENT_LENGTH_MISMATCH');
     }
 
-    else if (parseJson && contentType === 'application/json') {
-      body = body.length <= parseJson ? JSON.parse(body.toString()) : {};
-    }
+    const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
 
-    else if (parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
-      body = body.length <= parseUrlEncoded ? parseUrlEncodedStr(body.toString()) : {};
+    if (contentType) {
+      const { parseText, parseJson, parseUrlEncoded } = options;
+
+      if (parseText && contentType.startsWith('text/')) {
+        if (body.length > parseText) {
+          throw Error('ERR_BODY_LIMIT_EXCEEDED');
+        }
+
+        body = body.toString();
+      }
+
+      else if (parseJson && contentType === 'application/json') {
+        if (body.length > parseJson) {
+          throw Error('ERR_BODY_LIMIT_EXCEEDED');
+        }
+
+        body = JSON.parse(body.toString());
+      }
+
+      else if (parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
+        if (body.length > parseUrlEncoded) {
+          throw Error('ERR_BODY_LIMIT_EXCEEDED');
+        }
+
+        body = parseUrlEncodedStr(body.toString());
+      }
     }
   }
 
