@@ -59,15 +59,15 @@ export function createRouteHandler(route: TuftRoute) {
   };
 
   if (options.parseText === 0) {
-    options.parseText = Number.MAX_SAFE_INTEGER;
+    options.parseText = Infinity;
   }
 
   if (options.parseJson === 0) {
-    options.parseJson = Number.MAX_SAFE_INTEGER;
+    options.parseJson = Infinity;
   }
 
   if (options.parseUrlEncoded === 0) {
-    options.parseUrlEncoded = Number.MAX_SAFE_INTEGER;
+    options.parseUrlEncoded = Infinity;
   }
 
   const createContext = route.ignoreBody ? createTuftContext : createTuftContextWithBody;
@@ -83,7 +83,7 @@ export function createRouteHandler(route: TuftRoute) {
       null,
       boundHandleErrorResponse,
       preHandlers,
-      response
+      response,
     );
 
     return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
