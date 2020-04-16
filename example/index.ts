@@ -1,7 +1,7 @@
 import { createRouteMap } from '../src';
 
 void async function() {
-  const routes = createRouteMap({ parseJson: true });
+  const routes = createRouteMap();
 
   routes.set('GET /a', {
     response: () => {
@@ -10,7 +10,6 @@ void async function() {
   });
 
   routes.set('GET /b', {
-    preHandlers: [() => {}],
     response: { status: 204 },
   });
 
