@@ -46,12 +46,9 @@ const mimeTypeMap: { [key: string]: string } = {
  */
 
 export function createRouteHandler(route: TuftRoute) {
-  const { response, preHandlers, errorHandler } = route;
+  const { response, preHandlers, errorHandler, params } = route;
 
-  const options = {
-    params: route.params,
-    parseCookies: route.parseCookies,
-  };
+  const options = { params };
 
   const boundHandleErrorResponse = handleErrorResponse.bind(
     null,
@@ -241,7 +238,12 @@ export async function handleRedirectResponseWithPreHandlers(
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
+      const preHandler = preHandlers[i];
+      const result = await preHandler(t);
+
+      if (result !== undefined) {
+        t.request[preHandler.extName!] = result;
+      }
     }
   }
 
@@ -271,7 +273,12 @@ export async function handleEmptyResponseWithPreHandlers(
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
+      const preHandler = preHandlers[i];
+      const result = await preHandler(t);
+
+      if (result !== undefined) {
+        t.request[preHandler.extName!] = result;
+      }
     }
   }
 
@@ -306,7 +313,12 @@ export async function handleFileResponseWithPreHandlers(
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
+      const preHandler = preHandlers[i];
+      const result = await preHandler(t);
+
+      if (result !== undefined) {
+        t.request[preHandler.extName!] = result;
+      }
     }
   }
 
@@ -350,7 +362,12 @@ export async function handleStreamResponseWithPreHandlers(
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
+      const preHandler = preHandlers[i];
+      const result = await preHandler(t);
+
+      if (result !== undefined) {
+        t.request[preHandler.extName!] = result;
+      }
     }
   }
 
@@ -398,7 +415,12 @@ export async function handleBodyResponseWithPreHandlers(
 ) {
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
+      const preHandler = preHandlers[i];
+      const result = await preHandler(t);
+
+      if (result !== undefined) {
+        t.request[preHandler.extName!] = result;
+      }
     }
   }
 
@@ -483,7 +505,12 @@ export async function handleUnknownResponse(
 
   try {
     for (let i = 0; i < preHandlers.length; i++) {
-      await preHandlers[i](t);
+      const preHandler = preHandlers[i];
+      const result = await preHandler(t);
+
+      if (result !== undefined) {
+        t.request[preHandler.extName!] = result;
+      }
     }
 
     result = await handler(t);

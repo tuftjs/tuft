@@ -9,7 +9,6 @@ import { findInvalidSchemaEntry } from './schema-validation';
 import { getValidRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
-  ROUTE_MAP_DEFAULT_PARSE_COOKIES,
   ROUTE_MAP_DEFAULT_BASE_PATH,
   ROUTE_MAP_DEFAULT_PATH,
   ROUTE_MAP_DEFAULT_ERROR_HANDLER,
@@ -24,7 +23,8 @@ export interface TuftHandler {
 }
 
 export interface TuftPreHandler {
-  (t: TuftContext): void | Promise<void>;
+  (t: TuftContext): any | Promise<any>;
+  extName?: string;
 }
 
 export interface TuftErrorHandler {
@@ -50,7 +50,6 @@ export interface TuftRoute {
   errorHandler?: TuftErrorHandler;
   params?: { [key: string]: string };
   trailingSlash?: boolean;
-  parseCookies?: boolean;
 }
 
 type RequestMethod =
@@ -60,19 +59,16 @@ export interface TuftRouteSchema {
   path?: string;
   method?: RequestMethod | RequestMethod[];
   contentType?: string;
-  preHandlers?: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
   errorHandler?: TuftErrorHandler;
 }
 
 type RouteMapOptions = {
-  preHandlers?: TuftPreHandler[],
   errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
   path?: string,
   trailingSlash?: boolean,
-  parseCookies?: boolean,
 }
 
 const { NGHTTP2_NO_ERROR } = constants;
@@ -90,7 +86,6 @@ export class RouteMap extends Map {
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
 
-  readonly #parseCookies: boolean | null;
   readonly #errorHandler: TuftErrorHandler | null;
 
   readonly #basePath: string;               // Prepended to any path added to the route map.
@@ -102,11 +97,10 @@ export class RouteMap extends Map {
     super();
 
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
-    this.#parseCookies = options.parseCookies ?? ROUTE_MAP_DEFAULT_PARSE_COOKIES;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
     this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
-    this.#preHandlers = options.preHandlers ?? [];
+    this.#preHandlers = [];
     this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
   }
 
@@ -146,13 +140,6 @@ export class RouteMap extends Map {
         mergedRoute.trailingSlash = this.#trailingSlash;
       }
 
-      if (route.parseCookies !== undefined) {
-        mergedRoute.parseCookies = route.parseCookies;
-      }
-      else if (this.#parseCookies !== null) {
-        mergedRoute.parseCookies = this.#parseCookies;
-      }
-
       Object.freeze(mergedRoute);
 
       // Add the merged route to the route map.
@@ -185,9 +172,7 @@ export class RouteMap extends Map {
 
     const methods = schema.method ? [schema.method].flat() : this.#methods;
 
-    const preHandlers = schema.preHandlers
-      ? this.#preHandlers.concat([schema.preHandlers].flat())
-      : this.#preHandlers;
+    const preHandlers = this.#preHandlers;
 
     const routeProps: TuftRoute = {
       preHandlers,
@@ -203,10 +188,6 @@ export class RouteMap extends Map {
 
     if (this.#trailingSlash !== null) {
       routeProps.trailingSlash = this.#trailingSlash;
-    }
-
-    if (this.#parseCookies !== null) {
-      routeProps.parseCookies = this.#parseCookies;
     }
 
     // Add a copy of the route data for each method.
@@ -246,6 +227,11 @@ export class RouteMap extends Map {
         redirect: url,
       },
     });
+  }
+
+  extend(name: string, preHandler: TuftPreHandler) {
+    preHandler.extName = name;
+    this.#preHandlers.push(preHandler);
   }
 
   /**

@@ -51,6 +51,7 @@ export class TuftContext {
     readonly secure: boolean;
     readonly searchParams: URLSearchParams;
     readonly params: { [key: string]: string };
+    [key: string]: any;
   };
 
   // The props object is intended for user-defined values to be passed down from pre-handler
