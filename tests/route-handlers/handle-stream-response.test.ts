@@ -21,6 +21,7 @@ const mockStreamWithError = {
 };
 
 const mockTuftContext: any = {
+  request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
     mockTuftContext.outgoingHeaders[key] = value;
@@ -170,5 +171,33 @@ describe('handleStreamResponseWithPreHandlers()', () => {
     expect(mockStream.respond).not.toHaveBeenCalled();
     expect(mockStream.write).not.toHaveBeenCalled();
     expect(mockStream.end).not.toHaveBeenCalled();
+  });
+
+  describe('with a pre-handler that returns a result', () => {
+    test('calls stream.respond() with the expected arguments', async () => {
+      const responseObj = {
+        status: 418,
+        stream: mockStreamHandler,
+      };
+      const preHandler = () => 42;
+      preHandler.extName = 'mock pre-handler';
+      const preHandlers = [preHandler];
+
+      const result = handleStreamResponseWithPreHandlers(
+        mockErrorHandler,
+        preHandlers,
+        responseObj,
+        //@ts-ignore
+        mockStream,
+        mockTuftContext,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
+      expect(mockStreamHandler).toHaveBeenCalled();
+      expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
+      expect(mockStream.write).toHaveBeenCalled();
+      expect(mockStream.end).toHaveBeenCalled();
+    });
   });
 });

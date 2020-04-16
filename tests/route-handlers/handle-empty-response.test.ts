@@ -8,6 +8,7 @@ const mockStream = {
 };
 
 const mockTuftContext: any = {
+  request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
     mockTuftContext.outgoingHeaders[key] = value;
@@ -46,6 +47,28 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
   test('stream.respond() is called', async () => {
     const responseObj = { status: 418 };
     const preHandlers = [() => {}];
+
+    const result = handleEmptyResponseWithPreHandlers(
+      mockErrorHandler,
+      preHandlers,
+      responseObj,
+      //@ts-ignore
+      mockStream,
+      mockTuftContext,
+    );
+
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).not.toHaveBeenCalled();
+    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
+    expect(mockStream.respond)
+      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
+  });
+
+  test('stream.respond() is called when the pre-handler returns a result', async () => {
+    const responseObj = { status: 418 };
+    const preHandler = () => 42;
+    preHandler.extName = 'mock pre-handler';
+    const preHandlers = [preHandler];
 
     const result = handleEmptyResponseWithPreHandlers(
       mockErrorHandler,

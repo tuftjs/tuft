@@ -28,6 +28,7 @@ const mockStreamWithError = {
 };
 
 const mockTuftContext: any = {
+  request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
     mockTuftContext.outgoingHeaders[key] = value;
@@ -488,6 +489,58 @@ describe('handleUnknownResponse()', () => {
       expect(mockStreamWithError.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
       expect(mockStreamWithError.write).toHaveBeenCalled();
       expect(mockStreamWithError.end).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('with a pre-handler that returns a result', () => {
+    test('calls stream.respond() with the expected arguments', async () => {
+      const preHandler = () => 42;
+      preHandler.extName = 'mock pre-handler';
+
+      const handler = () => {
+        return {};
+      };
+      const preHandlers = [preHandler];
+
+      const result = handleUnknownResponse(
+        mockErrorHandler,
+        preHandlers,
+        handler,
+        //@ts-ignore
+        mockStream,
+        mockTuftContext,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
+      expect(mockStream.respond)
+        .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
+    });
+  });
+
+  describe('with a pre-handler that does not returns a result', () => {
+    test('calls stream.respond() with the expected arguments', async () => {
+      const preHandler = () => {};
+      preHandler.extName = 'mock pre-handler';
+
+      const handler = () => {
+        return {};
+      };
+      const preHandlers = [preHandler];
+
+      const result = handleUnknownResponse(
+        mockErrorHandler,
+        preHandlers,
+        handler,
+        //@ts-ignore
+        mockStream,
+        mockTuftContext,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).not.toHaveBeenCalled();
+      expect(mockStream.respond)
+        .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
     });
   });
 });

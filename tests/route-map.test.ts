@@ -88,20 +88,6 @@ describe('RouteMap.prototype.add()', () => {
   });
 
   describe('adds an object with the correct properties', () => {
-    test('when \'preHandlers\' is set', () => {
-      const preHandlers = [() => {}];
-
-      const routes = createRouteMap();
-
-      routes.add({
-        response: {},
-        preHandlers,
-      });
-
-      const route = routes.get('GET /');
-      expect(route).toHaveProperty('preHandlers', preHandlers);
-    });
-
     test('when \'errorHandler\' is set', () => {
       const errorHandler = () => { return {}; };
 
@@ -117,17 +103,14 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when custom RouteMap options are set', () => {
-      const preHandlers = [() => {}];
       const errorHandler = () => { return {}; };
 
       const routes = createRouteMap({
         method: 'POST',
         basePath: '/foo',
         path: '/bar',
-        preHandlers,
         errorHandler,
         trailingSlash: true,
-        parseCookies: true,
       });
 
       routes.add({
@@ -135,24 +118,19 @@ describe('RouteMap.prototype.add()', () => {
       });
 
       const route = routes.get('POST /foo/bar');
-      expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', true);
-      expect(route).toHaveProperty('parseCookies', true);
     });
 
     test('when passed another instance of RouteMap with its own custom options as the first argument', () => {
-      const preHandlers = [() => {}];
       const errorHandler = () => { return {}; };
 
       const routes1 = createRouteMap({
         method: 'POST',
-        preHandlers,
         errorHandler,
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
-        parseCookies: false,
       });
 
       routes1.add({
@@ -165,14 +143,11 @@ describe('RouteMap.prototype.add()', () => {
 
       const route = routes2.get('POST /foo/bar');
 
-      expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
-      expect(route).toHaveProperty('parseCookies', false);
     });
 
     test('when custom RouteMap options are set AND when passed another instance of RouteMap', () => {
-      const preHandlers = [() => {}];
       const errorHandler = () => { return {}; };
 
       const routes1 = createRouteMap();
@@ -183,22 +158,18 @@ describe('RouteMap.prototype.add()', () => {
 
       const routes2 = createRouteMap({
         method: 'POST',
-        preHandlers,
         errorHandler,
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
-        parseCookies: false,
       });
 
       routes2.add(routes1);
 
       const route = routes2.get('POST /foo');
 
-      expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
-      expect(route).toHaveProperty('parseCookies', false);
     });
 
     test('when NO custom RouteMap options are set AND when passed another instance of RouteMap', () => {
@@ -275,7 +246,6 @@ describe('RouteMap.prototype.set()', () => {
   });
 });
 
-
 describe('RouteMap.prototype.redirect()', () => {
   describe('adds a value to the map', () => {
     test('when passed \'GET /foo\', \'/bar\'', () => {
@@ -294,6 +264,14 @@ describe('RouteMap.prototype.redirect()', () => {
       expect(routes.get('PUT /foo')).toBeUndefined();
       expect(routes.get('TRACE /foo')).toBeUndefined();
     });
+  });
+});
+
+describe('RouteMap.prototype.extend()', () => {
+  test('returns undefined', () => {
+    const routes = createRouteMap();
+    const result = routes.extend('extension name', () => {});
+    expect(result).toBeUndefined();
   });
 });
 

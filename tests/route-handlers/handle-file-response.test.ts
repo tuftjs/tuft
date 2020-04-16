@@ -8,6 +8,7 @@ const mockStream = {
 };
 
 const mockTuftContext: any = {
+  request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
     mockTuftContext.outgoingHeaders[key] = value;
@@ -56,6 +57,27 @@ describe('handleFileResponseWithPreHandlers()', () => {
   test('stream.respondWithFD() is called', async () => {
     const responseObj = { file: __filename };
     const preHandlers = [() => {}];
+
+    const result = handleFileResponseWithPreHandlers(
+      mockErrorHandler,
+      preHandlers,
+      responseObj,
+      //@ts-ignore
+      mockStream,
+      mockTuftContext,
+    );
+
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).not.toHaveBeenCalled();
+    expect(mockTuftContext.setHeader).toHaveBeenCalled();
+    expect(mockStream.respondWithFD).toHaveBeenCalled();
+  });
+
+  test('stream.respondWithFD() is called when the pre-handler returns a result', async () => {
+    const responseObj = { file: __filename };
+    const preHandler = () => 42;
+    preHandler.extName = 'mock pre-handler';
+    const preHandlers = [preHandler];
 
     const result = handleFileResponseWithPreHandlers(
       mockErrorHandler,

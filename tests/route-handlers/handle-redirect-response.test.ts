@@ -11,6 +11,7 @@ const mockStream = {
 };
 
 const mockTuftContext: any = {
+  request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
     mockTuftContext.outgoingHeaders[key] = value;
@@ -58,6 +59,32 @@ describe('handleRedirectResponseWithPreHandlers()', () => {
       redirect: '/foo',
     };
     const preHandlers = [() => {}];
+
+    const result = handleRedirectResponseWithPreHandlers(
+      mockErrorHandler,
+      preHandlers,
+      responseObj,
+      //@ts-ignore
+      mockStream,
+      mockTuftContext,
+    );
+
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).not.toHaveBeenCalled();
+    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_FOUND);
+    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
+    expect(mockStream.respond)
+      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
+  });
+
+  test('stream.respond() is called when the pre-handler returns a result', async () => {
+    const responseObj = {
+      status: HTTP_STATUS_FOUND,
+      redirect: '/foo',
+    };
+    const preHandler = () => 42;
+    preHandler.extName = 'mock pre-handler';
+    const preHandlers = [preHandler];
 
     const result = handleRedirectResponseWithPreHandlers(
       mockErrorHandler,

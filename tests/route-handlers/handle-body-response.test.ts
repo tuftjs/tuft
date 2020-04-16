@@ -9,6 +9,7 @@ const mockStream = {
 };
 
 const mockTuftContext: any = {
+  request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
     mockTuftContext.outgoingHeaders[key] = value;
@@ -64,6 +65,36 @@ describe('handleBodyResponseWithPreHandlers()', () => {
       body,
     };
     const preHandlers = [() => {}];
+
+    const result = handleBodyResponseWithPreHandlers(
+      mockErrorHandler,
+      preHandlers,
+      responseObj,
+      //@ts-ignore
+      mockStream,
+      mockTuftContext,
+    );
+
+    await expect(result).resolves.toBeUndefined();
+    expect(mockErrorHandler).not.toHaveBeenCalled();
+    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
+    expect(mockTuftContext.setHeader)
+      .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, body.length);
+    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
+    expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
+    expect(mockStream.end).toHaveBeenCalled();
+  });
+
+  test('stream.respond() is called when the pre-handler returns a result', async () => {
+    const body = 'Hello, world!';
+    const responseObj = {
+      status: 418,
+      contentType: 'text/plain',
+      body,
+    };
+    const preHandler = () => 42;
+    preHandler.extName = 'mock pre-handler';
+    const preHandlers = [preHandler];
 
     const result = handleBodyResponseWithPreHandlers(
       mockErrorHandler,
