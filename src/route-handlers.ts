@@ -11,7 +11,7 @@ import type {
 
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
-import { createTuftContext, createTuftContextWithBody } from './context';
+import { createTuftContext } from './context';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_TYPE,
@@ -19,9 +19,7 @@ import {
   HTTP2_HEADER_LOCATION,
   HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
-  HTTP_STATUS_LENGTH_REQUIRED,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_PAYLOAD_TOO_LARGE,
 } from './constants';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
@@ -53,24 +51,7 @@ export function createRouteHandler(route: TuftRoute) {
   const options = {
     params: route.params,
     parseCookies: route.parseCookies,
-    parseText: route.parseText,
-    parseJson: route.parseJson,
-    parseUrlEncoded: route.parseUrlEncoded,
   };
-
-  if (options.parseText === 0) {
-    options.parseText = Infinity;
-  }
-
-  if (options.parseJson === 0) {
-    options.parseJson = Infinity;
-  }
-
-  if (options.parseUrlEncoded === 0) {
-    options.parseUrlEncoded = Infinity;
-  }
-
-  const createContext = route.ignoreBody ? createTuftContext : createTuftContextWithBody;
 
   const boundHandleErrorResponse = handleErrorResponse.bind(
     null,
@@ -86,7 +67,7 @@ export function createRouteHandler(route: TuftRoute) {
       response,
     );
 
-    return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+    return handleResponseWithContext.bind(null, boundHandleResponse, options);
   }
 
   if (!response.status) {
@@ -103,7 +84,7 @@ export function createRouteHandler(route: TuftRoute) {
       );
 
       // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+      return handleResponseWithContext.bind(null, boundHandleResponse, options);
     }
 
     return handleRedirectResponse.bind(null, response);
@@ -166,7 +147,7 @@ export function createRouteHandler(route: TuftRoute) {
       );
 
       // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+      return handleResponseWithContext.bind(null, boundHandleResponse, options);
     }
 
     return handleBodyResponse.bind(null, response);
@@ -182,7 +163,7 @@ export function createRouteHandler(route: TuftRoute) {
       );
 
       // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+      return handleResponseWithContext.bind(null, boundHandleResponse, options);
     }
 
     return handleFileResponse.bind(null, response);
@@ -198,7 +179,7 @@ export function createRouteHandler(route: TuftRoute) {
       );
 
       // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+      return handleResponseWithContext.bind(null, boundHandleResponse, options);
     }
 
     return handleStreamResponse.bind(null, response);
@@ -214,7 +195,7 @@ export function createRouteHandler(route: TuftRoute) {
       );
 
       // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, createContext, boundHandleResponse, options);
+      return handleResponseWithContext.bind(null, boundHandleResponse, options);
     }
 
     return handleEmptyResponse.bind(null, response);
@@ -223,11 +204,6 @@ export function createRouteHandler(route: TuftRoute) {
 
 // Creates an instance of TuftContext and passes it to the user-defined route handler.
 export async function handleResponseWithContext(
-  createTuftContext: (
-    stream: ServerHttp2Stream,
-    headers: IncomingHttpHeaders,
-    options: TuftContextOptions,
-  ) => TuftContext | Promise<TuftContext>,
   handleResponse: (
     stream: ServerHttp2Stream,
     t: TuftContext
@@ -237,35 +213,14 @@ export async function handleResponseWithContext(
   headers: IncomingHttpHeaders,
 ) {
   try {
-    const t = await createTuftContext(stream, headers, options);
-    await handleResponse(stream, t);
+    const context = createTuftContext(stream, headers, options);
+    await handleResponse(stream, context);
   }
 
   catch (err) {
-    switch (err.message) {
-      case 'ERR_CONTENT_LENGTH_REQUIRED': {
-        // The 'content-length' header is missing, respond with status code 411.
-        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_LENGTH_REQUIRED };
-        stream.respond(outgoingHeaders, { endStream: true });
-        break;
-      }
-      case 'ERR_CONTENT_LENGTH_MISMATCH': {
-        // Received payload size does not match 'content-length' header, close the stream.
-        stream.close(NGHTTP2_STREAM_CLOSED);
-        break;
-      }
-      case 'ERR_BODY_LIMIT_EXCEEDED': {
-        // Received payload size exceeds the defined body size limit, respond with status code 413.
-        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_PAYLOAD_TOO_LARGE };
-        stream.respond(outgoingHeaders, { endStream: true });
-        break;
-      }
-      default: {
-        // An unknown error occurred, respond with status code 500.
-        const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
-        stream.respond(outgoingHeaders, { endStream: true });
-      }
-    }
+    // An unknown error occurred. Respond with status code 500.
+    const outgoingHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR };
+    stream.respond(outgoingHeaders, { endStream: true });
   }
 }
 

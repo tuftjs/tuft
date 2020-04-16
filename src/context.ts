@@ -1,26 +1,24 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 
-import { EventEmitter } from 'events';
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_SCHEME,
-  HTTP2_HEADER_CONTENT_LENGTH,
-  HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_COOKIE,
   HTTP2_HEADER_SET_COOKIE,
 } from './constants';
 
 type TuftContextParams = {
   stream: ServerHttp2Stream,
-  headers: IncomingHttpHeaders,
-  secure: boolean,
-  method: string,
-  pathname: string,
-  searchParams: URLSearchParams,
-  params: { [key: string]: string },
-  cookies: { [key: string]: string } | null,
-  body: any,
+  request: {
+    headers: IncomingHttpHeaders,
+    secure: boolean,
+    method: string,
+    pathname: string,
+    searchParams: URLSearchParams,
+    params: { [key: string]: string },
+    cookies: { [key: string]: string } | null,
+  },
 };
 
 export type TuftContextOptions = {
@@ -47,58 +45,41 @@ type SetCookieOptions = {
  * and only argument to a route handler.
  */
 
-export class TuftContext extends EventEmitter {
+export class TuftContext {
   private readonly _stream: ServerHttp2Stream;
-  private _outgoingHeaders: OutgoingHttpHeaders;
+  private readonly _outgoingHeaders: OutgoingHttpHeaders;
 
   // The request object contains properties relevant to the current request.
   readonly request: {
-    headers: IncomingHttpHeaders;
-    secure: boolean;
-    method: string;
-    pathname: string;
-    searchParams: URLSearchParams;
-    params: { [key: string]: string };
-    cookies: { [key: string]: string } | null;
-    body: any;
+    readonly headers: IncomingHttpHeaders;
+    readonly method: string;
+    readonly pathname: string;
+    readonly secure: boolean;
+    readonly searchParams: URLSearchParams;
+    readonly params: { [key: string]: string };
+    readonly cookies: { [key: string]: string } | null;
   };
 
   // The props object is intended for user-defined values to be passed down from pre-handler
-  // functions to the main route handler.
-  props: {
+  // functions to successive pre-handlers and the main  handler.
+  readonly props: {
     [key in string | number | symbol]: any;
   };
 
   constructor(contextParams: TuftContextParams) {
-    super();
-
     this._stream = contextParams.stream;
     this._outgoingHeaders = {};
-    this.request = {
-      headers: contextParams.headers,
-      secure: contextParams.secure,
-      method: contextParams.method,
-      pathname: contextParams.pathname,
-      searchParams: contextParams.searchParams,
-      params: contextParams.params,
-      body: contextParams.body,
-      cookies: contextParams.cookies,
-    };
-    this.props = Object.create(null);
 
-    this._stream.on('finish', () => this.emit('finish'));
+    this.request = contextParams.request;
+    this.props = Object.create(null);
+  }
+
+  get stream() {
+    return this._stream;
   }
 
   get outgoingHeaders() {
     return this._outgoingHeaders;
-  }
-
-  get sentHeaders() {
-    return this._stream.sentHeaders;
-  }
-
-  get pushAllowed() {
-    return this._stream.pushAllowed;
   }
 
   setHeader(name: string, value: number | string | string[] | undefined) {
@@ -167,8 +148,6 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
   },
 };
 
-const textMimeTypeRegexp = /^text\//;
-
 /**
  * Creates an instance of TuftContext using the provided parameters.
  */
@@ -221,10 +200,7 @@ export function createTuftContext(
     ? parseCookiesStr(cookieHeader)
     : null;
 
-  const body = null;
-
-  return new TuftContext({
-    stream,
+  const request = {
     headers,
     secure,
     method,
@@ -232,129 +208,9 @@ export function createTuftContext(
     searchParams,
     params,
     cookies,
-    body,
-  });
-}
+  };
 
-/**
- * Same as createTuftContext(), with the single exception that the request body is not ignored.
- */
-
-export async function createTuftContextWithBody(
-  stream: ServerHttp2Stream,
-  headers: IncomingHttpHeaders,
-  options: TuftContextOptions = {},
-) {
-  const method = headers[HTTP2_HEADER_METHOD] as string;
-  const path = headers[HTTP2_HEADER_PATH] as string;
-
-  const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
-
-  let pathname: string = path;
-  let queryString: string | undefined = undefined;
-
-  let separatorIndex = path.indexOf('?');
-
-  if (separatorIndex > 0) {
-    // The path has a query string
-    pathname = path.slice(0, separatorIndex);
-    queryString = path.slice(separatorIndex + 1);
-  }
-
-  const searchParams = new URLSearchParams(queryString);
-
-  const params: { [key: string]: string } = {};
-
-  const paramKeys = options.params;
-
-  if (paramKeys) {
-    let i, begin, end, key;
-
-    // Iterate over each path segment, adding that segment as a param if it exists for the current
-    // route.
-    for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
-      end = path.indexOf('/', begin);
-
-      if (paramKeys[i]) {
-        key = paramKeys[i];
-        params[key] = path.slice(begin, end < 0 ? undefined : end);
-      }
-    }
-  }
-
-  const cookieHeader = headers[HTTP2_HEADER_COOKIE];
-
-  const cookies = options.parseCookies && cookieHeader
-    ? parseCookiesStr(cookieHeader)
-    : null;
-
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of stream) {
-    chunks.push(chunk);
-  }
-
-  let body: null | Buffer | string | { [key in string | number]: any };
-
-  body = null;
-
-  if (chunks.length > 0) {
-    const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
-
-    if (!contentLengthString) {
-      // The 'content-length' header is missing.
-      throw Error('ERR_CONTENT_LENGTH_REQUIRED');
-    }
-
-    body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
-
-    if (body.length !== parseInt(contentLengthString)) {
-      // Value of the 'content-length' header does not match the size of the request body.
-      throw Error('ERR_CONTENT_LENGTH_MISMATCH');
-    }
-
-    const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
-
-    if (contentType) {
-      const { parseText, parseJson, parseUrlEncoded } = options;
-
-      if (parseText && textMimeTypeRegexp.test(contentType)) {
-        if (body.length > parseText) {
-          throw Error('ERR_BODY_LIMIT_EXCEEDED');
-        }
-
-        body = body.toString();
-      }
-
-      else if (parseJson && contentType === 'application/json') {
-        if (body.length > parseJson) {
-          throw Error('ERR_BODY_LIMIT_EXCEEDED');
-        }
-
-        body = JSON.parse(body.toString());
-      }
-
-      else if (parseUrlEncoded && contentType === 'application/x-www-form-urlencoded') {
-        if (body.length > parseUrlEncoded) {
-          throw Error('ERR_BODY_LIMIT_EXCEEDED');
-        }
-
-        body = parseUrlEncodedStr(body.toString());
-      }
-    }
-  }
-
-  return new TuftContext({
-    stream,
-    headers,
-    secure,
-    method,
-    pathname,
-    searchParams,
-    params,
-    cookies,
-    body,
-  });
+  return new TuftContext({ stream, request });
 }
 
 /**
@@ -371,31 +227,6 @@ function parseCookiesStr(cookiesStr: string): { [name: string]: string } {
     end = cookiesStr.indexOf(';', begin);
 
     str = cookiesStr.slice(begin, end < 0 ? undefined : end);
-
-    i = str.indexOf('=');
-    name = str.slice(0, i);
-    value = str.slice(i + 1);
-
-    result[name] = value;
-  }
-
-  return result;
-}
-
-/**
- * Accepts a string that represents an 'application/x-www-form-urlencoded' request body, and returns
- * the key/value pairs in that string in the form of an object.
- */
-
-function parseUrlEncodedStr(urlEncodedStr: string): { [key: string]: string } {
-  const result: { [key: string]: string } = {};
-
-  let begin, end, str, i, name, value;
-
-  for (begin = 0, end; end !== -1; begin = end + 1) {
-    end = urlEncodedStr.indexOf('&', begin);
-
-    str = urlEncodedStr.slice(begin, end < 0 ? undefined : end);
 
     i = str.indexOf('=');
     name = str.slice(0, i);

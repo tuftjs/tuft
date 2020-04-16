@@ -9,20 +9,13 @@ import { findInvalidSchemaEntry } from './schema-validation';
 import { getValidRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
-  ROUTE_MAP_DEFAULT_IGNORE_BODY,
   ROUTE_MAP_DEFAULT_PARSE_COOKIES,
-  ROUTE_MAP_DEFAULT_PARSE_JSON,
-  ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT,
   ROUTE_MAP_DEFAULT_BASE_PATH,
   ROUTE_MAP_DEFAULT_PATH,
   ROUTE_MAP_DEFAULT_ERROR_HANDLER,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
-  HTTP2_METHOD_DELETE,
-  HTTP2_METHOD_PATCH,
-  HTTP2_METHOD_POST,
-  HTTP2_METHOD_PUT,
   HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
@@ -52,16 +45,12 @@ export interface TuftResponse {
 }
 
 export interface TuftRoute {
-  trailingSlash?: boolean;
-  ignoreBody?: boolean;
-  parseCookies?: boolean;
-  parseText?: boolean | number;
-  parseJson?: boolean | number;
-  parseUrlEncoded?: boolean | number;
-  params?: { [key: string]: string };
-  preHandlers: TuftPreHandler[];
   response: TuftResponse | TuftHandler;
+  preHandlers: TuftPreHandler[];
   errorHandler?: TuftErrorHandler;
+  params?: { [key: string]: string };
+  trailingSlash?: boolean;
+  parseCookies?: boolean;
 }
 
 type RequestMethod =
@@ -77,29 +66,18 @@ export interface TuftRouteSchema {
 }
 
 type RouteMapOptions = {
-  trailingSlash?: boolean,
+  preHandlers?: TuftPreHandler[],
+  errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
   path?: string,
-  preHandlers?: TuftPreHandler[],
-  errorHandler?: TuftErrorHandler,
-  ignoreBody?: boolean,
+  trailingSlash?: boolean,
   parseCookies?: boolean,
-  parseText?: boolean | number,
-  parseJson?: boolean | number,
-  parseUrlEncoded?: boolean | number,
 }
 
 const { NGHTTP2_NO_ERROR } = constants;
 
 const validRequestMethods = getValidRequestMethods();
-
-const methodsWithBody = [
-  HTTP2_METHOD_DELETE,
-  HTTP2_METHOD_PATCH,
-  HTTP2_METHOD_POST,
-  HTTP2_METHOD_PUT,
-];
 
 /**
  * Stores route data indexed by method and path. Instances of RouteMap can be added to other route
@@ -112,11 +90,7 @@ export class RouteMap extends Map {
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
 
-  readonly #ignoreBody: boolean | null;
   readonly #parseCookies: boolean | null;
-  readonly #parseText: boolean | number | null;
-  readonly #parseJson: boolean | number | null;
-  readonly #parseUrlEncoded: boolean | number | null;
   readonly #errorHandler: TuftErrorHandler | null;
 
   readonly #basePath: string;               // Prepended to any path added to the route map.
@@ -129,54 +103,11 @@ export class RouteMap extends Map {
 
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#parseCookies = options.parseCookies ?? ROUTE_MAP_DEFAULT_PARSE_COOKIES;
-    this.#ignoreBody = options.ignoreBody ?? ROUTE_MAP_DEFAULT_IGNORE_BODY;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
     this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
     this.#preHandlers = options.preHandlers ?? [];
     this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
-
-    // Determine the value of 'parseText'
-    if (options.parseText === true) {
-      this.#parseText = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
-    }
-    else if (options.parseText === false) {
-      this.#parseText = false;
-    }
-    else if (typeof options.parseText === 'number') {
-      this.#parseText = options.parseText;
-    }
-    else {
-      this.#parseText = ROUTE_MAP_DEFAULT_PARSE_JSON;
-    }
-
-    // Determine the value of 'parseJson'
-    if (options.parseJson === true) {
-      this.#parseJson = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
-    }
-    else if (options.parseJson === false) {
-      this.#parseJson = false;
-    }
-    else if (typeof options.parseJson === 'number') {
-      this.#parseJson = options.parseJson;
-    }
-    else {
-      this.#parseJson = ROUTE_MAP_DEFAULT_PARSE_JSON;
-    }
-
-    // Determine the value of 'parseUrlEncoded'
-    if (options.parseUrlEncoded === true) {
-      this.#parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT;
-    }
-    else if (options.parseUrlEncoded === false) {
-      this.#parseUrlEncoded = false;
-    }
-    else if (typeof options.parseUrlEncoded === 'number') {
-      this.#parseUrlEncoded = options.parseUrlEncoded;
-    }
-    else {
-      this.#parseUrlEncoded = ROUTE_MAP_DEFAULT_PARSE_JSON;
-    }
   }
 
   /**
@@ -215,43 +146,11 @@ export class RouteMap extends Map {
         mergedRoute.trailingSlash = this.#trailingSlash;
       }
 
-      if (route.ignoreBody !== undefined) {
-        mergedRoute.ignoreBody = route.ignoreBody;
-      }
-      else if (this.#ignoreBody !== null) {
-        mergedRoute.ignoreBody = this.#ignoreBody;
-      }
-
       if (route.parseCookies !== undefined) {
         mergedRoute.parseCookies = route.parseCookies;
       }
       else if (this.#parseCookies !== null) {
         mergedRoute.parseCookies = this.#parseCookies;
-      }
-
-      if (route.parseText !== undefined) {
-        mergedRoute.parseText = route.parseText;
-      }
-      else if (this.#parseText !== null) {
-        mergedRoute.parseText = this.#parseText;
-      }
-
-      if (route.parseJson !== undefined) {
-        mergedRoute.parseJson = route.parseJson;
-      }
-      else if (this.#parseJson !== null) {
-        mergedRoute.parseJson = this.#parseJson;
-      }
-
-      if (route.parseUrlEncoded !== undefined) {
-        mergedRoute.parseUrlEncoded = route.parseUrlEncoded;
-      }
-      else if (this.#parseUrlEncoded !== null) {
-        mergedRoute.parseUrlEncoded = this.#parseUrlEncoded;
-      }
-
-      if (!methodsWithBody.includes(method)) {
-        mergedRoute.ignoreBody = true;
       }
 
       Object.freeze(mergedRoute);
@@ -306,34 +205,14 @@ export class RouteMap extends Map {
       routeProps.trailingSlash = this.#trailingSlash;
     }
 
-    if (this.#ignoreBody !== null) {
-      routeProps.ignoreBody = this.#ignoreBody;
-    }
-
     if (this.#parseCookies !== null) {
       routeProps.parseCookies = this.#parseCookies;
-    }
-
-    if (this.#parseText !== null) {
-      routeProps.parseText = this.#parseText;
-    }
-
-    if (this.#parseJson !== null) {
-      routeProps.parseJson = this.#parseJson;
-    }
-
-    if (this.#parseUrlEncoded !== null) {
-      routeProps.parseUrlEncoded = this.#parseUrlEncoded;
     }
 
     // Add a copy of the route data for each method.
     for (const method of methods) {
       const key = method + ' ' + path;
       const route = Object.assign({}, routeProps);
-
-      if (!methodsWithBody.includes(method)) {
-        route.ignoreBody = true;
-      }
 
       Object.freeze(route);
 
