@@ -1,9 +1,5 @@
 // Default options for instances of RouteMap
 export const ROUTE_MAP_DEFAULT_TRAILING_SLASH     = null;
-export const ROUTE_MAP_DEFAULT_IGNORE_BODY        = null;
-export const ROUTE_MAP_DEFAULT_PARSE_COOKIES      = null;
-export const ROUTE_MAP_DEFAULT_PARSE_JSON         = null;
-export const ROUTE_MAP_DEFAULT_PARSE_BODY_LIMIT   = 1_048_576; // in bytes
 export const ROUTE_MAP_DEFAULT_BASE_PATH          = '';
 export const ROUTE_MAP_DEFAULT_PATH               = '/';
 export const ROUTE_MAP_DEFAULT_ERROR_HANDLER      = null;
