@@ -3,7 +3,6 @@ import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
-  HTTP2_HEADER_COOKIE,
   HTTP2_METHOD_GET,
   HTTP_STATUS_OK,
 } from '../src/constants';
@@ -209,22 +208,6 @@ describe('createTuftContext()', () => {
         2: 'three',
       },
     };
-
-    test('returns an instance of TuftContext', () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders, options);
-      expect(result).toBeInstanceOf(TuftContext);
-    });
-  });
-
-  describe('with option \'parseCookies\' set to true', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/foo/bar/baz',
-      [HTTP2_HEADER_COOKIE]: 'cookie-name-0=cookie-value-0;cookie-name-1=cookie-value-1',
-    };
-
-    const options = { parseCookies: true };
 
     test('returns an instance of TuftContext', () => {
       //@ts-ignore
