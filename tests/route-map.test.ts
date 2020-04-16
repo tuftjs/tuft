@@ -128,9 +128,6 @@ describe('RouteMap.prototype.add()', () => {
         errorHandler,
         trailingSlash: true,
         parseCookies: true,
-        parseText: true,
-        parseJson: true,
-        parseUrlEncoded: true,
       });
 
       routes.add({
@@ -142,43 +139,6 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', true);
       expect(route).toHaveProperty('parseCookies', true);
-      expect(route).toHaveProperty('parseText', 1_048_576);
-      expect(route).toHaveProperty('parseJson', 1_048_576);
-      expect(route).toHaveProperty('parseUrlEncoded', 1_048_576);
-    });
-
-    test('when \'parseText\', \'parseJson\', and \'parseUrlEncoded\' are all set to false', () => {
-      const routes = createRouteMap({
-        parseText: false,
-        parseJson: false,
-        parseUrlEncoded: false,
-      });
-
-      routes.add({
-        response: {},
-      });
-
-      const route = routes.get('GET /');
-      expect(route).toHaveProperty('parseText', false);
-      expect(route).toHaveProperty('parseJson', false);
-      expect(route).toHaveProperty('parseUrlEncoded', false);
-    });
-
-    test('when \'parseText\', \'parseJson\', and \'parseUrlEncoded\' are all set to 1000', () => {
-      const routes = createRouteMap({
-        parseText: 1000,
-        parseJson: 1000,
-        parseUrlEncoded: 1000,
-      });
-
-      routes.add({
-        response: {},
-      });
-
-      const route = routes.get('GET /');
-      expect(route).toHaveProperty('parseText', 1000);
-      expect(route).toHaveProperty('parseJson', 1000);
-      expect(route).toHaveProperty('parseUrlEncoded', 1000);
     });
 
     test('when passed another instance of RouteMap with its own custom options as the first argument', () => {
@@ -192,11 +152,7 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
-        ignoreBody: false,
         parseCookies: false,
-        parseText: false,
-        parseJson: false,
-        parseUrlEncoded: false,
       });
 
       routes1.add({
@@ -212,11 +168,7 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
-      expect(route).toHaveProperty('ignoreBody', false);
       expect(route).toHaveProperty('parseCookies', false);
-      expect(route).toHaveProperty('parseText', false);
-      expect(route).toHaveProperty('parseJson', false);
-      expect(route).toHaveProperty('parseUrlEncoded', false);
     });
 
     test('when custom RouteMap options are set AND when passed another instance of RouteMap', () => {
@@ -236,11 +188,7 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
-        ignoreBody: false,
         parseCookies: false,
-        parseText: false,
-        parseJson: false,
-        parseUrlEncoded: false,
       });
 
       routes2.add(routes1);
@@ -250,11 +198,7 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).toHaveProperty('preHandlers', preHandlers);
       expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
-      expect(route).toHaveProperty('ignoreBody', false);
       expect(route).toHaveProperty('parseCookies', false);
-      expect(route).toHaveProperty('parseText', false);
-      expect(route).toHaveProperty('parseJson', false);
-      expect(route).toHaveProperty('parseUrlEncoded', false);
     });
 
     test('when NO custom RouteMap options are set AND when passed another instance of RouteMap', () => {
@@ -275,9 +219,6 @@ describe('RouteMap.prototype.add()', () => {
       expect(route).not.toHaveProperty('errorHandler');
       expect(route).not.toHaveProperty('trailingSlash');
       expect(route).not.toHaveProperty('parseCookies');
-      expect(route).not.toHaveProperty('parseText');
-      expect(route).not.toHaveProperty('parseJson');
-      expect(route).not.toHaveProperty('parseUrlEncoded');
     });
   });
 });
