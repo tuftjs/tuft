@@ -30,7 +30,6 @@ export const HTTP2_HEADER_PATH                    = ':path';
 export const HTTP2_HEADER_SCHEME                  = ':scheme';
 export const HTTP2_HEADER_CONTENT_LENGTH          = 'content-length';
 export const HTTP2_HEADER_CONTENT_TYPE            = 'content-type';
-export const HTTP2_HEADER_COOKIE                  = 'cookie';
 export const HTTP2_HEADER_SET_COOKIE              = 'set-cookie';
 export const HTTP2_HEADER_LOCATION                = 'location';
 

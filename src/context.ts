@@ -4,7 +4,6 @@ import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_SCHEME,
-  HTTP2_HEADER_COOKIE,
   HTTP2_HEADER_SET_COOKIE,
 } from './constants';
 
@@ -17,16 +16,11 @@ type TuftContextParams = {
     pathname: string,
     searchParams: URLSearchParams,
     params: { [key: string]: string },
-    cookies: { [key: string]: string } | null,
   },
 };
 
 export type TuftContextOptions = {
   params?: { [key: number]: string };
-  parseCookies?: boolean,
-  parseText?: boolean | number,
-  parseJson?: boolean | number,
-  parseUrlEncoded?: boolean | number,
 }
 
 type SetCookieOptions = {
@@ -57,7 +51,6 @@ export class TuftContext {
     readonly secure: boolean;
     readonly searchParams: URLSearchParams;
     readonly params: { [key: string]: string };
-    readonly cookies: { [key: string]: string } | null;
   };
 
   // The props object is intended for user-defined values to be passed down from pre-handler
@@ -194,12 +187,6 @@ export function createTuftContext(
     }
   }
 
-  const cookieHeader = headers[HTTP2_HEADER_COOKIE];
-
-  const cookies = options.parseCookies && cookieHeader
-    ? parseCookiesStr(cookieHeader)
-    : null;
-
   const request = {
     headers,
     secure,
@@ -207,33 +194,7 @@ export function createTuftContext(
     pathname,
     searchParams,
     params,
-    cookies,
   };
 
   return new TuftContext({ stream, request });
-}
-
-/**
- * Accepts a string that represents an incoming 'cookie' header, and returns the cookies in that
- * string in the form of an object.
- */
-
-function parseCookiesStr(cookiesStr: string): { [name: string]: string } {
-  const result: { [name: string]: string } = {};
-
-  let begin, end, str, i, name, value;
-
-  for (begin = 0; end !== -1; begin = end + 1) {
-    end = cookiesStr.indexOf(';', begin);
-
-    str = cookiesStr.slice(begin, end < 0 ? undefined : end);
-
-    i = str.indexOf('=');
-    name = str.slice(0, i);
-    value = str.slice(i + 1);
-
-    result[name] = value;
-  }
-
-  return result;
 }
