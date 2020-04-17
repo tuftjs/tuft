@@ -3,7 +3,7 @@ import type { KeyObject } from 'tls';
 
 import { createServer, createSecureServer } from 'http2';
 import { createPromise } from './utils';
-import { HTTP2_SERVER_DEFAULT_HOST, HTTP2_SERVER_DEFAULT_PORT } from './constants';
+import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants';
 
 export type ServerOptions = {
   host?: string,
@@ -45,8 +45,8 @@ export class TuftServer {
     server.on('stream', handler);
 
     this.#http2Server = server;
-    this.#host = options.host ?? HTTP2_SERVER_DEFAULT_HOST;
-    this.#port = options.port ?? HTTP2_SERVER_DEFAULT_PORT;
+    this.#host = options.host ?? TUFT_SERVER_DEFAULT_HOST;
+    this.#port = options.port ?? TUFT_SERVER_DEFAULT_PORT;
   }
 
   /**
@@ -55,7 +55,7 @@ export class TuftServer {
 
   async start() {
     await createPromise(done => {
-      this.#http2Server.listen(this.port, done);
+      this.#http2Server.listen(this.#port, done);
     });
   }
 
@@ -70,6 +70,10 @@ export class TuftServer {
         err ? done(err) : done();
       });
     });
+  }
+
+  address() {
+    return this.#http2Server.address();
   }
 }
 
@@ -101,8 +105,8 @@ export class TuftSecureServer {
     server.on('stream', handler);
 
     this.#http2SecureServer = server;
-    this.#host = options.host ?? HTTP2_SERVER_DEFAULT_HOST;
-    this.#port = options.port ?? HTTP2_SERVER_DEFAULT_PORT;
+    this.#host = options.host ?? TUFT_SERVER_DEFAULT_HOST;
+    this.#port = options.port ?? TUFT_SERVER_DEFAULT_PORT;
   }
 
   /**
@@ -111,7 +115,7 @@ export class TuftSecureServer {
 
   async start() {
     await createPromise(done => {
-      this.#http2SecureServer.listen(this.port, done);
+      this.#http2SecureServer.listen(this.#port, done);
     });
   }
 
@@ -126,6 +130,10 @@ export class TuftSecureServer {
         err ? done(err) : done();
       });
     });
+  }
+
+  address() {
+    return this.#http2SecureServer.address();
   }
 }
 
