@@ -16,8 +16,7 @@ describe('TuftContext', () => {
     pushAllowed: false,
   };
 
-  const params = {
-    stream: mockStream,
+  const request = {
     headers: {},
     method: 'GET',
     pathname: '/',
@@ -29,14 +28,15 @@ describe('TuftContext', () => {
 
   test('has the expected properties', () => {
     //@ts-ignore
-    const t = new TuftContext(params);
+    const t = new TuftContext(mockStream, request);
     expect(t).toHaveProperty('stream', mockStream);
+    expect(t).toHaveProperty('request', request);
     expect(t).toHaveProperty('outgoingHeaders', {});
   });
 
   describe('TuftContext.prototype.setHeader()', () => {
     //@ts-ignore
-    const t = new TuftContext(params);
+    const t = new TuftContext(mockStream, request);
 
     test('returns undefined', () => {
       expect(t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK)).toBeUndefined();
@@ -45,7 +45,7 @@ describe('TuftContext', () => {
 
   describe('TuftContext.prototype.getHeader()', () => {
     //@ts-ignore
-    const t = new TuftContext(params);
+    const t = new TuftContext(mockStream, request);
     t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
 
     test('returns the expected value', () => {
@@ -55,7 +55,7 @@ describe('TuftContext', () => {
 
   describe('TuftContext.prototype.setCookie()', () => {
     //@ts-ignore
-    const t = new TuftContext(params);
+    const t = new TuftContext(mockStream, request);
 
     test('adds \'set-cookie\' to the \'outgoingHeaders\' property', () => {
       expect(t.outgoingHeaders).not.toHaveProperty('set-cookie');
@@ -73,7 +73,7 @@ describe('TuftContext', () => {
   describe('TuftContext.prototype.setCookie()', () => {
     describe('when passed an options object', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         const expires = new Date();
@@ -95,7 +95,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with an invalid property', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { invalidProperty: 42 });
@@ -105,7 +105,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with \'secure\' and \'httpOnly\' set to false', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', {
@@ -119,7 +119,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with \'sameSite\' set to \'strict\'', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'strict' });
@@ -129,7 +129,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with \'sameSite\' set to \'lax\'', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'lax' });
@@ -139,7 +139,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with \'sameSite\' set to \'none\'', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'none' });
@@ -149,7 +149,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with \'sameSite\' set to an invalid value', () => {
       //@ts-ignore
-      const t = new TuftContext(params);
+      const t = new TuftContext(mockStream, request);
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'foo' });

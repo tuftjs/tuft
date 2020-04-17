@@ -1,5 +1,6 @@
 import { handleBodyResponse, handleBodyResponseWithPreHandlers } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH, HTTP2_HEADER_CONTENT_TYPE } from '../../src/constants';
+import { sym_extName } from '../../src/route-map';
 
 const mockErrorHandler = jest.fn();
 
@@ -92,8 +93,8 @@ describe('handleBodyResponseWithPreHandlers()', () => {
       contentType: 'text/plain',
       body,
     };
-    const preHandler = () => 42;
-    preHandler.extName = 'mock pre-handler';
+    const preHandler: any = () => 42;
+    preHandler[sym_extName] = 'mock pre-handler';
     const preHandlers = [preHandler];
 
     const result = handleBodyResponseWithPreHandlers(

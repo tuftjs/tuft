@@ -1,5 +1,6 @@
 import fs = require('fs');
 import { handleFileResponse, handleFileResponseWithPreHandlers } from '../../src/route-handlers';
+import { sym_extName } from '../../src/route-map';
 
 const mockErrorHandler = jest.fn();
 
@@ -75,8 +76,8 @@ describe('handleFileResponseWithPreHandlers()', () => {
 
   test('stream.respondWithFD() is called when the pre-handler returns a result', async () => {
     const responseObj = { file: __filename };
-    const preHandler = () => 42;
-    preHandler.extName = 'mock pre-handler';
+    const preHandler: any = () => 42;
+    preHandler[sym_extName] = 'mock pre-handler';
     const preHandlers = [preHandler];
 
     const result = handleFileResponseWithPreHandlers(

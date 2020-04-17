@@ -2,7 +2,9 @@ import {
   handleRedirectResponse,
   handleRedirectResponseWithPreHandlers,
 } from '../../src/route-handlers';
+import { sym_extName } from '../../src/route-map';
 import { HTTP2_HEADER_STATUS, HTTP2_HEADER_LOCATION, HTTP_STATUS_FOUND } from '../../src/constants';
+
 
 const mockErrorHandler = jest.fn();
 
@@ -82,8 +84,8 @@ describe('handleRedirectResponseWithPreHandlers()', () => {
       status: HTTP_STATUS_FOUND,
       redirect: '/foo',
     };
-    const preHandler = () => 42;
-    preHandler.extName = 'mock pre-handler';
+    const preHandler: any = () => 42;
+    preHandler[sym_extName] = 'mock pre-handler';
     const preHandlers = [preHandler];
 
     const result = handleRedirectResponseWithPreHandlers(

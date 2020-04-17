@@ -6,6 +6,7 @@ import {
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_CONTENT_TYPE,
 } from '../../src/constants';
+import { sym_extName } from '../../src/route-map';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
 
@@ -494,13 +495,13 @@ describe('handleUnknownResponse()', () => {
 
   describe('with a pre-handler that returns a result', () => {
     test('calls stream.respond() with the expected arguments', async () => {
-      const preHandler = () => 42;
-      preHandler.extName = 'mock pre-handler';
+      const preHandler: any = () => 42;
+      preHandler[sym_extName] = 'mock pre-handler';
+      const preHandlers = [preHandler];
 
       const handler = () => {
         return {};
       };
-      const preHandlers = [preHandler];
 
       const result = handleUnknownResponse(
         mockErrorHandler,

@@ -1,4 +1,5 @@
 import { TuftServer, TuftSecureServer, logServerError } from '../src/server';
+import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from '../src/constants';
 
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -13,8 +14,8 @@ describe('TuftServer', () => {
 
       test('returns an instance of TuftServer with default options', () => {
         expect(server).toBeInstanceOf(TuftServer);
-        expect(server).toHaveProperty('host', 'localhost');
-        expect(server).toHaveProperty('port', 3000);
+        expect(server).toHaveProperty('host', TUFT_SERVER_DEFAULT_HOST);
+        expect(server).toHaveProperty('port', TUFT_SERVER_DEFAULT_PORT);
       });
     });
 
@@ -63,6 +64,19 @@ describe('TuftServer', () => {
       });
     });
   });
+
+  describe('TuftServer.prototype.address()', () => {
+    const server = new TuftServer(() => {});
+
+    beforeAll(async () => await server.start());
+    afterAll(async () => await server.stop());
+
+    test('returns an object containing the expected properties', async () => {
+      expect(server.address()).toHaveProperty('address');
+      expect(server.address()).toHaveProperty('family');
+      expect(server.address()).toHaveProperty('port');
+    });
+  });
 });
 
 describe('TuftSecureServer', () => {
@@ -72,8 +86,8 @@ describe('TuftSecureServer', () => {
 
       test('returns an instance of TuftSecureServer with default options', () => {
         expect(server).toBeInstanceOf(TuftSecureServer);
-        expect(server).toHaveProperty('host', 'localhost');
-        expect(server).toHaveProperty('port', 3000);
+        expect(server).toHaveProperty('host', TUFT_SERVER_DEFAULT_HOST);
+        expect(server).toHaveProperty('port', TUFT_SERVER_DEFAULT_PORT);
       });
     });
 
@@ -120,6 +134,19 @@ describe('TuftSecureServer', () => {
       test('returns a promise that rejects with an error', async () => {
         await expect(server.stop()).rejects.toThrow('Server is not running.');
       });
+    });
+  });
+
+  describe('TuftSecureServer.prototype.address()', () => {
+    const server = new TuftSecureServer(() => {});
+
+    beforeAll(async () => await server.start());
+    afterAll(async () => await server.stop());
+
+    test('returns an object containing the expected properties', async () => {
+      expect(server.address()).toHaveProperty('address');
+      expect(server.address()).toHaveProperty('family');
+      expect(server.address()).toHaveProperty('port');
     });
   });
 });

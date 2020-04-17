@@ -1,5 +1,6 @@
 import { handleEmptyResponse, handleEmptyResponseWithPreHandlers } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
+import { sym_extName } from '../../src/route-map';
 
 const mockErrorHandler = jest.fn();
 
@@ -66,8 +67,8 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
 
   test('stream.respond() is called when the pre-handler returns a result', async () => {
     const responseObj = { status: 418 };
-    const preHandler = () => 42;
-    preHandler.extName = 'mock pre-handler';
+    const preHandler: any = () => 42;
+    preHandler[sym_extName] = 'mock pre-handler';
     const preHandlers = [preHandler];
 
     const result = handleEmptyResponseWithPreHandlers(

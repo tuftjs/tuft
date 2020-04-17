@@ -13,6 +13,11 @@ const { NGHTTP2_NO_ERROR } = constants;
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
+beforeEach(() => {
+  mockConsoleError.mockClear();
+  mockExit.mockClear();
+});
+
 afterAll(() => {
   mockConsoleError.mockRestore();
   mockExit.mockRestore();
@@ -268,10 +273,32 @@ describe('RouteMap.prototype.redirect()', () => {
 });
 
 describe('RouteMap.prototype.extend()', () => {
-  test('returns undefined', () => {
-    const routes = createRouteMap();
-    const result = routes.extend('extension name', () => {});
-    expect(result).toBeUndefined();
+  describe('with one argument', () => {
+    test('returns undefined', () => {
+      const routes = createRouteMap();
+      const result = routes.extend(() => {});
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('with two arguments', () => {
+    test('returns undefined', () => {
+      const routes = createRouteMap();
+      const result = routes.extend('extension name', () => {});
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('with an invalid argument', () => {
+    test('throws an error', () => {
+      const routes = createRouteMap();
+      //@ts-ignore
+      routes.extend(42);
+
+      const err = TypeError('Invalid arguments.');
+      expect(mockConsoleError).toHaveBeenCalledWith(err);
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
   });
 });
 
