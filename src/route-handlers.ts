@@ -12,6 +12,7 @@ import type {
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
 import { createTuftContext } from './context';
+import { sym_extName } from './route-map';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_TYPE,
@@ -239,10 +240,11 @@ export async function handleRedirectResponseWithPreHandlers(
   try {
     for (let i = 0; i < preHandlers.length; i++) {
       const preHandler = preHandlers[i];
+      const extName = preHandler[sym_extName];
       const result = await preHandler(t);
 
-      if (result !== undefined) {
-        t.request[preHandler.extName!] = result;
+      if (extName && result !== undefined) {
+        t.request[extName] = result;
       }
     }
   }
@@ -274,10 +276,11 @@ export async function handleEmptyResponseWithPreHandlers(
   try {
     for (let i = 0; i < preHandlers.length; i++) {
       const preHandler = preHandlers[i];
+      const extName = preHandler[sym_extName];
       const result = await preHandler(t);
 
-      if (result !== undefined) {
-        t.request[preHandler.extName!] = result;
+      if (extName && result !== undefined) {
+        t.request[extName] = result;
       }
     }
   }
@@ -314,10 +317,11 @@ export async function handleFileResponseWithPreHandlers(
   try {
     for (let i = 0; i < preHandlers.length; i++) {
       const preHandler = preHandlers[i];
+      const extName = preHandler[sym_extName];
       const result = await preHandler(t);
 
-      if (result !== undefined) {
-        t.request[preHandler.extName!] = result;
+      if (extName && result !== undefined) {
+        t.request[extName] = result;
       }
     }
   }
@@ -363,10 +367,11 @@ export async function handleStreamResponseWithPreHandlers(
   try {
     for (let i = 0; i < preHandlers.length; i++) {
       const preHandler = preHandlers[i];
+      const extName = preHandler[sym_extName];
       const result = await preHandler(t);
 
-      if (result !== undefined) {
-        t.request[preHandler.extName!] = result;
+      if (extName && result !== undefined) {
+        t.request[extName] = result;
       }
     }
   }
@@ -416,10 +421,11 @@ export async function handleBodyResponseWithPreHandlers(
   try {
     for (let i = 0; i < preHandlers.length; i++) {
       const preHandler = preHandlers[i];
+      const extName = preHandler[sym_extName];
       const result = await preHandler(t);
 
-      if (result !== undefined) {
-        t.request[preHandler.extName!] = result;
+      if (extName && result !== undefined) {
+        t.request[extName] = result;
       }
     }
   }
@@ -506,10 +512,11 @@ export async function handleUnknownResponse(
   try {
     for (let i = 0; i < preHandlers.length; i++) {
       const preHandler = preHandlers[i];
+      const extName = preHandler[sym_extName];
       const result = await preHandler(t);
 
-      if (result !== undefined) {
-        t.request[preHandler.extName!] = result;
+      if (extName && result !== undefined) {
+        t.request[extName] = result;
       }
     }
 

@@ -18,13 +18,15 @@ import {
   HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
+export const sym_extName = Symbol('extension name');
+
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
 }
 
 export interface TuftPreHandler {
   (t: TuftContext): any | Promise<any>;
-  extName?: string;
+  [sym_extName]?: string;
 }
 
 export interface TuftErrorHandler {
@@ -229,8 +231,28 @@ export class RouteMap extends Map {
     });
   }
 
-  extend(name: string, preHandler: TuftPreHandler) {
-    preHandler.extName = name;
+  extend(preHandler: TuftPreHandler): void;
+  extend(name: string, preHandler: TuftPreHandler): void;
+  extend(arg0: string | TuftPreHandler, arg1?: TuftPreHandler) {
+    let name: string;
+    let preHandler: TuftPreHandler;
+
+    if (typeof arg0 === 'string' && typeof arg1 === 'function') {
+      name = arg0;
+      preHandler = arg1;
+      preHandler[sym_extName] = name;
+    }
+
+    else if (typeof arg0 === 'function') {
+      preHandler = arg0;
+    }
+
+    else {
+      const err = TypeError('Invalid arguments.');
+      console.error(err);
+      return process.exit(1);
+    }
+
     this.#preHandlers.push(preHandler);
   }
 

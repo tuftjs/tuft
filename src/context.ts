@@ -7,18 +7,6 @@ import {
   HTTP2_HEADER_SET_COOKIE,
 } from './constants';
 
-type TuftContextParams = {
-  stream: ServerHttp2Stream,
-  request: {
-    headers: IncomingHttpHeaders,
-    secure: boolean,
-    method: string,
-    pathname: string,
-    searchParams: URLSearchParams,
-    params: { [key: string]: string },
-  },
-};
-
 export type TuftContextOptions = {
   params?: { [key: number]: string };
 }
@@ -34,6 +22,16 @@ type SetCookieOptions = {
   [key: string]: any,
 }
 
+interface TuftRequest {
+  readonly headers: IncomingHttpHeaders;
+  readonly method: string;
+  readonly pathname: string;
+  readonly secure: boolean;
+  readonly searchParams: URLSearchParams;
+  readonly params: { [key: string]: string };
+  [key: string]: any;
+}
+
 /**
  * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
  * and only argument to a route handler.
@@ -41,35 +39,21 @@ type SetCookieOptions = {
 
 export class TuftContext {
   private readonly _stream: ServerHttp2Stream;
+  private readonly _request: TuftRequest;
   private readonly _outgoingHeaders: OutgoingHttpHeaders;
 
-  // The request object contains properties relevant to the current request.
-  readonly request: {
-    readonly headers: IncomingHttpHeaders;
-    readonly method: string;
-    readonly pathname: string;
-    readonly secure: boolean;
-    readonly searchParams: URLSearchParams;
-    readonly params: { [key: string]: string };
-    [key: string]: any;
-  };
-
-  // The props object is intended for user-defined values to be passed down from pre-handler
-  // functions to successive pre-handlers and the main  handler.
-  readonly props: {
-    [key in string | number | symbol]: any;
-  };
-
-  constructor(contextParams: TuftContextParams) {
-    this._stream = contextParams.stream;
+  constructor(stream: ServerHttp2Stream, request: TuftRequest) {
+    this._stream = stream;
+    this._request = request;
     this._outgoingHeaders = {};
-
-    this.request = contextParams.request;
-    this.props = Object.create(null);
   }
 
   get stream() {
     return this._stream;
+  }
+
+  get request() {
+    return this._request;
   }
 
   get outgoingHeaders() {
@@ -154,8 +138,6 @@ export function createTuftContext(
   const method = headers[HTTP2_HEADER_METHOD] as string;
   const path = headers[HTTP2_HEADER_PATH] as string;
 
-  const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
-
   let pathname: string = path;
   let queryString: string | undefined = undefined;
 
@@ -167,11 +149,12 @@ export function createTuftContext(
     queryString = path.slice(separatorIndex + 1);
   }
 
+  const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
+
   const searchParams = new URLSearchParams(queryString);
 
-  const params: { [key: string]: string } = {};
-
   const paramKeys = options.params;
+  const params: { [key: string]: string } = {};
 
   if (paramKeys) {
     let i, begin, end, key;
@@ -179,23 +162,23 @@ export function createTuftContext(
     // Iterate over each path segment, adding that segment as a param if it exists for the current
     // route.
     for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
-      end = path.indexOf('/', begin);
+      end = pathname.indexOf('/', begin);
 
       if (paramKeys[i]) {
         key = paramKeys[i];
-        params[key] = path.slice(begin, end < 0 ? undefined : end);
+        params[key] = pathname.slice(begin, end < 0 ? undefined : end);
       }
     }
   }
 
   const request = {
     headers,
-    secure,
     method,
     pathname,
+    secure,
     searchParams,
     params,
   };
 
-  return new TuftContext({ stream, request });
+  return new TuftContext(stream, request);
 }
