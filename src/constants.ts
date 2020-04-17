@@ -1,12 +1,12 @@
 // Default options for instances of RouteMap
-export const ROUTE_MAP_DEFAULT_TRAILING_SLASH     = null;
 export const ROUTE_MAP_DEFAULT_BASE_PATH          = '';
 export const ROUTE_MAP_DEFAULT_PATH               = '/';
 export const ROUTE_MAP_DEFAULT_ERROR_HANDLER      = null;
+export const ROUTE_MAP_DEFAULT_TRAILING_SLASH     = null;
 
 // Default options for instances of TuftServer and TuftSecureServer
-export const HTTP2_SERVER_DEFAULT_HOST            = 'localhost';
-export const HTTP2_SERVER_DEFAULT_PORT            = 3000;
+export const TUFT_SERVER_DEFAULT_HOST            = 'localhost';
+export const TUFT_SERVER_DEFAULT_PORT            = 0;
 
 // HTTP/2 request methods
 export const HTTP2_METHOD_CONENCT                 = 'CONNECT';
