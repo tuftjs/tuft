@@ -13,10 +13,6 @@ void async function() {
     response: { status: 204 },
   });
 
-  routes.set('GET /c', {
-    response: { status: 204 },
-  });
-
   routes.set('GET /foo/bar/baz', {
     response: {
       status: 200,
@@ -49,13 +45,6 @@ void async function() {
     },
   });
 
-  routes.set('GET /hello', {
-    response: {
-      status: 200,
-      body: 'Hello, world!',
-    },
-  });
-
   routes.set('GET /a/b/c/d/e/f', {
     response: {
       status: 200,
@@ -79,7 +68,7 @@ void async function() {
     },
   });
 
-  const server = routes.createServer();
+  const server = routes.createServer({ port: 3000 });
 
   await server.start();
 
