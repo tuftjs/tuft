@@ -26,6 +26,7 @@ export const HTTP2_HEADER_PATH                    = ':path';
 export const HTTP2_HEADER_SCHEME                  = ':scheme';
 export const HTTP2_HEADER_CONTENT_LENGTH          = 'content-length';
 export const HTTP2_HEADER_CONTENT_TYPE            = 'content-type';
+export const HTTP2_HEADER_COOKIE                  = 'cookie';
 export const HTTP2_HEADER_SET_COOKIE              = 'set-cookie';
 export const HTTP2_HEADER_LOCATION                = 'location';
 
@@ -36,3 +37,6 @@ export const HTTP_STATUS_METHOD_NOT_ALLOWED       = 405;
 export const HTTP_STATUS_LENGTH_REQUIRED          = 411;
 export const HTTP_STATUS_PAYLOAD_TOO_LARGE        = 413;
 export const HTTP_STATUS_INTERNAL_SERVER_ERROR    = 500;
+
+// Default options for bodyParserPlugin
+export const DEFAULT_MAX_BODY_SIZE                = 1_048_576; // in bytes

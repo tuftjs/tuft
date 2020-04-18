@@ -22,13 +22,15 @@ type SetCookieOptions = {
   [key: string]: any,
 }
 
-interface TuftRequest {
+export interface TuftRequest {
   readonly headers: IncomingHttpHeaders;
   readonly method: string;
   readonly pathname: string;
   readonly secure: boolean;
   readonly searchParams: URLSearchParams;
   readonly params: { [key: string]: string };
+  cookies?: { [key: string]: string };
+  body?: string | Buffer | { [key: string]: any } | null;
   [key: string]: any;
 }
 
