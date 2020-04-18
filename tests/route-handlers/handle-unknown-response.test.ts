@@ -6,7 +6,6 @@ import {
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_CONTENT_TYPE,
 } from '../../src/constants';
-import { sym_extName } from '../../src/route-map';
 
 const { NGHTTP2_STREAM_CLOSED } = constants;
 
@@ -493,45 +492,14 @@ describe('handleUnknownResponse()', () => {
     });
   });
 
-  describe('with a pre-handler that returns a result', () => {
+  describe('with a plugin', () => {
     test('calls stream.respond() with the expected arguments', async () => {
-      const preHandler: any = () => 42;
-      preHandler[sym_extName] = 'mock pre-handler';
-      const preHandlers = [preHandler];
-
-      const handler = () => {
-        return {};
-      };
+      const plugins = [() => {}];
+      const handler = () => { return {}; };
 
       const result = handleUnknownResponse(
         mockErrorHandler,
-        preHandlers,
-        handler,
-        //@ts-ignore
-        mockStream,
-        mockTuftContext,
-      );
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).not.toHaveBeenCalled();
-      expect(mockStream.respond)
-        .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
-    });
-  });
-
-  describe('with a pre-handler that does not returns a result', () => {
-    test('calls stream.respond() with the expected arguments', async () => {
-      const preHandler = () => {};
-      preHandler.extName = 'mock pre-handler';
-
-      const handler = () => {
-        return {};
-      };
-      const preHandlers = [preHandler];
-
-      const result = handleUnknownResponse(
-        mockErrorHandler,
-        preHandlers,
+        plugins,
         handler,
         //@ts-ignore
         mockStream,
