@@ -35,15 +35,6 @@ export function findInvalidSchemaEntry(schema: any): string | null {
 
         continue;
       }
-      case 'preHandlers': {
-        for (const preHandler of [value].flat()) {
-          if (typeof preHandler !== 'function') {
-            return `${formatValue(preHandler)} is not a valid pre-handler.`;
-          }
-        }
-
-        continue;
-      }
       case 'response': {
         if ((value === null || typeof value !== 'object') && typeof value !== 'function') {
           return `${formatValue(value)} is not a valid response object.`;
