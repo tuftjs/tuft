@@ -4,7 +4,7 @@ import type {
   TuftRoute,
   TuftResponse,
   TuftHandler,
-  TuftPreHandler,
+  TuftPluginHandler,
   TuftStreamHandler,
   TuftErrorHandler,
 } from './route-map';
@@ -12,7 +12,6 @@ import type {
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
 import { createTuftContext } from './context';
-import { sym_extName } from './route-map';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_TYPE,
@@ -47,7 +46,8 @@ const mimeTypeMap: { [key: string]: string } = {
  */
 
 export function createRouteHandler(route: TuftRoute) {
-  const { response, preHandlers, errorHandler, params } = route;
+  const { response,errorHandler, params } = route;
+  const pluginHandlers = route.plugins ?? [];
 
   const options = { params };
 
@@ -61,7 +61,7 @@ export function createRouteHandler(route: TuftRoute) {
     const boundHandleResponse = handleUnknownResponse.bind(
       null,
       boundHandleErrorResponse,
-      preHandlers,
+      pluginHandlers,
       response,
     );
 
@@ -73,11 +73,11 @@ export function createRouteHandler(route: TuftRoute) {
   }
 
   if (response.redirect) {
-    if (preHandlers.length > 0) {
+    if (pluginHandlers.length > 0) {
       const boundHandleResponse = handleRedirectResponseWithPreHandlers.bind(
         null,
         boundHandleErrorResponse,
-        preHandlers,
+        pluginHandlers,
         response,
       );
 
@@ -136,11 +136,11 @@ export function createRouteHandler(route: TuftRoute) {
     response.contentType = contentType;
     response.body = body;
 
-    if (preHandlers.length > 0) {
+    if (pluginHandlers.length > 0) {
       const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(
         null,
         boundHandleErrorResponse,
-        preHandlers,
+        pluginHandlers,
         response,
       );
 
@@ -152,11 +152,11 @@ export function createRouteHandler(route: TuftRoute) {
   }
 
   else if (response.file) {
-    if (preHandlers.length > 0) {
+    if (pluginHandlers.length > 0) {
       const boundHandleResponse = handleFileResponseWithPreHandlers.bind(
         null,
         boundHandleErrorResponse,
-        preHandlers,
+        pluginHandlers,
         response,
       );
 
@@ -168,11 +168,11 @@ export function createRouteHandler(route: TuftRoute) {
   }
 
   else if (response.stream) {
-    if (preHandlers.length > 0) {
+    if (pluginHandlers.length > 0) {
       const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(
         null,
         boundHandleErrorResponse,
-        preHandlers,
+        pluginHandlers,
         response,
       );
 
@@ -184,11 +184,11 @@ export function createRouteHandler(route: TuftRoute) {
   }
 
   else {
-    if (preHandlers.length > 0) {
+    if (pluginHandlers.length > 0) {
       const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(
         null,
         boundHandleErrorResponse,
-        preHandlers,
+        pluginHandlers,
         response,
       );
 
@@ -232,20 +232,15 @@ export function handleRedirectResponse(response: TuftResponse, stream: ServerHtt
 
 export async function handleRedirectResponseWithPreHandlers(
   handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  preHandlers: TuftPreHandler[],
+  pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
   try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      const preHandler = preHandlers[i];
-      const extName = preHandler[sym_extName];
-      const result = await preHandler(t);
-
-      if (extName && result !== undefined) {
-        t.request[extName] = result;
-      }
+    for (let i = 0; i < pluginHandlers.length; i++) {
+      const pluginHandler = pluginHandlers[i];
+      await pluginHandler(t);
     }
   }
 
@@ -268,20 +263,15 @@ export function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2S
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
 export async function handleEmptyResponseWithPreHandlers(
   handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  preHandlers: TuftPreHandler[],
+  pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
   try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      const preHandler = preHandlers[i];
-      const extName = preHandler[sym_extName];
-      const result = await preHandler(t);
-
-      if (extName && result !== undefined) {
-        t.request[extName] = result;
-      }
+    for (let i = 0; i < pluginHandlers.length; i++) {
+      const pluginHandler = pluginHandlers[i];
+      await pluginHandler(t);
     }
   }
 
@@ -309,20 +299,15 @@ export async function handleFileResponse(response: TuftResponse, stream: ServerH
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
 export async function handleFileResponseWithPreHandlers(
   handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  preHandlers: TuftPreHandler[],
+  pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
   try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      const preHandler = preHandlers[i];
-      const extName = preHandler[sym_extName];
-      const result = await preHandler(t);
-
-      if (extName && result !== undefined) {
-        t.request[extName] = result;
-      }
+    for (let i = 0; i < pluginHandlers.length; i++) {
+      const pluginHandler = pluginHandlers[i];
+      await pluginHandler(t);
     }
   }
 
@@ -359,20 +344,15 @@ export async function handleStreamResponse(response: TuftResponse, stream: Serve
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
 export async function handleStreamResponseWithPreHandlers(
   handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  preHandlers: TuftPreHandler[],
+  pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
   try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      const preHandler = preHandlers[i];
-      const extName = preHandler[sym_extName];
-      const result = await preHandler(t);
-
-      if (extName && result !== undefined) {
-        t.request[extName] = result;
-      }
+    for (let i = 0; i < pluginHandlers.length; i++) {
+      const pluginHandler = pluginHandlers[i];
+      await pluginHandler(t);
     }
   }
 
@@ -413,20 +393,15 @@ export function handleBodyResponse(response: TuftResponse, stream: ServerHttp2St
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
 export async function handleBodyResponseWithPreHandlers(
   handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  preHandlers: TuftPreHandler[],
+  pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
   try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      const preHandler = preHandlers[i];
-      const extName = preHandler[sym_extName];
-      const result = await preHandler(t);
-
-      if (extName && result !== undefined) {
-        t.request[extName] = result;
-      }
+    for (let i = 0; i < pluginHandlers.length; i++) {
+      const pluginHandler = pluginHandlers[i];
+      await pluginHandler(t);
     }
   }
 
@@ -502,7 +477,7 @@ function handleUnknownBodyResponse(
 // result of a user-defined handler function.
 export async function handleUnknownResponse(
   handleError: (err: Error, stream: ServerHttp2Stream, t: TuftContext) => void | Promise<void>,
-  preHandlers: TuftPreHandler[],
+  pluginHandlers: TuftPluginHandler[],
   handler: TuftHandler,
   stream: ServerHttp2Stream,
   t: TuftContext,
@@ -510,14 +485,9 @@ export async function handleUnknownResponse(
   let result: TuftResponse | null;
 
   try {
-    for (let i = 0; i < preHandlers.length; i++) {
-      const preHandler = preHandlers[i];
-      const extName = preHandler[sym_extName];
-      const result = await preHandler(t);
-
-      if (extName && result !== undefined) {
-        t.request[extName] = result;
-      }
+    for (let i = 0; i < pluginHandlers.length; i++) {
+      const pluginHandler = pluginHandlers[i];
+      await pluginHandler(t);
     }
 
     result = await handler(t);

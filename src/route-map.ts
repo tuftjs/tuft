@@ -18,15 +18,12 @@ import {
   HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
-export const sym_extName = Symbol('extension name');
-
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
 }
 
-export interface TuftPreHandler {
-  (t: TuftContext): any | Promise<any>;
-  [sym_extName]?: string;
+export interface TuftPluginHandler {
+  (t: TuftContext): void | Promise<void>;
 }
 
 export interface TuftErrorHandler {
@@ -48,7 +45,7 @@ export interface TuftResponse {
 
 export interface TuftRoute {
   response: TuftResponse | TuftHandler;
-  preHandlers: TuftPreHandler[];
+  plugins?: TuftPluginHandler[];
   errorHandler?: TuftErrorHandler;
   params?: { [key: string]: string };
   trailingSlash?: boolean;
@@ -66,6 +63,7 @@ export interface TuftRouteSchema {
 }
 
 type RouteMapOptions = {
+  plugins?: TuftPluginHandler[],
   errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
@@ -88,22 +86,23 @@ export class RouteMap extends Map {
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
 
+  readonly #plugins: TuftPluginHandler[];
   readonly #errorHandler: TuftErrorHandler | null;
 
-  readonly #basePath: string;               // Prepended to any path added to the route map.
-  readonly #methods: string[];              // Default methods.
-  readonly #path: string;                   // Default path.
-  readonly #preHandlers: TuftPreHandler[];  // Default pre-handlers.
+  readonly #basePath: string;     // Prepended to any path added to the route map.
+  readonly #methods: string[];    // Default methods.
+  readonly #path: string;         // Default path.
+
 
   constructor(options: RouteMapOptions = {}) {
     super();
 
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
-    this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
-    this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
-    this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
-    this.#preHandlers = [];
+    this.#plugins = options.plugins ?? [];
     this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
+    this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
+    this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
+    this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
   }
 
   /**
@@ -121,9 +120,12 @@ export class RouteMap extends Map {
       const mergedKey = method + ' ' + this.#basePath + (isRedundantSlash ? '' : path);
 
       const mergedRoute: TuftRoute = {
-        preHandlers: this.#preHandlers.concat(route.preHandlers),
         response: route.response,
       };
+
+      if (this.#plugins.length > 0 || route.plugins?.length > 0) {
+        mergedRoute.plugins = this.#plugins.concat(route.plugins ?? []);
+      }
 
       // Below, certain properties are inherited from the added route if they exist. Otherwise,
       // the current route map's values are used, unless they are null.
@@ -174,12 +176,13 @@ export class RouteMap extends Map {
 
     const methods = schema.method ? [schema.method].flat() : this.#methods;
 
-    const preHandlers = this.#preHandlers;
-
     const routeProps: TuftRoute = {
-      preHandlers,
       response: schema.response,
     };
+
+    if (this.#plugins.length > 0) {
+      routeProps.plugins = this.#plugins;
+    }
 
     if (schema.errorHandler) {
       routeProps.errorHandler = schema.errorHandler;
@@ -229,31 +232,6 @@ export class RouteMap extends Map {
         redirect: url,
       },
     });
-  }
-
-  extend(preHandler: TuftPreHandler): void;
-  extend(name: string, preHandler: TuftPreHandler): void;
-  extend(arg0: string | TuftPreHandler, arg1?: TuftPreHandler) {
-    let name: string;
-    let preHandler: TuftPreHandler;
-
-    if (typeof arg0 === 'string' && typeof arg1 === 'function') {
-      name = arg0;
-      preHandler = arg1;
-      preHandler[sym_extName] = name;
-    }
-
-    else if (typeof arg0 === 'function') {
-      preHandler = arg0;
-    }
-
-    else {
-      const err = TypeError('Invalid arguments.');
-      console.error(err);
-      return process.exit(1);
-    }
-
-    this.#preHandlers.push(preHandler);
   }
 
   /**
