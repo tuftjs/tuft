@@ -47,7 +47,6 @@ describe('RouteStore', () => {
       test('does not throw an error', () => {
         function setRoute() {
           store.set('/foo', {
-            preHandlers: [],
             response: {},
           },);
         }
@@ -60,7 +59,6 @@ describe('RouteStore', () => {
       test('does not throw an error', () => {
         function setRoute() {
           store.set('/foo/{bar}', {
-            preHandlers: [],
             response: {},
           });
         }
@@ -73,7 +71,6 @@ describe('RouteStore', () => {
       test('does not throw an error', () => {
         function setRoute() {
           store.set('/foo/bar/{*}', {
-            preHandlers: [],
             response: {},
           });
         }
@@ -86,7 +83,6 @@ describe('RouteStore', () => {
       test('does not throw an error', () => {
         function setRoute() {
           store.set('/{**}', {
-            preHandlers: [],
             response: {},
           });
         }
@@ -102,22 +98,18 @@ describe('RouteStore', () => {
   const store = new RouteStore();
 
   store.set('/foo', {
-    preHandlers: [],
     response: {},
   });
 
   store.set('/foo/{*}', {
-    preHandlers: [],
     response: {},
   });
 
   store.set('/foo/bar/{*}', {
-    preHandlers: [],
     response: {},
   });
 
   store.set('/bar/{**}', {
-    preHandlers: [],
     response: {},
   });
 

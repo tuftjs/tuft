@@ -1,9 +1,17 @@
 import type { TuftRoute } from '../../src/route-map';
+import type { TuftContext } from '../../src/context';
+
 import { defaultErrorHandler, createRouteHandler } from '../../src/route-handlers';
 import { HTTP_STATUS_INTERNAL_SERVER_ERROR } from '../../src/constants';
 
+function mockPlugin(t: TuftContext) {
+  t.request.foo = 42;
+}
+
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+
 
 afterAll(() => {
   mockConsoleError.mockRestore();
@@ -24,7 +32,7 @@ describe('createRouteHandler()', () => {
       response: () => {
         return {};
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
       includeBody: true,
     };
@@ -35,30 +43,13 @@ describe('createRouteHandler()', () => {
     });
   });
 
-  describe('when passed a response object with \'parseText\', \'parseJson\', and \'parseUrlEncoded\' set to 0', () => {
-    const route = {
-      response: () => {
-        return {};
-      },
-      preHandlers: [],
-      errorHandler,
-      parseText: 0,
-      parseJson: 0,
-      parseUrlEncoded: 0,
-    };
-
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
-      expect(result.name).toBe('bound handleResponseWithContext');
-    });
-  });
 
   describe('when passed a response handler', () => {
     const route = {
       response: () => {
         return {};
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -73,7 +64,7 @@ describe('createRouteHandler()', () => {
       response: () => {
         return {};
       },
-      preHandlers: [],
+      plugins: [],
     };
 
     test('returns bound handleResponseWithContext', () => {
@@ -87,7 +78,7 @@ describe('createRouteHandler()', () => {
       response: {
         status: 418,
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -102,7 +93,7 @@ describe('createRouteHandler()', () => {
       response: {
         redirect: '/foo',
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -112,12 +103,14 @@ describe('createRouteHandler()', () => {
     });
   });
 
-  describe('when passed a response object with a redirect property and pre-handlers', () => {
+  describe('when passed a response object with a redirect property and plugins', () => {
     const route = {
       response: {
         redirect: '/foo',
       },
-      preHandlers: [() => {}],
+      plugins: [
+        mockPlugin,
+      ],
       errorHandler,
     };
 
@@ -134,7 +127,7 @@ describe('createRouteHandler()', () => {
           contentType: 'text',
           body: 'abc',
         },
-        preHandlers: [],
+        plugins: [],
         errorHandler,
       };
 
@@ -150,7 +143,7 @@ describe('createRouteHandler()', () => {
           contentType: 'json',
           body: 'abc',
         },
-        preHandlers: [],
+        plugins: [],
         errorHandler,
       };
 
@@ -166,7 +159,7 @@ describe('createRouteHandler()', () => {
           contentType: 'buffer',
           body: Buffer.from('abc'),
         },
-        preHandlers: [],
+        plugins: [],
         errorHandler,
       };
 
@@ -182,7 +175,7 @@ describe('createRouteHandler()', () => {
       response: {
         body: true,
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -197,7 +190,7 @@ describe('createRouteHandler()', () => {
       response: {
         body: 'abc',
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -212,7 +205,7 @@ describe('createRouteHandler()', () => {
       response: {
         body: Buffer.from('abc'),
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -227,7 +220,7 @@ describe('createRouteHandler()', () => {
       response: {
         body: {},
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -242,7 +235,7 @@ describe('createRouteHandler()', () => {
       response: {
         body: Symbol(),
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -255,12 +248,14 @@ describe('createRouteHandler()', () => {
     });
   });
 
-  describe('when passed a response object with a body property and pre-handlers', () => {
+  describe('when passed a response object with a body property and plugins', () => {
     const route = {
       response: {
         body: {},
       },
-      preHandlers: [() => {}],
+      plugins: [
+        mockPlugin,
+      ],
       errorHandler,
     };
 
@@ -275,7 +270,7 @@ describe('createRouteHandler()', () => {
       response: {
         file: __filename,
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -285,12 +280,14 @@ describe('createRouteHandler()', () => {
     });
   });
 
-  describe('when passed a response object with a file property and pre-handlers', () => {
+  describe('when passed a response object with a file property and plugins', () => {
     const route = {
       response: {
         file: __filename,
       },
-      preHandlers: [() => {}],
+      plugins: [
+        mockPlugin,
+      ],
       errorHandler,
     };
 
@@ -307,7 +304,7 @@ describe('createRouteHandler()', () => {
           await write('abc');
         },
       },
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -317,14 +314,16 @@ describe('createRouteHandler()', () => {
     });
   });
 
-  describe('when passed a response object with a stream property and pre-handlers', () => {
+  describe('when passed a response object with a stream property and plugins', () => {
     const route: TuftRoute = {
       response: {
         stream: async (write) => {
           await write('abc');
         },
       },
-      preHandlers: [() => {}],
+      plugins: [
+        mockPlugin,
+      ],
       errorHandler,
     };
 
@@ -337,7 +336,7 @@ describe('createRouteHandler()', () => {
   describe('when passed an empty response object', () => {
     const route = {
       response: {},
-      preHandlers: [],
+      plugins: [],
       errorHandler,
     };
 
@@ -347,10 +346,12 @@ describe('createRouteHandler()', () => {
     });
   });
 
-  describe('when passed an empty response object and pre-handlers', () => {
+  describe('when passed an empty response object and plugins', () => {
     const route = {
       response: {},
-      preHandlers: [() => {}],
+      plugins: [
+        mockPlugin,
+      ],
       errorHandler,
     };
 

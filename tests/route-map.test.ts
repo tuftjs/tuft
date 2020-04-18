@@ -1,3 +1,5 @@
+import type { TuftContext } from '../src/context';
+
 import { constants } from 'http2';
 import { RouteMap, createRouteMap, primaryHandler, logStreamError } from '../src/route-map';
 import { RouteManager } from '../src/route-manager';
@@ -9,6 +11,10 @@ import {
 } from '../src/constants';
 
 const { NGHTTP2_NO_ERROR } = constants;
+
+function mockPlugin(t: TuftContext) {
+  t.request.foo = 42;
+}
 
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -136,6 +142,9 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
+        plugins: [
+          mockPlugin,
+        ]
       });
 
       routes1.add({
@@ -167,6 +176,9 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
+        plugins: [
+          mockPlugin,
+        ]
       });
 
       routes2.add(routes1);
@@ -190,11 +202,9 @@ describe('RouteMap.prototype.add()', () => {
 
       const route = routes2.get('GET /');
 
-      expect(route).toHaveProperty('preHandlers', []);
-
+      expect(route).not.toHaveProperty('plugins');
       expect(route).not.toHaveProperty('errorHandler');
       expect(route).not.toHaveProperty('trailingSlash');
-      expect(route).not.toHaveProperty('parseCookies');
     });
   });
 });
@@ -268,36 +278,6 @@ describe('RouteMap.prototype.redirect()', () => {
       expect(routes.get('PATCH /foo')).toBeUndefined();
       expect(routes.get('PUT /foo')).toBeUndefined();
       expect(routes.get('TRACE /foo')).toBeUndefined();
-    });
-  });
-});
-
-describe('RouteMap.prototype.extend()', () => {
-  describe('with one argument', () => {
-    test('returns undefined', () => {
-      const routes = createRouteMap();
-      const result = routes.extend(() => {});
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('with two arguments', () => {
-    test('returns undefined', () => {
-      const routes = createRouteMap();
-      const result = routes.extend('extension name', () => {});
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('with an invalid argument', () => {
-    test('throws an error', () => {
-      const routes = createRouteMap();
-      //@ts-ignore
-      routes.extend(42);
-
-      const err = TypeError('Invalid arguments.');
-      expect(mockConsoleError).toHaveBeenCalledWith(err);
-      expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
 });

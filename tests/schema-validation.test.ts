@@ -6,7 +6,6 @@ describe('findInvalidSchemaEntry()', () => {
       const schema = {
         method: 'GET',
         path: '/',
-        preHandlers: [() => {}],
         response: {},
         errorHandler: () => {},
       };
@@ -50,9 +49,9 @@ describe('findInvalidSchemaEntry()', () => {
         .toBe('Symbol() is not a valid path.');
     });
 
-    test('when passed an object with an invalid pre-handler', () => {
-      expect(findInvalidSchemaEntry({ preHandlers: [{}] }))
-        .toBe('[Object] is not a valid pre-handler.');
+    test('when passed an object with an invalid path', () => {
+      expect(findInvalidSchemaEntry({ path: {} }))
+        .toBe('[Object] is not a valid path.');
     });
 
     test('when passed an object with an invalid response object', () => {
