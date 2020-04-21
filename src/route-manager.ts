@@ -1,7 +1,7 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { RouteMap, TuftRoute } from './route-map';
 
-import { createRouteHandler } from './route-handlers';
+import { createResponseHandler } from './response-handlers';
 import { getValidRequestMethods } from './utils';
 
 /**
@@ -116,7 +116,7 @@ export class RouteStore {
         }
 
         // Create a handler and add it to the current branch.
-        branch[sym_handler] = createRouteHandler(routeHandlerParams);
+        branch[sym_handler] = createResponseHandler(routeHandlerParams);
         break;
       }
 
