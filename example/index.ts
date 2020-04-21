@@ -1,26 +1,19 @@
-import { createRouteMap } from '../src';
-import { TuftContext } from '../src/context';
-
-function myPlugin() {
-  return (t: TuftContext) => {
-    t.request.foo = 42;
-  };
-}
-
-function myOtherPlugin() {
-  return (t: TuftContext) => {
-    t.request.hello = 'world';
-  };
-}
+import { createRouteMap, cookieParserPlugin, bodyParserPlugin } from '../src';
 
 const app = createRouteMap({
   plugins: [
-    myPlugin(),
-    myOtherPlugin(),
+    cookieParserPlugin(),
+    bodyParserPlugin(),
   ],
 });
 
 app.set('GET /a', {
+  response: () => {
+    return { status: 204 };
+  },
+});
+
+app.set('POST /a', {
   response: () => {
     return { status: 204 };
   },
@@ -89,7 +82,7 @@ app.set('GET /request_object', {
 app.add({
   path: '/{**}',
   response: {
-    status: 404,
+    error: 'NOT_FOUND',
   },
 });
 
