@@ -88,6 +88,7 @@ export class RouteMap extends Map {
   readonly #methods: string[];    // Default methods.
   readonly #path: string;         // Default path.
 
+  #streamErrorHandler: (err: Error) => void | Promise<void> = defaultErrorHandler;
 
   constructor(options: RouteMapOptions = {}) {
     super();
@@ -212,6 +213,13 @@ export class RouteMap extends Map {
         redirect: url,
       },
     });
+
+    return this;
+  }
+
+  onError(callback: (err: Error) => void | Promise<void>) {
+    this.#streamErrorHandler = callback;
+    return this;
   }
 
   /**
@@ -219,7 +227,7 @@ export class RouteMap extends Map {
    */
 
   createServer(options?: ServerOptions) {
-    const handler = createPrimaryHandler(this);
+    const handler = createPrimaryHandler(this, this.#streamErrorHandler);
     return new TuftServer(handler, options);
   }
 
@@ -228,7 +236,7 @@ export class RouteMap extends Map {
    */
 
   createSecureServer(options?: SecureServerOptions) {
-    const handler = createPrimaryHandler(this);
+    const handler = createPrimaryHandler(this, this.#streamErrorHandler);
     return new TuftSecureServer(handler, options);
   }
 }
@@ -238,9 +246,12 @@ export class RouteMap extends Map {
  * in turn contains all the route handlers for the application.
  */
 
-function createPrimaryHandler(routeMap: RouteMap) {
+function createPrimaryHandler(
+  routeMap: RouteMap,
+  errorHandler: (err: Error) => void | Promise<void>,
+) {
   const routes = new RouteManager(routeMap);
-  return primaryHandler.bind(null, routes);
+  return primaryHandler.bind(null, routes, errorHandler);
 }
 
 /**
@@ -251,14 +262,14 @@ function createPrimaryHandler(routeMap: RouteMap) {
 
 export async function primaryHandler(
   routes: RouteManager,
+  errorHandler: (err: Error) => void | Promise<void>,
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders
 ) {
-  stream.on('error', streamErrorHandler.bind(null, stream));
-
   try {
+    stream.on('error', streamErrorHandler.bind(null, stream, errorHandler));
+
     const method = headers[HTTP2_HEADER_METHOD] as string;
-    const path = headers[HTTP2_HEADER_PATH] as string;
 
     if (!validRequestMethods.includes(method)) {
       // The request method is not supported.
@@ -269,6 +280,7 @@ export async function primaryHandler(
       return;
     }
 
+    const path = headers[HTTP2_HEADER_PATH] as string;
     const queryStringSeparatorIndex = path.indexOf('?');
 
     const pathname = queryStringSeparatorIndex > 0
@@ -287,17 +299,37 @@ export async function primaryHandler(
   }
 
   catch (err) {
-    stream.emit('error', err);
+    streamErrorHandler(stream, errorHandler, err);
   }
 }
 
-export function streamErrorHandler(stream: ServerHttp2Stream, err: Error) {
-  if (!stream.destroyed && !stream.headersSent) {
-    stream.respond({
-      [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-    }, { endStream: true });
+export async function streamErrorHandler(
+  stream: ServerHttp2Stream,
+  handleError: (err: Error) => void | Promise<void>,
+  err: Error,
+) {
+  try {
+    if (!stream.destroyed) {
+      if (!stream.headersSent) {
+        stream.respond({
+          [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+        }, { endStream: true });
+      }
+
+      else if (!stream.closed) {
+        stream.close(NGHTTP2_NO_ERROR);
+      }
+    }
+
+    await handleError(err);
   }
 
+  catch (err) {
+    console.error(err);
+  }
+}
+
+export function defaultErrorHandler(err: Error) {
   console.error(err);
 }
 
