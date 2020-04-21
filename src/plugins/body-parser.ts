@@ -60,26 +60,24 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
 
     if (chunks.length > 0) {
       const { headers } = request;
-      const contentLengthString = headers[HTTP2_HEADER_CONTENT_LENGTH];
 
-      if (!contentLengthString) {
+      if (!headers[HTTP2_HEADER_CONTENT_LENGTH]) {
         // The 'content-length' header is missing.
-        throw Error('ERR_CONTENT_LENGTH_REQUIRED');
+        return {
+          error: 'LENGTH_REQUIRED',
+        };
       }
 
       body = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
-
-      if (body.length !== parseInt(contentLengthString)) {
-        // Value of the 'content-length' header does not match the size of the request body.
-        throw Error('ERR_CONTENT_LENGTH_MISMATCH');
-      }
 
       const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
 
       if (contentType) {
         if (maxTextSize && /^text\//.test(contentType)) {
           if (body.length > maxTextSize) {
-            throw Error('ERR_BODY_LIMIT_EXCEEDED');
+            return {
+              error: 'PAYLOAD_TOO_LARGE',
+            };
           }
 
           body = body.toString();
@@ -87,7 +85,9 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
 
         else if (maxJsonSize && contentType === 'application/json') {
           if (body.length > maxJsonSize) {
-            throw Error('ERR_BODY_LIMIT_EXCEEDED');
+            return {
+              error: 'PAYLOAD_TOO_LARGE',
+            };
           }
 
           body = JSON.parse(body.toString());
@@ -95,7 +95,9 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
 
         else if (maxUrlEncodedSize && contentType === 'application/x-www-form-urlencoded') {
           if (body.length > maxUrlEncodedSize) {
-            throw Error('ERR_BODY_LIMIT_EXCEEDED');
+            return {
+              error: 'PAYLOAD_TOO_LARGE',
+            };
           }
 
           body = parseUrlEncodedStr(body.toString());
