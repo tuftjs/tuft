@@ -3,7 +3,6 @@ export type { TuftContext, TuftRequest } from './context';
 export type {
   TuftHandler,
   TuftPluginHandler,
-  TuftErrorHandler,
   TuftStreamHandler,
   TuftResponse,
   TuftRouteSchema,
