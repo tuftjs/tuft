@@ -49,7 +49,7 @@ const mimeTypeMap: { [key: string]: string } = {
  * properties of the provided route passed as arguments.
  */
 
-export function createRouteHandler({ response, plugins, params }: TuftRoute) {
+export function createResponseHandler({ response, plugins, params }: TuftRoute) {
   const pluginHandlers = plugins ?? [];
   const options = { params };
 
@@ -70,7 +70,7 @@ export function createRouteHandler({ response, plugins, params }: TuftRoute) {
 
   if (response.redirect && !response.error) {
     if (pluginHandlers.length > 0) {
-      const boundHandleResponse = handleRedirectResponseWithPreHandlers.bind(
+      const boundHandleResponse = handleRedirectResponseWithPlugins.bind(
         null,
         pluginHandlers,
         response,
@@ -136,7 +136,7 @@ export function createRouteHandler({ response, plugins, params }: TuftRoute) {
     response.body = body;
 
     if (pluginHandlers.length > 0) {
-      const boundHandleResponse = handleBodyResponseWithPreHandlers.bind(
+      const boundHandleResponse = handleBodyResponseWithPlugins.bind(
         null,
         pluginHandlers,
         response,
@@ -151,7 +151,7 @@ export function createRouteHandler({ response, plugins, params }: TuftRoute) {
 
   else if (response.file) {
     if (pluginHandlers.length > 0) {
-      const boundHandleResponse = handleFileResponseWithPreHandlers.bind(
+      const boundHandleResponse = handleFileResponseWithPlugins.bind(
         null,
         pluginHandlers,
         response,
@@ -166,7 +166,7 @@ export function createRouteHandler({ response, plugins, params }: TuftRoute) {
 
   else if (response.stream) {
     if (pluginHandlers.length > 0) {
-      const boundHandleResponse = handleStreamResponseWithPreHandlers.bind(
+      const boundHandleResponse = handleStreamResponseWithPlugins.bind(
         null,
         pluginHandlers,
         response,
@@ -181,7 +181,7 @@ export function createRouteHandler({ response, plugins, params }: TuftRoute) {
 
   else {
     if (pluginHandlers.length > 0) {
-      const boundHandleResponse = handleEmptyResponseWithPreHandlers.bind(
+      const boundHandleResponse = handleEmptyResponseWithPlugins.bind(
         null,
         pluginHandlers,
         response,
@@ -217,7 +217,7 @@ export function handleRedirectResponse(response: TuftResponse, stream: ServerHtt
   stream.respond(outgoingHeaders, { endStream: true });
 }
 
-export async function handleRedirectResponseWithPreHandlers(
+export async function handleRedirectResponseWithPlugins(
   pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
@@ -245,7 +245,7 @@ export function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2S
 }
 
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleEmptyResponseWithPreHandlers(
+export async function handleEmptyResponseWithPlugins(
   pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
@@ -278,7 +278,7 @@ export async function handleFileResponse(response: TuftResponse, stream: ServerH
 }
 
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleFileResponseWithPreHandlers(
+export async function handleFileResponseWithPlugins(
   pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
@@ -320,7 +320,7 @@ export async function handleStreamResponse(response: TuftResponse, stream: Serve
 }
 
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleStreamResponseWithPreHandlers(
+export async function handleStreamResponseWithPlugins(
   pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
@@ -367,7 +367,7 @@ export function handleBodyResponse(
 }
 
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleBodyResponseWithPreHandlers(
+export async function handleBodyResponseWithPlugins(
   pluginHandlers: TuftPluginHandler[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
