@@ -1,7 +1,13 @@
 import type { TuftContext } from '../src/context';
 
 import { constants } from 'http2';
-import { RouteMap, createRouteMap, primaryHandler, streamErrorHandler } from '../src/route-map';
+import {
+  RouteMap,
+  createRouteMap,
+  primaryHandler,
+  streamErrorHandler,
+  defaultErrorHandler,
+} from '../src/route-map';
 import { RouteManager } from '../src/route-manager';
 import { TuftServer, TuftSecureServer } from '../src/server';
 import { HTTP2_HEADER_STATUS } from '../src/constants';
@@ -9,6 +15,7 @@ import { HTTP2_HEADER_STATUS } from '../src/constants';
 const {
   HTTP_STATUS_OK,
   HTTP_STATUS_METHOD_NOT_ALLOWED,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
   NGHTTP2_NO_ERROR,
 } = constants;
 
@@ -256,6 +263,13 @@ describe('RouteMap.prototype.redirect()', () => {
   });
 });
 
+describe('RouteMap.prototype.onError()', () => {
+  test('returns RouteMap.prototype', () => {
+    const routes = createRouteMap();
+    expect(routes.onError(() => {})).toBe(routes);
+  });
+});
+
 describe('RouteMap.prototype.createServer()', () => {
   const routes = createRouteMap();
 
@@ -292,8 +306,10 @@ describe('primaryHandler()', () => {
 
   describe('stream.close() is called with 0 when', () => {
     test('the value of the \':path\' header does not match a route', () => {
+      const errorHandler = () => {};
+
       //@ts-ignore
-      primaryHandler(routes, mockStream, {
+      primaryHandler(routes, errorHandler, mockStream, {
         ':method': 'GET',
         ':path': '/does_not_exist',
       });
@@ -319,8 +335,10 @@ describe('primaryHandler()', () => {
 
   describe('stream.respond() is called with a 405 status code when', () => {
     test('the value of \':method\' is not a valid request method', () => {
+      const errorHandler = () => {};
+
       //@ts-ignore
-      primaryHandler(routes, mockStream, {
+      primaryHandler(routes, errorHandler, mockStream, {
         ':method': 'LINK',
         ':path': '/foo',
       });
@@ -363,8 +381,10 @@ describe('primaryHandler()', () => {
 
   describe('stream.respond() is called with a 200 status code when', () => {
     test('the \'path\' header property includes a query string', async () => {
+      const errorHandler = () => {};
+
       //@ts-ignore
-      await primaryHandler(routes, mockStream, {
+      await primaryHandler(routes, errorHandler, mockStream, {
         ':method': 'GET',
         ':path': '/foo?bar=baz',
       });
@@ -377,22 +397,28 @@ describe('primaryHandler()', () => {
 
   describe('stream.emit() is called when', () => {
     test('a response handler throws an error', async () => {
+      const mockStreamErrorHandler = jest.fn();
+
       //@ts-ignore
-      await primaryHandler(routes, mockStream, {
+      await primaryHandler(routes, mockStreamErrorHandler, mockStream, {
         ':method': 'GET',
         ':path': '/bar',
       });
 
-      expect(mockStream.emit).toHaveBeenCalledWith('error', Error('mock error'));
+      expect(mockStreamErrorHandler).toHaveBeenCalledWith(Error('mock error'));
     });
   });
 });
 
 describe('streamErrorHandler()', () => {
+  const mockStreamErrorHandler = jest.fn();
+
   const mockStream = {
     destroyed: false,
     headersSent: false,
+    closed: false,
     respond: jest.fn(),
+    close: jest.fn(),
   };
   const mockError = Error('mock error');
 
@@ -400,26 +426,97 @@ describe('streamErrorHandler()', () => {
     mockStream.destroyed = false;
     mockStream.headersSent = false;
     mockStream.respond.mockClear();
+    mockStream.close.mockClear();
+    mockStreamErrorHandler.mockClear();
   });
 
   describe('when `stream.destroyed` and `stream.headerSent` are set to false', () => {
-    test('calls console.error() with an error', () => {
+    test('calls the passed error handler with an error', async () => {
       //@ts-ignore
-      expect(streamErrorHandler(mockStream, mockError)).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalled();
-      expect(mockConsoleError).toHaveBeenCalledWith(mockError);
+      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+
+      await expect(result).resolves.toBeUndefined();
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+      };
+
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+      expect(mockStream.close).not.toHaveBeenCalled();
+      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
     });
   });
 
-  describe('when `stream.destroyed` and `stream.headerSent` are set to true', () => {
-    test('calls console.error() with an error', () => {
+  describe('when `stream.destroyed` is set to true', () => {
+    test('calls the passed error handler with an error', async () => {
       mockStream.destroyed = true;
+
+      //@ts-ignore
+      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.close).not.toHaveBeenCalled();
+      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  describe('when `stream.destroyed` is false and `stream.headerSent` is true', () => {
+    test('calls the passed error handler with an error', async () => {
+      mockStream.destroyed = false;
       mockStream.headersSent = true;
 
       //@ts-ignore
-      expect(streamErrorHandler(mockStream, mockError)).toBeUndefined();
+      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+
+      await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.close).toHaveBeenCalledWith(NGHTTP2_NO_ERROR);
+      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  describe('when `stream.closed` is set to true', () => {
+    test('calls the passed error handler with an error', async () => {
+      mockStream.destroyed = false;
+      mockStream.headersSent = true;
+      mockStream.closed = true;
+
+      //@ts-ignore
+      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.close).not.toHaveBeenCalled();
+      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  describe('when the passed error handler throws an error', () => {
+    test('calls console.error() with the expected argument', async () => {
+      mockStream.destroyed = true;
+
+      const mockError = Error('mock error');
+      const mockStreamErrorHandler = jest.fn(() => {
+        throw mockError;
+      });
+
+      //@ts-ignore
+      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.close).not.toHaveBeenCalled();
+      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
       expect(mockConsoleError).toHaveBeenCalledWith(mockError);
     });
+  });
+});
+
+describe('defaultErrorHandler()', () => {
+  test('calls console.error() with the expected argument', () => {
+    const mockError = Error('mock error');
+    expect(defaultErrorHandler(mockError)).toBeUndefined();
+    expect(mockConsoleError).toHaveBeenCalledWith(mockError);
   });
 });
