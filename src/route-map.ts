@@ -1,6 +1,7 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
+import type { HttpError } from './utils';
 
 import { constants } from 'http2';
 import { RouteManager } from './route-manager';
@@ -11,11 +12,9 @@ import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
   ROUTE_MAP_DEFAULT_PATH,
-  ROUTE_MAP_DEFAULT_ERROR_HANDLER,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
-  HTTP_STATUS_METHOD_NOT_ALLOWED,
 } from './constants';
 
 export interface TuftHandler {
@@ -23,11 +22,7 @@ export interface TuftHandler {
 }
 
 export interface TuftPluginHandler {
-  (t: TuftContext): void | Promise<void>;
-}
-
-export interface TuftErrorHandler {
-  (err: Error, t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
+  (t: TuftContext): TuftResponse | void | Promise<TuftResponse | void>;
 }
 
 export interface TuftStreamHandler {
@@ -35,6 +30,7 @@ export interface TuftStreamHandler {
 }
 
 export interface TuftResponse {
+  error?: HttpError;
   status?: number;
   redirect?: string;
   contentType?: string;
@@ -44,9 +40,8 @@ export interface TuftResponse {
 }
 
 export interface TuftRoute {
-  response: TuftResponse | TuftHandler;
+  response: TuftHandler | TuftResponse;
   plugins?: TuftPluginHandler[];
-  errorHandler?: TuftErrorHandler;
   params?: { [key: string]: string };
   trailingSlash?: boolean;
 }
@@ -55,23 +50,23 @@ type RequestMethod =
   'CONNECT' | 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
 
 export interface TuftRouteSchema {
-  path?: string;
+  response: TuftHandler | TuftResponse;
   method?: RequestMethod | RequestMethod[];
-  contentType?: string;
-  response: TuftResponse | TuftHandler;
-  errorHandler?: TuftErrorHandler;
+  path?: string;
 }
 
 type RouteMapOptions = {
   plugins?: TuftPluginHandler[],
-  errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
   path?: string,
   trailingSlash?: boolean,
 }
 
-const { NGHTTP2_NO_ERROR } = constants;
+const {
+  HTTP_STATUS_METHOD_NOT_ALLOWED,
+  NGHTTP2_NO_ERROR,
+} = constants;
 
 const validRequestMethods = getValidRequestMethods();
 
@@ -87,7 +82,6 @@ export class RouteMap extends Map {
   readonly #trailingSlash: boolean | null;
 
   readonly #plugins: TuftPluginHandler[];
-  readonly #errorHandler: TuftErrorHandler | null;
 
   readonly #basePath: string;     // Prepended to any path added to the route map.
   readonly #methods: string[];    // Default methods.
@@ -99,7 +93,6 @@ export class RouteMap extends Map {
 
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#plugins = options.plugins ?? [];
-    this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
@@ -129,13 +122,6 @@ export class RouteMap extends Map {
 
       // Below, certain properties are inherited from the added route if they exist. Otherwise,
       // the current route map's values are used, unless they are null.
-
-      if (route.errorHandler !== undefined) {
-        mergedRoute.errorHandler = route.errorHandler;
-      }
-      else if (this.#errorHandler !== null) {
-        mergedRoute.errorHandler = this.#errorHandler;
-      }
 
       if (route.trailingSlash !== undefined) {
         mergedRoute.trailingSlash = route.trailingSlash;
@@ -182,13 +168,6 @@ export class RouteMap extends Map {
 
     if (this.#plugins.length > 0) {
       routeProps.plugins = this.#plugins;
-    }
-
-    if (schema.errorHandler) {
-      routeProps.errorHandler = schema.errorHandler;
-    }
-    else if (this.#errorHandler) {
-      routeProps.errorHandler = this.#errorHandler;
     }
 
     if (this.#trailingSlash !== null) {
@@ -269,7 +248,7 @@ function createPrimaryHandler(routeMap: RouteMap) {
  * any further operations on to the route handler that exists for that route.
  */
 
-export function primaryHandler(
+export async function primaryHandler(
   routes: RouteManager,
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders
@@ -301,8 +280,6 @@ export function primaryHandler(
     stream.close(NGHTTP2_NO_ERROR);
     return;
   }
-
-  // plugins go here?
 
   routeHandler(stream, headers);
 }
