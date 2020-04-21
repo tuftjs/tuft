@@ -1,12 +1,9 @@
 import type { TuftPluginHandler } from '../../src/route-map';
 import { constants } from 'http2';
-import {
-  handleRedirectResponse,
-  handleRedirectResponseWithPreHandlers,
-} from '../../src/route-handlers';
-import { HTTP2_HEADER_STATUS, HTTP2_HEADER_LOCATION } from '../../src/constants';
+import { handleEmptyResponse, handleEmptyResponseWithPlugins } from '../../src/response-handlers';
+import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
-const { HTTP_STATUS_FOUND, HTTP_STATUS_BAD_REQUEST } = constants;
+const { HTTP_STATUS_TEAPOT, HTTP_STATUS_BAD_REQUEST } = constants;
 
 const mockStream = {
   respond: jest.fn(),
@@ -26,14 +23,11 @@ beforeEach(() => {
   mockContext.setHeader.mockClear();
 });
 
-describe('handleRedirectResponse()', () => {
+describe('handleEmptyResponse()', () => {
   test('stream.respond() is called with the expected arguments', () => {
-    const response = {
-      status: HTTP_STATUS_FOUND,
-      redirect: '/foo',
-    };
+    const response = { status: HTTP_STATUS_TEAPOT };
 
-    const result = handleRedirectResponse(
+    const result = handleEmptyResponse(
       response,
       //@ts-ignore
       mockStream,
@@ -41,25 +35,19 @@ describe('handleRedirectResponse()', () => {
 
     expect(result).toBeUndefined();
 
-    const expectedHeaders = {
-      [HTTP2_HEADER_STATUS]: HTTP_STATUS_FOUND,
-      [HTTP2_HEADER_LOCATION]: '/foo',
-    };
+    const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT };
 
     expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
   });
 });
 
-describe('handleRedirectResponseWithPreHandlers()', () => {
+describe('handleEmptyResponseWithPlugins()', () => {
   describe('when a plugin DOES NOT return an http error response', () => {
     test('stream.respond() is called with the expected arguments', async () => {
-      const pluginHandlers = [() => {}];
-      const response = {
-        status: HTTP_STATUS_FOUND,
-        redirect: '/foo',
-      };
+      const pluginHandlers = [() => undefined];
+      const response = { status: HTTP_STATUS_TEAPOT };
 
-      const result = handleRedirectResponseWithPreHandlers(
+      const result = handleEmptyResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -68,10 +56,9 @@ describe('handleRedirectResponseWithPreHandlers()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_FOUND);
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_TEAPOT);
 
-      const expectedHeaders = mockContext.outgoingHeaders;
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT };
 
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
@@ -82,12 +69,9 @@ describe('handleRedirectResponseWithPreHandlers()', () => {
       const pluginHandlers: TuftPluginHandler[] = [() => {
         return { error: 'BAD_REQUEST' };
       }];
-      const response = {
-        status: HTTP_STATUS_FOUND,
-        redirect: '/foo',
-      };
+      const response = { status: HTTP_STATUS_TEAPOT };
 
-      const result = handleRedirectResponseWithPreHandlers(
+      const result = handleEmptyResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -98,9 +82,8 @@ describe('handleRedirectResponseWithPreHandlers()', () => {
       await expect(result).resolves.toBeUndefined();
       expect(mockContext.setHeader)
         .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
-      expect(mockContext.setHeader).not.toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
 
-      const expectedHeaders = mockContext.outgoingHeaders;
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST };
 
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });

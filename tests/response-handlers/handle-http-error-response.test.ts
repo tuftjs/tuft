@@ -2,7 +2,7 @@ import type { ServerHttp2Stream } from 'http2';
 import type { TuftResponse } from '../../src/route-map';
 import type { HttpError } from '../../src/utils';
 import { constants } from 'http2';
-import { handleHttpErrorResponse } from '../../src/route-handlers';
+import { handleHttpErrorResponse } from '../../src/response-handlers';
 import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_TYPE, HTTP2_HEADER_CONTENT_LENGTH } from '../../src/constants';
 
 const { HTTP_STATUS_TEAPOT } = constants;

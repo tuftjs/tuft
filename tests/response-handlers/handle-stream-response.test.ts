@@ -1,9 +1,6 @@
 import type { TuftPluginHandler } from '../../src/route-map';
 import { constants } from 'http2';
-import {
-  handleStreamResponse,
-  handleStreamResponseWithPreHandlers,
-} from '../../src/route-handlers';
+import { handleStreamResponse, handleStreamResponseWithPlugins } from '../../src/response-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
 const { HTTP_STATUS_OK, HTTP_STATUS_BAD_REQUEST } = constants;
@@ -103,7 +100,7 @@ describe('handleStreamResponse()', () => {
   });
 });
 
-describe('handleStreamResponseWithPreHandlers()', () => {
+describe('handleStreamResponseWithPlugins()', () => {
   describe('when the provided stream handler DOES NOT throw an error', () => {
     test('stream.respond(), stream.write(), and stream.end() are all called', async () => {
       const pluginHandlers = [() => {}];
@@ -112,7 +109,7 @@ describe('handleStreamResponseWithPreHandlers()', () => {
         stream: mockStreamHandler,
       };
 
-      const result = handleStreamResponseWithPreHandlers(
+      const result = handleStreamResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -141,7 +138,7 @@ describe('handleStreamResponseWithPreHandlers()', () => {
         stream: mockStreamHandler,
       };
 
-      const result = handleStreamResponseWithPreHandlers(
+      const result = handleStreamResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -171,7 +168,7 @@ describe('handleStreamResponseWithPreHandlers()', () => {
           stream: mockStreamHandler,
         };
 
-        const result = handleStreamResponseWithPreHandlers(
+        const result = handleStreamResponseWithPlugins(
           pluginHandlers,
           response,
           //@ts-ignore

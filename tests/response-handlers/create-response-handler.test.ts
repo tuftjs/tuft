@@ -1,6 +1,6 @@
 import type { TuftContext } from '../../src/context';
 
-import { createRouteHandler } from '../../src/route-handlers';
+import { createResponseHandler } from '../../src/response-handlers';
 
 function mockPlugin(t: TuftContext) {
   t.request.foo = 42;
@@ -14,10 +14,10 @@ afterAll(() => {
   mockExit.mockRestore();
 });
 
-describe('createRouteHandler()', () => {
+describe('createResponseHandler()', () => {
   describe('when passed a response handler', () => {
     test('returns bound handleResponseWithContext()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: () => {
           return {};
         },
@@ -29,7 +29,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with an `error` property', () => {
     test('returns bound handleEmptyResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { error: 'TEAPOT' },
       });
 
@@ -39,7 +39,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `status` property', () => {
     test('returns bound handleEmptyResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { status: 418 },
       });
 
@@ -49,7 +49,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `redirect` property', () => {
     test('returns bound handleRedirectResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { redirect: '/foo' },
       });
 
@@ -59,7 +59,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `redirect` property and plugins', () => {
     test('returns bound handleResponseWithContext()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { redirect: '/foo' },
         plugins: [mockPlugin],
       });
@@ -71,7 +71,7 @@ describe('createRouteHandler()', () => {
   describe('when passed a response object with a `body` property', () => {
     describe('and a `contentType` property set to `text`', () => {
       test('returns bound handleBodyResponse()', () => {
-        const result = createRouteHandler({
+        const result = createResponseHandler({
           response: {
             contentType: 'text',
             body: 'abc',
@@ -84,7 +84,7 @@ describe('createRouteHandler()', () => {
 
     describe('and a `contentType` property set to `json`', () => {
       test('returns bound handleBodyResponse()', () => {
-        const result = createRouteHandler({
+        const result = createResponseHandler({
           response: {
             contentType: 'json',
             body: 'abc',
@@ -97,7 +97,7 @@ describe('createRouteHandler()', () => {
 
     describe('and a `contentType` property set to `buffer`', () => {
       test('returns bound handleBodyResponse()', () => {
-        const result = createRouteHandler({
+        const result = createResponseHandler({
           response: {
             contentType: 'buffer',
             body: Buffer.from('abc'),
@@ -111,7 +111,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `body` property of type boolean', () => {
     test('returns bound handleBodyResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { body: true },
       });
 
@@ -121,7 +121,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `body` property of type string', () => {
     test('returns bound handleBodyResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { body: 'abc' },
       });
 
@@ -131,7 +131,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `body` property of type Buffer', () => {
     test('returns bound handleBodyResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { body: Buffer.from('abc') },
       });
 
@@ -141,7 +141,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `body` property of type object', () => {
     test('returns bound handleBodyResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { body: {} },
       });
 
@@ -152,7 +152,7 @@ describe('createRouteHandler()', () => {
   describe('when passed a response object with a `body` property of type symbol', () => {
     test('logs an error and exits with a non-zero exit code', () => {
       const expectedError = TypeError('\'symbol\' is not a supported response body type.');
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { body: Symbol() },
       });
 
@@ -164,7 +164,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `body` property and plugins', () => {
     test('returns bound handleResponseWithContext()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { body: {} },
         plugins: [mockPlugin],
       });
@@ -175,7 +175,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `file` property', () => {
     test('returns bound handleFileResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { file: __filename },
       });
 
@@ -185,7 +185,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `file` property and plugins', () => {
     test('returns bound handleResponseWithContext()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: { file: __filename },
         plugins: [mockPlugin],
       });
@@ -196,7 +196,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `stream` property', () => {
     test('returns bound handleStreamResponse()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: {
           stream: async (write) => {
             await write('abc');
@@ -210,7 +210,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed a response object with a `stream` property and plugins', () => {
     test('returns bound handleResponseWithContext()', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: {
           stream: async (write) => {
             await write('abc');
@@ -225,7 +225,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed an empty response object', () => {
     test('returns bound handleEmptyResponse()', () => {
-      const result = createRouteHandler({ response: {} });
+      const result = createResponseHandler({ response: {} });
 
       expect(result.name).toBe('bound handleEmptyResponse');
     });
@@ -233,7 +233,7 @@ describe('createRouteHandler()', () => {
 
   describe('when passed an empty response object and plugins', () => {
     test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler({
+      const result = createResponseHandler({
         response: {},
         plugins: [mockPlugin],
       });

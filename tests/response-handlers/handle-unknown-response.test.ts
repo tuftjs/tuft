@@ -1,7 +1,7 @@
 import type { TuftPluginHandler, TuftResponse } from '../../src/route-map';
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
-import { handleUnknownResponse } from '../../src/route-handlers';
+import { handleUnknownResponse } from '../../src/response-handlers';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_LENGTH,

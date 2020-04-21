@@ -1,7 +1,7 @@
 import type { TuftPluginHandler } from '../../src/route-map';
 import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
-import { handleFileResponse, handleFileResponseWithPreHandlers } from '../../src/route-handlers';
+import { handleFileResponse, handleFileResponseWithPlugins } from '../../src/response-handlers';
 import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH } from '../../src/constants';
 
 const { HTTP_STATUS_OK, HTTP_STATUS_BAD_REQUEST } = constants;
@@ -65,7 +65,7 @@ describe('handleFileResponse()', () => {
   });
 });
 
-describe('handleFileResponseWithPreHandlers()', () => {
+describe('handleFileResponseWithPlugins()', () => {
   describe('when a plugin DOES NOT return an http error response', () => {
     test('stream.respondWithFD() is called with the expected arguments', async () => {
       const pluginHandlers = [() => {}];
@@ -74,7 +74,7 @@ describe('handleFileResponseWithPreHandlers()', () => {
         file: __filename,
       };
 
-      const result = handleFileResponseWithPreHandlers(
+      const result = handleFileResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -106,7 +106,7 @@ describe('handleFileResponseWithPreHandlers()', () => {
         file: __filename,
       };
 
-      const result = handleFileResponseWithPreHandlers(
+      const result = handleFileResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore

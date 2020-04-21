@@ -1,9 +1,12 @@
 import type { TuftPluginHandler } from '../../src/route-map';
 import { constants } from 'http2';
-import { handleEmptyResponse, handleEmptyResponseWithPreHandlers } from '../../src/route-handlers';
-import { HTTP2_HEADER_STATUS } from '../../src/constants';
+import {
+  handleRedirectResponse,
+  handleRedirectResponseWithPlugins,
+} from '../../src/response-handlers';
+import { HTTP2_HEADER_STATUS, HTTP2_HEADER_LOCATION } from '../../src/constants';
 
-const { HTTP_STATUS_TEAPOT, HTTP_STATUS_BAD_REQUEST } = constants;
+const { HTTP_STATUS_FOUND, HTTP_STATUS_BAD_REQUEST } = constants;
 
 const mockStream = {
   respond: jest.fn(),
@@ -23,11 +26,14 @@ beforeEach(() => {
   mockContext.setHeader.mockClear();
 });
 
-describe('handleEmptyResponse()', () => {
+describe('handleRedirectResponse()', () => {
   test('stream.respond() is called with the expected arguments', () => {
-    const response = { status: HTTP_STATUS_TEAPOT };
+    const response = {
+      status: HTTP_STATUS_FOUND,
+      redirect: '/foo',
+    };
 
-    const result = handleEmptyResponse(
+    const result = handleRedirectResponse(
       response,
       //@ts-ignore
       mockStream,
@@ -35,19 +41,25 @@ describe('handleEmptyResponse()', () => {
 
     expect(result).toBeUndefined();
 
-    const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT };
+    const expectedHeaders = {
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_FOUND,
+      [HTTP2_HEADER_LOCATION]: '/foo',
+    };
 
     expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
   });
 });
 
-describe('handleEmptyResponseWithPreHandlers()', () => {
+describe('handleRedirectResponseWithPlugins()', () => {
   describe('when a plugin DOES NOT return an http error response', () => {
     test('stream.respond() is called with the expected arguments', async () => {
-      const pluginHandlers = [() => undefined];
-      const response = { status: HTTP_STATUS_TEAPOT };
+      const pluginHandlers = [() => {}];
+      const response = {
+        status: HTTP_STATUS_FOUND,
+        redirect: '/foo',
+      };
 
-      const result = handleEmptyResponseWithPreHandlers(
+      const result = handleRedirectResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -56,9 +68,10 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_TEAPOT);
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_FOUND);
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
 
-      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT };
+      const expectedHeaders = mockContext.outgoingHeaders;
 
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
@@ -69,9 +82,12 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
       const pluginHandlers: TuftPluginHandler[] = [() => {
         return { error: 'BAD_REQUEST' };
       }];
-      const response = { status: HTTP_STATUS_TEAPOT };
+      const response = {
+        status: HTTP_STATUS_FOUND,
+        redirect: '/foo',
+      };
 
-      const result = handleEmptyResponseWithPreHandlers(
+      const result = handleRedirectResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -82,8 +98,9 @@ describe('handleEmptyResponseWithPreHandlers()', () => {
       await expect(result).resolves.toBeUndefined();
       expect(mockContext.setHeader)
         .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
+      expect(mockContext.setHeader).not.toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
 
-      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST };
+      const expectedHeaders = mockContext.outgoingHeaders;
 
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });

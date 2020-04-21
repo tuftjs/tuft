@@ -1,6 +1,6 @@
 import type { TuftPluginHandler } from '../../src/route-map';
 import { constants } from 'http2';
-import { handleBodyResponse, handleBodyResponseWithPreHandlers } from '../../src/route-handlers';
+import { handleBodyResponse, handleBodyResponseWithPlugins } from '../../src/response-handlers';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_LENGTH,
@@ -70,7 +70,7 @@ describe('handleBodyResponseWithPreHandlers()', () => {
         body,
       };
 
-      const result = handleBodyResponseWithPreHandlers(
+      const result = handleBodyResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore
@@ -108,7 +108,7 @@ describe('handleBodyResponseWithPreHandlers()', () => {
         body,
       };
 
-      const result = handleBodyResponseWithPreHandlers(
+      const result = handleBodyResponseWithPlugins(
         pluginHandlers,
         response,
         //@ts-ignore

@@ -1,4 +1,4 @@
-import { handleResponseWithContext } from '../../src/route-handlers';
+import { handleResponseWithContext } from '../../src/response-handlers';
 import { HTTP2_HEADER_METHOD, HTTP2_HEADER_PATH } from '../../src/constants';
 
 const mockStream = {
