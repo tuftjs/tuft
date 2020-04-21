@@ -65,6 +65,7 @@ type RouteMapOptions = {
 
 const {
   HTTP_STATUS_METHOD_NOT_ALLOWED,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
   NGHTTP2_NO_ERROR,
 } = constants;
 
@@ -253,38 +254,50 @@ export async function primaryHandler(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders
 ) {
-  stream.on('error', logStreamError);
+  stream.on('error', streamErrorHandler.bind(null, stream));
 
-  const method = headers[HTTP2_HEADER_METHOD] as string;
-  const path = headers[HTTP2_HEADER_PATH] as string;
+  try {
+    const method = headers[HTTP2_HEADER_METHOD] as string;
+    const path = headers[HTTP2_HEADER_PATH] as string;
 
-  if (!validRequestMethods.includes(method)) {
-    // The request method is not supported.
-    stream.respond({
-      [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
-    }, { endStream: true });
+    if (!validRequestMethods.includes(method)) {
+      // The request method is not supported.
+      stream.respond({
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
+      }, { endStream: true });
 
-    return;
+      return;
+    }
+
+    const queryStringSeparatorIndex = path.indexOf('?');
+
+    const pathname = queryStringSeparatorIndex > 0
+      ? path.slice(0, queryStringSeparatorIndex)
+      : path;
+
+    const routeHandler = routes.find(method, pathname);
+
+    if (!routeHandler) {
+      // There is no matching route.
+      stream.close(NGHTTP2_NO_ERROR);
+      return;
+    }
+
+    await routeHandler(stream, headers);
   }
 
-  const queryStringSeparatorIndex = path.indexOf('?');
-
-  const pathname = queryStringSeparatorIndex > 0
-    ? path.slice(0, queryStringSeparatorIndex)
-    : path;
-
-  const routeHandler = routes.find(method, pathname);
-
-  if (!routeHandler) {
-    // There is no matching route.
-    stream.close(NGHTTP2_NO_ERROR);
-    return;
+  catch (err) {
+    stream.emit('error', err);
   }
-
-  routeHandler(stream, headers);
 }
 
-export function logStreamError(err: Error) {
+export function streamErrorHandler(stream: ServerHttp2Stream, err: Error) {
+  if (!stream.destroyed && !stream.headersSent) {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    }, { endStream: true });
+  }
+
   console.error(err);
 }
 
