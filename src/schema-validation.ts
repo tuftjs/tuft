@@ -1,19 +1,39 @@
-import { getValidRequestMethods } from './utils';
+import { getValidRequestMethods, getHttpErrorMap } from './utils';
 
 const validPathRegexp = /^\/([0-9A-Za-z-_.~%:[\]@!$&'()*+,;=/{}]+)?$/;
+const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
 
 /**
  * Iterates over each property of the provided route schema and determines if there are any
  * invalid entries. Returns an error message string if any are found, or null otherwise.
  */
 
-export function findInvalidSchemaEntry(schema: any): string | null {
+export function findInvalidSchemaEntry(schema: any) {
   if (typeof schema !== 'object' || schema === null || Buffer.isBuffer(schema)) {
     return `${formatValue(schema)} is not a valid route schema object.`;
   }
 
   for (const [prop, value] of Object.entries(schema)) {
     switch (prop) {
+      case 'response': {
+        const response = value;
+
+        if (typeof response === 'function') {
+          continue;
+        }
+
+        else if (typeof response === 'object' && response !== null) {
+          const invalidResponseEntry = findInvalidResponseEntry(response);
+
+          if (invalidResponseEntry) {
+            return invalidResponseEntry;
+          }
+
+          continue;
+        }
+
+        return `${formatValue(response)} is not a valid response object.`;
+      }
       case 'method': {
         for (const method of [value].flat()) {
           const methods = getValidRequestMethods();
@@ -35,22 +55,70 @@ export function findInvalidSchemaEntry(schema: any): string | null {
 
         continue;
       }
-      case 'response': {
-        if ((value === null || typeof value !== 'object') && typeof value !== 'function') {
-          return `${formatValue(value)} is not a valid response object.`;
+      default:
+        return `'${prop}' is not a valid route schema property.`;
+    }
+  }
+
+  return null;
+}
+
+export function findInvalidResponseEntry(response: object) {
+  for (const [prop, value] of Object.entries(response)) {
+    switch (prop) {
+      case 'error': {
+        if (typeof value === 'string') {
+          const isValid = httpErrorMap[value] !== undefined;
+
+          if (!isValid) {
+            return `${formatValue(value)} is not a valid value for 'error'`;
+          }
+
+          continue;
+        }
+
+        return `${formatValue(value)} is not a valid value for 'error'`;
+      }
+      case 'status': {
+        if (typeof value !== 'number') {
+          return `${formatValue(value)} is not a valid value for 'status'`;
         }
 
         continue;
       }
-      case 'errorHandler': {
+      case 'redirect': {
+        if (typeof value !== 'string') {
+          return `${formatValue(value)} is not a valid value for 'redirect'`;
+        }
+
+        continue;
+      }
+      case 'contentType': {
+        if (typeof value !== 'string') {
+          return `${formatValue(value)} is not a valid value for 'contentType'`;
+        }
+
+        continue;
+      }
+      case 'body': {
+        continue;
+      }
+      case 'stream': {
         if (typeof value !== 'function') {
-          return `${formatValue(value)} is not a valid error handler.`;
+          return `${formatValue(value)} is not a valid value for 'stream'`;
+        }
+
+        continue;
+      }
+      case 'file': {
+        if (typeof value !== 'string') {
+          return `${formatValue(value)} is not a valid value for 'file'`;
         }
 
         continue;
       }
       default:
-        return `'${prop}' is not a valid route schema property.`;
+        return `'${prop}' is not a valid response object property.`;
     }
   }
 
