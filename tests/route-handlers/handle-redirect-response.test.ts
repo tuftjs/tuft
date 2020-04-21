@@ -1,128 +1,108 @@
+import type { TuftPluginHandler } from '../../src/route-map';
+import { constants } from 'http2';
 import {
   handleRedirectResponse,
   handleRedirectResponseWithPreHandlers,
 } from '../../src/route-handlers';
-import { HTTP2_HEADER_STATUS, HTTP2_HEADER_LOCATION, HTTP_STATUS_FOUND } from '../../src/constants';
+import { HTTP2_HEADER_STATUS, HTTP2_HEADER_LOCATION } from '../../src/constants';
 
-
-const mockErrorHandler = jest.fn();
+const { HTTP_STATUS_FOUND, HTTP_STATUS_BAD_REQUEST } = constants;
 
 const mockStream = {
   respond: jest.fn(),
 };
 
-const mockTuftContext: any = {
+const mockContext: any = {
   request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
-    mockTuftContext.outgoingHeaders[key] = value;
+    mockContext.outgoingHeaders[key] = value;
   }),
 };
 
-describe('handleRedirectResponse()', () => {
-  beforeAll(() => {
-    mockStream.respond.mockClear();
-  });
+beforeEach(() => {
+  mockStream.respond.mockClear();
+  mockContext.outgoingHeaders = {};
+  mockContext.setHeader.mockClear();
+});
 
-  test('stream.respond() is called', () => {
-    const responseObj = {
+describe('handleRedirectResponse()', () => {
+  test('stream.respond() is called with the expected arguments', () => {
+    const response = {
       status: HTTP_STATUS_FOUND,
       redirect: '/foo',
     };
 
     const result = handleRedirectResponse(
-      responseObj,
+      response,
       //@ts-ignore
       mockStream,
     );
+
+    expect(result).toBeUndefined();
 
     const expectedHeaders = {
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_FOUND,
       [HTTP2_HEADER_LOCATION]: '/foo',
     };
 
-    expect(result).toBeUndefined();
     expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
   });
 });
 
 describe('handleRedirectResponseWithPreHandlers()', () => {
-  beforeEach(() => {
-    mockErrorHandler.mockClear();
-    mockTuftContext.outgoingHeaders = {};
-    mockTuftContext.setHeader.mockClear();
-    mockStream.respond.mockClear();
+  describe('when a plugin DOES NOT return an http error response', () => {
+    test('stream.respond() is called with the expected arguments', async () => {
+      const pluginHandlers = [() => {}];
+      const response = {
+        status: HTTP_STATUS_FOUND,
+        redirect: '/foo',
+      };
+
+      const result = handleRedirectResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStream,
+        mockContext,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_FOUND);
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
+
+      const expectedHeaders = mockContext.outgoingHeaders;
+
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+    });
   });
 
-  test('stream.respond() is called', async () => {
-    const responseObj = {
-      status: HTTP_STATUS_FOUND,
-      redirect: '/foo',
-    };
-    const preHandlers = [() => {}];
+  describe('when a plugin DOES return an http error response', () => {
+    test('stream.respond() is called with the expected arguments', async () => {
+      const pluginHandlers: TuftPluginHandler[] = [() => {
+        return { error: 'BAD_REQUEST' };
+      }];
+      const response = {
+        status: HTTP_STATUS_FOUND,
+        redirect: '/foo',
+      };
 
-    const result = handleRedirectResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
+      const result = handleRedirectResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStream,
+        mockContext,
+      );
 
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).not.toHaveBeenCalled();
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_FOUND);
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
-    expect(mockStream.respond)
-      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
-  });
+      await expect(result).resolves.toBeUndefined();
+      expect(mockContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
+      expect(mockContext.setHeader).not.toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
 
-  test('stream.respond() is called when the pre-handler returns a result', async () => {
-    const responseObj = {
-      status: HTTP_STATUS_FOUND,
-      redirect: '/foo',
-    };
-    const plugins = [() => {}];
+      const expectedHeaders = mockContext.outgoingHeaders;
 
-
-    const result = handleRedirectResponseWithPreHandlers(
-      mockErrorHandler,
-      plugins,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).not.toHaveBeenCalled();
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_FOUND);
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_LOCATION, '/foo');
-    expect(mockStream.respond)
-      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
-  });
-
-  test('returns an error when a pre-handler throws an error', async () => {
-    const err = Error('pre-handler error');
-    const responseObj = {
-      status: HTTP_STATUS_FOUND,
-      redirect: '/foo',
-    };
-    const preHandlers = [() => { throw err; }];
-
-    const result = handleRedirectResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
-    expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
-    expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+    });
   });
 });

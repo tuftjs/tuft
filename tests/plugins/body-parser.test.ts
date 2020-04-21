@@ -133,26 +133,7 @@ describe('bodyParserPlugin() without an options argument', () => {
         context.stream.emitData(Buffer.from('baz'));
         context.stream.emitEnd();
 
-        await expect(promise).rejects.toThrow('ERR_CONTENT_LENGTH_REQUIRED');
-        expect(context.request).not.toHaveProperty('body');
-      });
-    });
-
-    describe('when passed a stream with data and a \'content-length\' header that does not match body size', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'text/plain',
-        'content-length': '1',
-      };
-
-      test('rejects with an error', async () => {
-        const promise = bodyParser(context);
-        context.stream.emitData(Buffer.from('foo '));
-        context.stream.emitData(Buffer.from('bar '));
-        context.stream.emitData(Buffer.from('baz'));
-        context.stream.emitEnd();
-
-        await expect(promise).rejects.toThrow('ERR_CONTENT_LENGTH_MISMATCH');
+        await expect(promise).resolves.toEqual({ error: 'LENGTH_REQUIRED' });
         expect(context.request).not.toHaveProperty('body');
       });
     });
@@ -268,7 +249,7 @@ describe('bodyParserPlugin() with a option \'text\' set to 1', () => {
         context.stream.emitData(Buffer.from('baz'));
         context.stream.emitEnd();
 
-        await expect(promise).rejects.toThrow('ERR_BODY_LIMIT_EXCEEDED');
+        await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
       });
     });
@@ -382,7 +363,7 @@ describe('bodyParserPlugin() with a option \'json\' set to 1', () => {
         context.stream.emitData(Buffer.from(':42}'));
         context.stream.emitEnd();
 
-        await expect(promise).rejects.toThrow('ERR_BODY_LIMIT_EXCEEDED');
+        await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
       });
     });
@@ -517,7 +498,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to 1', () => {
         context.stream.emitData(Buffer.from('42'));
         context.stream.emitEnd();
 
-        await expect(promise).rejects.toThrow('ERR_BODY_LIMIT_EXCEEDED');
+        await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
       });
     });

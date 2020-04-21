@@ -1,107 +1,91 @@
+import type { TuftPluginHandler } from '../../src/route-map';
+import { constants } from 'http2';
 import { handleEmptyResponse, handleEmptyResponseWithPreHandlers } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
-const mockErrorHandler = jest.fn();
+const { HTTP_STATUS_TEAPOT, HTTP_STATUS_BAD_REQUEST } = constants;
 
 const mockStream = {
   respond: jest.fn(),
 };
 
-const mockTuftContext: any = {
+const mockContext: any = {
   request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
-    mockTuftContext.outgoingHeaders[key] = value;
+    mockContext.outgoingHeaders[key] = value;
   }),
 };
 
-describe('handleEmptyResponse()', () => {
-  beforeAll(() => {
-    mockStream.respond.mockClear();
-  });
+beforeEach(() => {
+  mockStream.respond.mockClear();
+  mockContext.outgoingHeaders = {};
+  mockContext.setHeader.mockClear();
+});
 
-  test('stream.respond() is called', () => {
-    const responseObj = { status: 418 };
+describe('handleEmptyResponse()', () => {
+  test('stream.respond() is called with the expected arguments', () => {
+    const response = { status: HTTP_STATUS_TEAPOT };
 
     const result = handleEmptyResponse(
-      responseObj,
+      response,
       //@ts-ignore
       mockStream,
     );
 
-    const expectedHeaders = { [HTTP2_HEADER_STATUS]: 418 };
-
     expect(result).toBeUndefined();
+
+    const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT };
+
     expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
   });
 });
 
 describe('handleEmptyResponseWithPreHandlers()', () => {
-  beforeEach(() => {
-    mockErrorHandler.mockClear();
-    mockTuftContext.outgoingHeaders = {};
-    mockTuftContext.setHeader.mockClear();
-    mockStream.respond.mockClear();
+  describe('when a plugin DOES NOT return an http error response', () => {
+    test('stream.respond() is called with the expected arguments', async () => {
+      const pluginHandlers = [() => undefined];
+      const response = { status: HTTP_STATUS_TEAPOT };
+
+      const result = handleEmptyResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStream,
+        mockContext,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_TEAPOT);
+
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT };
+
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+    });
   });
 
-  test('stream.respond() is called', async () => {
-    const responseObj = { status: 418 };
-    const preHandlers = [() => {}];
+  describe('when a plugin DOES return an http error response', () => {
+    test('stream.respond() is called with the expected arguments', async () => {
+      const pluginHandlers: TuftPluginHandler[] = [() => {
+        return { error: 'BAD_REQUEST' };
+      }];
+      const response = { status: HTTP_STATUS_TEAPOT };
 
-    const result = handleEmptyResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
+      const result = handleEmptyResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStream,
+        mockContext,
+      );
 
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).not.toHaveBeenCalled();
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-    expect(mockStream.respond)
-      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
-  });
+      await expect(result).resolves.toBeUndefined();
+      expect(mockContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
 
-  test('stream.respond() is called when the pre-handler returns a result', async () => {
-    const responseObj = { status: 418 };
-    const plugins = [() => {}];
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST };
 
-
-    const result = handleEmptyResponseWithPreHandlers(
-      mockErrorHandler,
-      plugins,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).not.toHaveBeenCalled();
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-    expect(mockStream.respond)
-      .toHaveBeenCalledWith(mockTuftContext.outgoingHeaders, { endStream: true });
-  });
-
-  test('returns an error when a pre-handler throws an error', async () => {
-    const err = Error('pre-handler error');
-    const responseObj = { status: 418 };
-    const preHandlers = [() => { throw err; }];
-
-    const result = handleEmptyResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
-    expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
-    expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+    });
   });
 });

@@ -1,8 +1,6 @@
-import type { TuftRoute } from '../../src/route-map';
 import type { TuftContext } from '../../src/context';
 
-import { defaultErrorHandler, createRouteHandler } from '../../src/route-handlers';
-import { HTTP_STATUS_INTERNAL_SERVER_ERROR } from '../../src/constants';
+import { createRouteHandler } from '../../src/route-handlers';
 
 function mockPlugin(t: TuftContext) {
   t.request.foo = 42;
@@ -11,352 +9,235 @@ function mockPlugin(t: TuftContext) {
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
-
-
 afterAll(() => {
   mockConsoleError.mockRestore();
   mockExit.mockRestore();
 });
 
-describe('defaultErrorHandler()', () => {
-  test('returns an object with a status property', () => {
-    expect(defaultErrorHandler()).toEqual({ status: HTTP_STATUS_INTERNAL_SERVER_ERROR });
-  });
-});
-
 describe('createRouteHandler()', () => {
-  const errorHandler = () => { return {}; };
-
-  describe('when the body argument is set to true', () => {
-    const route = {
-      response: () => {
-        return {};
-      },
-      plugins: [],
-      errorHandler,
-      includeBody: true,
-    };
-
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
-      expect(result.name).toBe('bound handleResponseWithContext');
-    });
-  });
-
-
   describe('when passed a response handler', () => {
-    const route = {
-      response: () => {
-        return {};
-      },
-      plugins: [],
-      errorHandler,
-    };
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createRouteHandler({
+        response: () => {
+          return {};
+        },
+      });
 
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
 
-  describe('when passed a response handler without an error handler', () => {
-    const route = {
-      response: () => {
-        return {};
-      },
-      plugins: [],
-    };
+  describe('when passed a response object with an `error` property', () => {
+    test('returns bound handleEmptyResponse()', () => {
+      const result = createRouteHandler({
+        response: { error: 'TEAPOT' },
+      });
 
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
-      expect(result.name).toBe('bound handleResponseWithContext');
-    });
-  });
-
-  describe('when passed a response object with a status property', () => {
-    const route = {
-      response: {
-        status: 418,
-      },
-      plugins: [],
-      errorHandler,
-    };
-
-    test('returns bound handleEmptyResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleEmptyResponse');
     });
   });
 
-  describe('when passed a response object with a redirect property', () => {
-    const route = {
-      response: {
-        redirect: '/foo',
-      },
-      plugins: [],
-      errorHandler,
-    };
+  describe('when passed a response object with a `status` property', () => {
+    test('returns bound handleEmptyResponse()', () => {
+      const result = createRouteHandler({
+        response: { status: 418 },
+      });
 
-    test('returns bound handleRedirectResponse', () => {
-      const result = createRouteHandler(route);
+      expect(result.name).toBe('bound handleEmptyResponse');
+    });
+  });
+
+  describe('when passed a response object with a `redirect` property', () => {
+    test('returns bound handleRedirectResponse()', () => {
+      const result = createRouteHandler({
+        response: { redirect: '/foo' },
+      });
+
       expect(result.name).toBe('bound handleRedirectResponse');
     });
   });
 
-  describe('when passed a response object with a redirect property and plugins', () => {
-    const route = {
-      response: {
-        redirect: '/foo',
-      },
-      plugins: [
-        mockPlugin,
-      ],
-      errorHandler,
-    };
+  describe('when passed a response object with a `redirect` property and plugins', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createRouteHandler({
+        response: { redirect: '/foo' },
+        plugins: [mockPlugin],
+      });
 
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
 
-  describe('when passed a response object with a body property', () => {
-    describe('and a contentType property set to \'text\'', () => {
-      const route = {
-        response: {
-          contentType: 'text',
-          body: 'abc',
-        },
-        plugins: [],
-        errorHandler,
-      };
+  describe('when passed a response object with a `body` property', () => {
+    describe('and a `contentType` property set to `text`', () => {
+      test('returns bound handleBodyResponse()', () => {
+        const result = createRouteHandler({
+          response: {
+            contentType: 'text',
+            body: 'abc',
+          },
+        });
 
-      test('returns bound handleBodyResponse', () => {
-        const result = createRouteHandler(route);
         expect(result.name).toBe('bound handleBodyResponse');
       });
     });
 
-    describe('and a contentType property set to \'json\'', () => {
-      const route = {
-        response: {
-          contentType: 'json',
-          body: 'abc',
-        },
-        plugins: [],
-        errorHandler,
-      };
+    describe('and a `contentType` property set to `json`', () => {
+      test('returns bound handleBodyResponse()', () => {
+        const result = createRouteHandler({
+          response: {
+            contentType: 'json',
+            body: 'abc',
+          },
+        });
 
-      test('returns bound handleBodyResponse', () => {
-        const result = createRouteHandler(route);
         expect(result.name).toBe('bound handleBodyResponse');
       });
     });
 
-    describe('and a contentType property set to \'buffer\'', () => {
-      const route = {
-        response: {
-          contentType: 'buffer',
-          body: Buffer.from('abc'),
-        },
-        plugins: [],
-        errorHandler,
-      };
+    describe('and a `contentType` property set to `buffer`', () => {
+      test('returns bound handleBodyResponse()', () => {
+        const result = createRouteHandler({
+          response: {
+            contentType: 'buffer',
+            body: Buffer.from('abc'),
+          },
+        });
 
-      test('returns bound handleBodyResponse', () => {
-        const result = createRouteHandler(route);
         expect(result.name).toBe('bound handleBodyResponse');
       });
     });
   });
 
-  describe('when passed a response object with a boolean body property', () => {
-    const route = {
-      response: {
-        body: true,
-      },
-      plugins: [],
-      errorHandler,
-    };
+  describe('when passed a response object with a `body` property of type boolean', () => {
+    test('returns bound handleBodyResponse()', () => {
+      const result = createRouteHandler({
+        response: { body: true },
+      });
 
-    test('returns bound handleBodyResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleBodyResponse');
     });
   });
 
-  describe('when passed a response object with a string body property', () => {
-    const route = {
-      response: {
-        body: 'abc',
-      },
-      plugins: [],
-      errorHandler,
-    };
+  describe('when passed a response object with a `body` property of type string', () => {
+    test('returns bound handleBodyResponse()', () => {
+      const result = createRouteHandler({
+        response: { body: 'abc' },
+      });
 
-    test('returns bound handleBodyResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleBodyResponse');
     });
   });
 
-  describe('when passed a response object with a buffer body property', () => {
-    const route = {
-      response: {
-        body: Buffer.from('abc'),
-      },
-      plugins: [],
-      errorHandler,
-    };
+  describe('when passed a response object with a `body` property of type Buffer', () => {
+    test('returns bound handleBodyResponse()', () => {
+      const result = createRouteHandler({
+        response: { body: Buffer.from('abc') },
+      });
 
-    test('returns bound handleBodyResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleBodyResponse');
     });
   });
 
-  describe('when passed a response object with an object body property', () => {
-    const route = {
-      response: {
-        body: {},
-      },
-      plugins: [],
-      errorHandler,
-    };
+  describe('when passed a response object with a `body` property of type object', () => {
+    test('returns bound handleBodyResponse()', () => {
+      const result = createRouteHandler({
+        response: { body: {} },
+      });
 
-    test('returns bound handleBodyResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleBodyResponse');
     });
   });
 
-  describe('when passed a response object with a symbol body property', () => {
-    const route = {
-      response: {
-        body: Symbol(),
-      },
-      plugins: [],
-      errorHandler,
-    };
-
-    test('exits the program with an error', () => {
+  describe('when passed a response object with a `body` property of type symbol', () => {
+    test('logs an error and exits with a non-zero exit code', () => {
       const expectedError = TypeError('\'symbol\' is not a supported response body type.');
-      const result = createRouteHandler(route);
+      const result = createRouteHandler({
+        response: { body: Symbol() },
+      });
+
       expect(result).toBeUndefined();
       expect(mockConsoleError).toHaveBeenCalledWith(expectedError);
       expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
 
-  describe('when passed a response object with a body property and plugins', () => {
-    const route = {
-      response: {
-        body: {},
-      },
-      plugins: [
-        mockPlugin,
-      ],
-      errorHandler,
-    };
+  describe('when passed a response object with a `body` property and plugins', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createRouteHandler({
+        response: { body: {} },
+        plugins: [mockPlugin],
+      });
 
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
 
-  describe('when passed a response object with a file property', () => {
-    const route = {
-      response: {
-        file: __filename,
-      },
-      plugins: [],
-      errorHandler,
-    };
+  describe('when passed a response object with a `file` property', () => {
+    test('returns bound handleFileResponse()', () => {
+      const result = createRouteHandler({
+        response: { file: __filename },
+      });
 
-    test('returns bound handleFileResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleFileResponse');
     });
   });
 
-  describe('when passed a response object with a file property and plugins', () => {
-    const route = {
-      response: {
-        file: __filename,
-      },
-      plugins: [
-        mockPlugin,
-      ],
-      errorHandler,
-    };
+  describe('when passed a response object with a `file` property and plugins', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createRouteHandler({
+        response: { file: __filename },
+        plugins: [mockPlugin],
+      });
 
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
 
-  describe('when passed a response object with a stream property', () => {
-    const route: TuftRoute = {
-      response: {
-        stream: async (write) => {
-          await write('abc');
+  describe('when passed a response object with a `stream` property', () => {
+    test('returns bound handleStreamResponse()', () => {
+      const result = createRouteHandler({
+        response: {
+          stream: async (write) => {
+            await write('abc');
+          },
         },
-      },
-      plugins: [],
-      errorHandler,
-    };
+      });
 
-    test('returns bound handleStreamResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleStreamResponse');
     });
   });
 
-  describe('when passed a response object with a stream property and plugins', () => {
-    const route: TuftRoute = {
-      response: {
-        stream: async (write) => {
-          await write('abc');
+  describe('when passed a response object with a `stream` property and plugins', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createRouteHandler({
+        response: {
+          stream: async (write) => {
+            await write('abc');
+          },
         },
-      },
-      plugins: [
-        mockPlugin,
-      ],
-      errorHandler,
-    };
+        plugins: [mockPlugin],
+      });
 
-    test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });
 
   describe('when passed an empty response object', () => {
-    const route = {
-      response: {},
-      plugins: [],
-      errorHandler,
-    };
+    test('returns bound handleEmptyResponse()', () => {
+      const result = createRouteHandler({ response: {} });
 
-    test('returns bound handleEmptyResponse', () => {
-      const result = createRouteHandler(route);
       expect(result.name).toBe('bound handleEmptyResponse');
     });
   });
 
   describe('when passed an empty response object and plugins', () => {
-    const route = {
-      response: {},
-      plugins: [
-        mockPlugin,
-      ],
-      errorHandler,
-    };
-
     test('returns bound handleResponseWithContext', () => {
-      const result = createRouteHandler(route);
+      const result = createRouteHandler({
+        response: {},
+        plugins: [mockPlugin],
+      });
+
       expect(result.name).toBe('bound handleResponseWithContext');
     });
   });

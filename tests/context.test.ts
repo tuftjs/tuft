@@ -1,11 +1,13 @@
+import { constants } from 'http2';
 import { TuftContext, createTuftContext } from '../src/context';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_METHOD_GET,
-  HTTP_STATUS_OK,
 } from '../src/constants';
+
+const { HTTP_STATUS_OK } = constants;
 
 describe('TuftContext', () => {
   const mockStream = {

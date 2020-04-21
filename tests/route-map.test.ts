@@ -4,13 +4,13 @@ import { constants } from 'http2';
 import { RouteMap, createRouteMap, primaryHandler, logStreamError } from '../src/route-map';
 import { RouteManager } from '../src/route-manager';
 import { TuftServer, TuftSecureServer } from '../src/server';
-import {
-  HTTP2_HEADER_STATUS,
-  HTTP_STATUS_METHOD_NOT_ALLOWED,
-  HTTP_STATUS_OK
-} from '../src/constants';
+import { HTTP2_HEADER_STATUS } from '../src/constants';
 
-const { NGHTTP2_NO_ERROR } = constants;
+const {
+  HTTP_STATUS_OK,
+  HTTP_STATUS_METHOD_NOT_ALLOWED,
+  NGHTTP2_NO_ERROR,
+} = constants;
 
 function mockPlugin(t: TuftContext) {
   t.request.foo = 42;
@@ -99,28 +99,11 @@ describe('RouteMap.prototype.add()', () => {
   });
 
   describe('adds an object with the correct properties', () => {
-    test('when \'errorHandler\' is set', () => {
-      const errorHandler = () => { return {}; };
-
-      const routes = createRouteMap();
-
-      routes.add({
-        response: {},
-        errorHandler,
-      });
-
-      const route = routes.get('GET /');
-      expect(route).toHaveProperty('errorHandler', errorHandler);
-    });
-
     test('when custom RouteMap options are set', () => {
-      const errorHandler = () => { return {}; };
-
       const routes = createRouteMap({
         method: 'POST',
         basePath: '/foo',
         path: '/bar',
-        errorHandler,
         trailingSlash: true,
       });
 
@@ -129,16 +112,12 @@ describe('RouteMap.prototype.add()', () => {
       });
 
       const route = routes.get('POST /foo/bar');
-      expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', true);
     });
 
     test('when passed another instance of RouteMap with its own custom options as the first argument', () => {
-      const errorHandler = () => { return {}; };
-
       const routes1 = createRouteMap({
         method: 'POST',
-        errorHandler,
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
@@ -157,13 +136,10 @@ describe('RouteMap.prototype.add()', () => {
 
       const route = routes2.get('POST /foo/bar');
 
-      expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
     });
 
     test('when custom RouteMap options are set AND when passed another instance of RouteMap', () => {
-      const errorHandler = () => { return {}; };
-
       const routes1 = createRouteMap();
 
       routes1.add({
@@ -172,7 +148,6 @@ describe('RouteMap.prototype.add()', () => {
 
       const routes2 = createRouteMap({
         method: 'POST',
-        errorHandler,
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
@@ -185,7 +160,6 @@ describe('RouteMap.prototype.add()', () => {
 
       const route = routes2.get('POST /foo');
 
-      expect(route).toHaveProperty('errorHandler', errorHandler);
       expect(route).toHaveProperty('trailingSlash', false);
     });
 

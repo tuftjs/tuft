@@ -1,202 +1,197 @@
+import type { TuftPluginHandler } from '../../src/route-map';
+import { constants } from 'http2';
 import {
   handleStreamResponse,
   handleStreamResponseWithPreHandlers,
 } from '../../src/route-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
-const mockErrorHandler = jest.fn();
+const { HTTP_STATUS_OK, HTTP_STATUS_BAD_REQUEST } = constants;
 
 const mockStream = {
   respond: jest.fn(),
-  write: jest.fn((_, __, callback) => callback()),
+  write: jest.fn((_, __, callback) => {
+    callback();
+  }),
   end: jest.fn(),
 };
 
 const mockStreamWithError = {
   respond: jest.fn(),
   write: jest.fn((_, __, callback) => {
-    callback(Error('mock stream error'));
+    const err = Error('mock stream error');
+    callback(err);
   }),
   end: jest.fn(),
 };
 
-const mockTuftContext: any = {
+const mockContext: any = {
   request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
-    mockTuftContext.outgoingHeaders[key] = value;
+    mockContext.outgoingHeaders[key] = value;
   }),
 };
 
 const mockStreamHandler = jest.fn(async (write: any) => {
-  await write('foo');
-  await write('bar');
-  await write('baz');
+  await write('foo', 'utf8');
+  await write('bar', 'utf8');
+  await write('baz', 'utf8');
+});
+
+beforeEach(() => {
+  mockStream.respond.mockClear();
+  mockStream.write.mockClear();
+  mockStream.end.mockClear();
+  mockStreamWithError.respond.mockClear();
+  mockStreamWithError.write.mockClear();
+  mockStreamWithError.end.mockClear();
+  mockContext.outgoingHeaders = {};
+  mockContext.setHeader.mockClear();
+  mockStreamHandler.mockClear();
 });
 
 describe('handleStreamResponse()', () => {
-  beforeEach(() => {
-    mockStream.respond.mockClear();
-    mockStream.write.mockClear();
-    mockStream.end.mockClear();
-    mockStreamWithError.respond.mockClear();
-    mockStreamWithError.write.mockClear();
-    mockStreamWithError.end.mockClear();
-    mockStreamHandler.mockClear();
+  describe('when the provided stream handler DOES NOT throw an error', () => {
+    test('stream.respond(), stream.write(), and stream.end() are all called', async () => {
+      const response = {
+        status: HTTP_STATUS_OK,
+        stream: mockStreamHandler,
+      };
+
+      const result = handleStreamResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
+
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.write).toHaveBeenCalledTimes(3);
+      expect(mockStream.end).toHaveBeenCalled();
+
+      expect(mockStreamHandler).toHaveBeenCalled();
+    });
   });
 
-  test('stream.write() and stream.end() are called', async () => {
-    const responseObj = {
-      status: 418,
-      stream: mockStreamHandler,
-    };
+  describe('when the provided stream handler DOES throw an error', () => {
+    test('stream.write() is called and then rejects with an error', async () => {
+      const response = {
+        status: HTTP_STATUS_OK,
+        stream: mockStreamHandler,
+      };
 
-    const result = handleStreamResponse(
-      responseObj,
-      //@ts-ignore
-      mockStream,
-    );
+      const result = handleStreamResponse(
+        response,
+        //@ts-ignore
+        mockStreamWithError,
+      );
 
-    const expectedHeaders = { [HTTP2_HEADER_STATUS]: 418 };
+      await expect(result).rejects.toThrow('mock stream error');
 
-    await expect(result).resolves.toBeUndefined();
-    expect(mockStreamHandler).toHaveBeenCalled();
-    expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-    expect(mockStream.write).toHaveBeenCalled();
-    expect(mockStream.end).toHaveBeenCalled();
-  });
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
 
-  test('stream.write() is called and then rejects with an error', async () => {
-    const responseObj = {
-      status: 418,
-      stream: mockStreamHandler,
-    };
+      expect(mockStreamWithError.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStreamWithError.write).toHaveBeenCalledTimes(1);
+      expect(mockStreamWithError.end).not.toHaveBeenCalled();
 
-    const result = handleStreamResponse(
-      responseObj,
-      //@ts-ignore
-      mockStreamWithError,
-    );
-
-    const expectedHeaders = { [HTTP2_HEADER_STATUS]: 418 };
-
-    await expect(result).rejects.toThrow('mock stream error');
-    expect(mockStreamHandler).toHaveBeenCalled();
-    expect(mockStreamWithError.respond).toHaveBeenCalledWith(expectedHeaders);
-    expect(mockStreamWithError.write).toHaveBeenCalled();
-    expect(mockStreamWithError.end).not.toHaveBeenCalled();
+      expect(mockStreamHandler).toHaveBeenCalled();
+    });
   });
 });
 
 describe('handleStreamResponseWithPreHandlers()', () => {
-  beforeEach(() => {
-    mockErrorHandler.mockClear();
-    mockStream.respond.mockClear();
-    mockStream.write.mockClear();
-    mockStream.end.mockClear();
-    mockStreamWithError.respond.mockClear();
-    mockStreamWithError.write.mockClear();
-    mockStreamWithError.end.mockClear();
-    mockTuftContext.outgoingHeaders = {};
-    mockTuftContext.setHeader.mockClear();
-    mockStreamHandler.mockClear();
-  });
-
-  test('stream.write() and stream.end() are called', async () => {
-    const responseObj = {
-      status: 418,
-      stream: mockStreamHandler,
-    };
-    const preHandlers = [() => {}];
-
-    const result = handleStreamResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-    expect(mockStreamHandler).toHaveBeenCalled();
-    expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
-    expect(mockStream.write).toHaveBeenCalled();
-    expect(mockStream.end).toHaveBeenCalled();
-  });
-
-  test('stream.write() is called and then rejects with an error', async () => {
-    const responseObj = {
-      status: 418,
-      stream: mockStreamHandler,
-    };
-    const preHandlers = [() => {}];
-
-    const result = handleStreamResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStreamWithError,
-      mockTuftContext,
-    );
-
-    await expect(result).rejects.toThrow('mock stream error');
-    expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-    expect(mockStreamHandler).toHaveBeenCalled();
-    expect(mockStreamWithError.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
-    expect(mockStreamWithError.write).toHaveBeenCalled();
-    expect(mockStreamWithError.end).not.toHaveBeenCalled();
-  });
-
-  test('calls the error handler when a pre-handler throws an error', async () => {
-    const err = Error('pre-handler error');
-    const responseObj = { stream: mockStreamHandler };
-    const preHandlers =[() => { throw err; }];
-
-    const result = handleStreamResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
-    expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
-    expect(mockStreamHandler).not.toHaveBeenCalled();
-    expect(mockStream.respond).not.toHaveBeenCalled();
-    expect(mockStream.write).not.toHaveBeenCalled();
-    expect(mockStream.end).not.toHaveBeenCalled();
-  });
-
-  describe('with a pre-handler that returns a result', () => {
-    test('calls stream.respond() with the expected arguments', async () => {
-      const responseObj = {
-        status: 418,
+  describe('when the provided stream handler DOES NOT throw an error', () => {
+    test('stream.respond(), stream.write(), and stream.end() are all called', async () => {
+      const pluginHandlers = [() => {}];
+      const response = {
+        status: HTTP_STATUS_OK,
         stream: mockStreamHandler,
       };
-      const plugins = [() => {}];
-
 
       const result = handleStreamResponseWithPreHandlers(
-        mockErrorHandler,
-        plugins,
-        responseObj,
+        pluginHandlers,
+        response,
         //@ts-ignore
         mockStream,
-        mockTuftContext,
+        mockContext,
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockTuftContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, 418);
-      expect(mockStreamHandler).toHaveBeenCalled();
-      expect(mockStream.respond).toHaveBeenCalledWith(mockTuftContext.outgoingHeaders);
-      expect(mockStream.write).toHaveBeenCalled();
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
+
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
+
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.write).toHaveBeenCalledTimes(3);
       expect(mockStream.end).toHaveBeenCalled();
+
+      expect(mockStreamHandler).toHaveBeenCalled();
+    });
+  });
+
+  describe('when the provided stream handler DOES throw an error', () => {
+    test('stream.respond(), stream.write(), and stream.end() are all called', async () => {
+      const pluginHandlers = [() => {}];
+      const response = {
+        status: HTTP_STATUS_OK,
+        stream: mockStreamHandler,
+      };
+
+      const result = handleStreamResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStreamWithError,
+        mockContext,
+      );
+
+      await expect(result).rejects.toThrow('mock stream error');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
+
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
+
+      expect(mockStreamWithError.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStreamWithError.write).toHaveBeenCalledTimes(1);
+      expect(mockStreamWithError.end).not.toHaveBeenCalled();
+
+      expect(mockStreamHandler).toHaveBeenCalled();
+    });
+
+    describe('when a plugin returns an http error response', () => {
+      test('stream.respond() is called with the expected arguments', async () => {
+        const pluginHandlers: TuftPluginHandler[] = [() => {
+          return { error: 'BAD_REQUEST' };
+        }];
+        const response = {
+          status: HTTP_STATUS_OK,
+          stream: mockStreamHandler,
+        };
+
+        const result = handleStreamResponseWithPreHandlers(
+          pluginHandlers,
+          response,
+          //@ts-ignore
+          mockStream,
+          mockContext,
+        );
+
+        await expect(result).resolves.toBeUndefined();
+
+        expect(mockContext.setHeader)
+          .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
+
+        const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST };
+
+        expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+        expect(mockStreamWithError.write).not.toHaveBeenCalled();
+        expect(mockStreamWithError.end).not.toHaveBeenCalled();
+
+        expect(mockStreamHandler).not.toHaveBeenCalled();
+      });
     });
   });
 });

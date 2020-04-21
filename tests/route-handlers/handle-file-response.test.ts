@@ -1,27 +1,39 @@
-import fs = require('fs');
+import type { TuftPluginHandler } from '../../src/route-map';
+import { promises as fsPromises } from 'fs';
+import { constants } from 'http2';
 import { handleFileResponse, handleFileResponseWithPreHandlers } from '../../src/route-handlers';
+import { HTTP2_HEADER_STATUS, HTTP2_HEADER_CONTENT_LENGTH } from '../../src/constants';
 
-const mockErrorHandler = jest.fn();
+const { HTTP_STATUS_OK, HTTP_STATUS_BAD_REQUEST } = constants;
+
+const CONTENT_LENGTH = 42;
+
+const mockFileHandle = {
+  stat: async () => {
+    return { size: CONTENT_LENGTH };
+  },
+} as fsPromises.FileHandle;
+
+const mockFsOpen = jest.spyOn(fsPromises, 'open').mockImplementation(async () => mockFileHandle);
 
 const mockStream = {
+  respond: jest.fn(),
   respondWithFD: jest.fn(),
 };
 
-const mockTuftContext: any = {
+const mockContext: any = {
   request: {},
   outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
-    mockTuftContext.outgoingHeaders[key] = value;
+    mockContext.outgoingHeaders[key] = value;
   }),
 };
 
-//@ts-ignore
-const mockFsOpen = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
-  return {
-    stat: async () => {
-      return { size: 42 };
-    },
-  };
+beforeEach(() => {
+  mockStream.respond.mockClear();
+  mockStream.respondWithFD.mockClear();
+  mockContext.outgoingHeaders = {};
+  mockContext.setHeader.mockClear();
 });
 
 afterAll(() => {
@@ -29,86 +41,87 @@ afterAll(() => {
 });
 
 describe('handleFileResponse()', () => {
-  beforeEach(() => {
-    mockStream.respondWithFD.mockClear();
-  });
-
-  test('stream.respondWithFD() is called', async () => {
-    const responseObj = { file: __filename };
+  test('stream.respondWithFD() is called with the expected arguments', async () => {
+    const response = {
+      status: HTTP_STATUS_OK,
+      file: __filename,
+    };
 
     const result = handleFileResponse(
-      responseObj,
+      response,
       //@ts-ignore
       mockStream
     );
 
     await expect(result).resolves.toBeUndefined();
-    expect(mockStream.respondWithFD).toHaveBeenCalled();
+
+    const expectedHeaders = {
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+      [HTTP2_HEADER_CONTENT_LENGTH]: CONTENT_LENGTH,
+    };
+
+    expect(mockStream.respond).not.toHaveBeenCalled();
+    expect(mockStream.respondWithFD).toHaveBeenCalledWith(mockFileHandle, expectedHeaders);
   });
 });
 
 describe('handleFileResponseWithPreHandlers()', () => {
-  beforeEach(() => {
-    mockErrorHandler.mockClear();
-    mockTuftContext.setHeader.mockClear();
-    mockStream.respondWithFD.mockClear();
+  describe('when a plugin DOES NOT return an http error response', () => {
+    test('stream.respondWithFD() is called with the expected arguments', async () => {
+      const pluginHandlers = [() => {}];
+      const response = {
+        status: HTTP_STATUS_OK,
+        file: __filename,
+      };
+
+      const result = handleFileResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStream,
+        mockContext,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, CONTENT_LENGTH);
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+        [HTTP2_HEADER_CONTENT_LENGTH]: CONTENT_LENGTH,
+      };
+
+      expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.respondWithFD).toHaveBeenCalledWith(mockFileHandle, expectedHeaders);
+    });
   });
 
-  test('stream.respondWithFD() is called', async () => {
-    const responseObj = { file: __filename };
-    const preHandlers = [() => {}];
+  describe('when a plugin DOES return an http error response', () => {
+    test('stream.respondWithFD() is called with the expected arguments', async () => {
+      const pluginHandlers: TuftPluginHandler[] = [() => {
+        return { error: 'BAD_REQUEST' };
+      }];
+      const response = {
+        status: HTTP_STATUS_OK,
+        file: __filename,
+      };
 
-    const result = handleFileResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
+      const result = handleFileResponseWithPreHandlers(
+        pluginHandlers,
+        response,
+        //@ts-ignore
+        mockStream,
+        mockContext,
+      );
 
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).not.toHaveBeenCalled();
-    expect(mockTuftContext.setHeader).toHaveBeenCalled();
-    expect(mockStream.respondWithFD).toHaveBeenCalled();
-  });
+      await expect(result).resolves.toBeUndefined();
+      expect(mockContext.setHeader)
+        .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
 
-  test('stream.respondWithFD() is called when the pre-handler returns a result', async () => {
-    const responseObj = { file: __filename };
-    const plugins = [() => {}];
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST };
 
-    const result = handleFileResponseWithPreHandlers(
-      mockErrorHandler,
-      plugins,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).not.toHaveBeenCalled();
-    expect(mockTuftContext.setHeader).toHaveBeenCalled();
-    expect(mockStream.respondWithFD).toHaveBeenCalled();
-  });
-
-  test('returns an error when a pre-handler throws an error', async () => {
-    const err = Error('pre-handler error');
-    const responseObj = { file: __filename };
-    const preHandlers = [() => { throw err; }];
-
-    const result = handleFileResponseWithPreHandlers(
-      mockErrorHandler,
-      preHandlers,
-      responseObj,
-      //@ts-ignore
-      mockStream,
-      mockTuftContext,
-    );
-
-    await expect(result).resolves.toBeUndefined();
-    expect(mockErrorHandler).toHaveBeenCalledWith(err, mockStream, mockTuftContext);
-    expect(mockTuftContext.setHeader).not.toHaveBeenCalled();
-    expect(mockStream.respondWithFD).not.toHaveBeenCalled();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+      expect(mockStream.respondWithFD).not.toHaveBeenCalled();
+    });
   });
 });
