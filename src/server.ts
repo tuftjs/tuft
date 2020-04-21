@@ -2,8 +2,10 @@ import type { Http2Server, Http2SecureServer, ServerHttp2Stream, IncomingHttpHea
 import type { KeyObject } from 'tls';
 
 import { createServer, createSecureServer } from 'http2';
+import { EventEmitter } from 'events';
 import { createPromise } from './utils';
 import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants';
+
 
 export type ServerOptions = {
   host?: string,
@@ -22,7 +24,7 @@ export type SecureServerOptions = {
  * provided handler function.
  */
 
-export class TuftServer {
+export class TuftServer extends EventEmitter {
   readonly #http2Server: Http2Server;
   readonly #host: string;
   readonly #port: number;
@@ -39,9 +41,14 @@ export class TuftServer {
     handler: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void,
     options: ServerOptions = {},
   ) {
+    super();
+
     const server = createServer();
 
-    server.on('error', logServerError);
+    server.on('error', emitError.bind(this));
+    server.on('sessionError', emitSessionError.bind(this));
+    server.on('timeout', emitTimeout.bind(this));
+
     server.on('stream', handler);
 
     this.#http2Server = server;
@@ -66,10 +73,13 @@ export class TuftServer {
 
   async stop() {
     await createPromise(done => {
-      this.#http2Server.close((err) => {
-        err ? done(err) : done();
-      });
+      this.#http2Server.close(done);
     });
+  }
+
+  setTimeout(msec?: number, callback?: () => void) {
+    this.#http2Server.setTimeout(msec, callback);
+    return this;
   }
 
   address() {
@@ -82,7 +92,7 @@ export class TuftServer {
  * provided handler function.
  */
 
-export class TuftSecureServer {
+export class TuftSecureServer extends EventEmitter {
   readonly #http2SecureServer: Http2SecureServer;
   readonly #host: string;
   readonly #port: number;
@@ -99,9 +109,14 @@ export class TuftSecureServer {
     handler: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void,
     options: SecureServerOptions = {},
   ) {
+    super();
+
     const server = createSecureServer({ key: options.key, cert: options.cert });
 
-    server.on('error', logServerError);
+    server.on('error', emitError.bind(this));
+    server.on('sessionError', emitSessionError.bind(this));
+    server.on('timeout', emitTimeout.bind(this));
+
     server.on('stream', handler);
 
     this.#http2SecureServer = server;
@@ -126,10 +141,13 @@ export class TuftSecureServer {
 
   async stop() {
     await createPromise(done => {
-      this.#http2SecureServer.close((err) => {
-        err ? done(err) : done();
-      });
+      this.#http2SecureServer.close(done);
     });
+  }
+
+  setTimeout(msec?: number, callback?: () => void) {
+    this.#http2SecureServer.setTimeout(msec, callback);
+    return this;
   }
 
   address() {
@@ -137,6 +155,14 @@ export class TuftSecureServer {
   }
 }
 
-export function logServerError(err: Error) {
-  console.error(err);
+export function emitError(this: TuftServer | TuftSecureServer, err: Error) {
+  this.emit('error', err);
+}
+
+export function emitSessionError(this: TuftServer | TuftSecureServer, err: Error) {
+  this.emit('sessionError', err);
+}
+
+export function emitTimeout(this: TuftServer | TuftSecureServer) {
+  this.emit('timeout');
 }
