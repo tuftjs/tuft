@@ -1,4 +1,14 @@
 import { RouteManager, RouteStore } from '../src/route-manager';
+import {
+  HTTP2_METHOD_DELETE,
+  HTTP2_METHOD_GET,
+  HTTP2_METHOD_HEAD,
+  HTTP2_METHOD_OPTIONS,
+  HTTP2_METHOD_PATCH,
+  HTTP2_METHOD_POST,
+  HTTP2_METHOD_PUT,
+  HTTP2_METHOD_TRACE,
+} from '../src/constants';
 
 const mockRouteMap = new Map();
 
@@ -20,15 +30,14 @@ describe('RouteManager', () => {
   test('an instance of RouteManager has the expected properties', () => {
     expect(routes).toBeInstanceOf(RouteManager);
     expect(routes).toHaveProperty('_routes');
-    expect(routes['_routes']).toHaveProperty('CONNECT');
-    expect(routes['_routes']).toHaveProperty('DELETE');
-    expect(routes['_routes']).toHaveProperty('GET');
-    expect(routes['_routes']).toHaveProperty('HEAD');
-    expect(routes['_routes']).toHaveProperty('OPTIONS');
-    expect(routes['_routes']).toHaveProperty('PATCH');
-    expect(routes['_routes']).toHaveProperty('POST');
-    expect(routes['_routes']).toHaveProperty('PUT');
-    expect(routes['_routes']).toHaveProperty('TRACE');
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_DELETE);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_GET);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_HEAD);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_OPTIONS);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_PATCH);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_POST);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_PUT);
+    expect(routes['_routes']).toHaveProperty(HTTP2_METHOD_TRACE);
   });
 
   describe('RouteManager.prototype.find(\'GET\', \'/foo\')', () => {

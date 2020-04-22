@@ -1,6 +1,5 @@
-import { getValidRequestMethods, createPromise } from '../src/utils';
+import { getSupportedRequestMethods, createPromise } from '../src/utils';
 import {
-  HTTP2_METHOD_CONENCT,
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
   HTTP2_METHOD_HEAD,
@@ -13,8 +12,7 @@ import {
 
 describe('getValidRequestMethod()', () => {
   test('returns an array of http request methods as strings', () => {
-    const result = getValidRequestMethods();
-    expect(result).toContain(HTTP2_METHOD_CONENCT);
+    const result = getSupportedRequestMethods();
     expect(result).toContain(HTTP2_METHOD_DELETE);
     expect(result).toContain(HTTP2_METHOD_GET);
     expect(result).toContain(HTTP2_METHOD_HEAD);
