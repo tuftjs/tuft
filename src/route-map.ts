@@ -10,6 +10,7 @@ import { findInvalidSchemaEntry } from './schema-validation';
 import { getSupportedRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
+  ROUTE_MAP_DEFAULT_ERROR_HANDLER,
   ROUTE_MAP_DEFAULT_BASE_PATH,
   ROUTE_MAP_DEFAULT_PATH,
   HTTP2_HEADER_METHOD,
@@ -20,7 +21,7 @@ import {
 type RequestMethod = 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
 
 export interface TuftHandler {
-  (t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
+  (t: TuftContext): TuftResponse | Promise<TuftResponse>;
 }
 
 export interface TuftPluginHandler {
@@ -29,6 +30,10 @@ export interface TuftPluginHandler {
 
 export interface TuftStreamHandler {
   (write: (chunk: any, encoding?: string) => Promise<void>): Promise<void>
+}
+
+export interface TuftErrorHandler {
+  (err: Error, t: TuftContext): TuftResponse | Promise<TuftResponse>;
 }
 
 export interface TuftResponse {
@@ -44,6 +49,7 @@ export interface TuftResponse {
 export interface TuftRoute {
   response: TuftHandler | TuftResponse;
   plugins?: TuftPluginHandler[];
+  errorHandler?: TuftErrorHandler,
   params?: { [key: string]: string };
   trailingSlash?: boolean;
 }
@@ -52,10 +58,12 @@ export interface TuftRouteSchema {
   response: TuftHandler | TuftResponse;
   method?: RequestMethod | RequestMethod[];
   path?: string;
+  errorHandler?: TuftErrorHandler,
 }
 
 type RouteMapOptions = {
   plugins?: TuftPluginHandler[],
+  errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
   path?: string,
@@ -76,22 +84,24 @@ const supportedRequestMethods = getSupportedRequestMethods();
  */
 
 export class RouteMap extends Map {
+  readonly #plugins: TuftPluginHandler[];
+
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
-
-  readonly #plugins: TuftPluginHandler[];
+  readonly #errorHandler: TuftErrorHandler | null;
 
   readonly #basePath: string;     // Prepended to any path added to the route map.
   readonly #methods: string[];    // Default methods.
   readonly #path: string;         // Default path.
 
-  #streamErrorHandler: (err: Error) => void | Promise<void> = defaultHandleError;
+  #applicationErrorHandler: (err: Error) => void | Promise<void> = defaultHandleError;
 
   constructor(options: RouteMapOptions = {}) {
     super();
 
-    this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#plugins = options.plugins ?? [];
+    this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
+    this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#methods = ([options.method ?? supportedRequestMethods]).flat();
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
@@ -127,6 +137,14 @@ export class RouteMap extends Map {
       }
       else if (this.#trailingSlash !== null) {
         mergedRoute.trailingSlash = this.#trailingSlash;
+      }
+
+      if (route.errorHandler) {
+        mergedRoute.errorHandler = route.errorHandler;
+      }
+
+      else if (this.#errorHandler) {
+        mergedRoute.errorHandler = this.#errorHandler;
       }
 
       Object.freeze(mergedRoute);
@@ -173,6 +191,14 @@ export class RouteMap extends Map {
       routeProps.trailingSlash = this.#trailingSlash;
     }
 
+    if (schema.errorHandler) {
+      routeProps.errorHandler = schema.errorHandler;
+    }
+
+    else if (this.#errorHandler) {
+      routeProps.errorHandler = this.#errorHandler;
+    }
+
     // Add a copy of the route data for each method.
     for (const method of methods) {
       const key = method + ' ' + path;
@@ -215,7 +241,7 @@ export class RouteMap extends Map {
   }
 
   onError(callback: (err: Error) => void | Promise<void>) {
-    this.#streamErrorHandler = callback;
+    this.#applicationErrorHandler = callback;
     return this;
   }
 
@@ -224,7 +250,7 @@ export class RouteMap extends Map {
    */
 
   createServer(options?: ServerOptions) {
-    const handler = createPrimaryHandler(this, this.#streamErrorHandler);
+    const handler = createPrimaryHandler(this, this.#applicationErrorHandler);
     return new TuftServer(handler, options);
   }
 
@@ -233,7 +259,7 @@ export class RouteMap extends Map {
    */
 
   createSecureServer(options?: SecureServerOptions) {
-    const handler = createPrimaryHandler(this, this.#streamErrorHandler);
+    const handler = createPrimaryHandler(this, this.#applicationErrorHandler);
     return new TuftSecureServer(handler, options);
   }
 }
