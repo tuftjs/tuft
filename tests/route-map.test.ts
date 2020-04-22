@@ -5,8 +5,8 @@ import {
   RouteMap,
   createRouteMap,
   primaryHandler,
-  streamErrorHandler,
-  defaultErrorHandler,
+  primaryErrorHandler,
+  defaultHandleError,
 } from '../src/route-map';
 import { RouteManager } from '../src/route-manager';
 import { TuftServer, TuftSecureServer } from '../src/server';
@@ -390,7 +390,7 @@ describe('primaryHandler()', () => {
   });
 });
 
-describe('streamErrorHandler()', () => {
+describe('primaryErrorHandler()', () => {
   const mockStreamErrorHandler = jest.fn();
 
   const mockStream = {
@@ -414,7 +414,7 @@ describe('streamErrorHandler()', () => {
       mockStream.destroyed = false;
 
       //@ts-ignore
-      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+      const result = primaryErrorHandler(mockStream, mockStreamErrorHandler, mockError);
 
       await expect(result).resolves.toBeUndefined();
 
@@ -433,7 +433,7 @@ describe('streamErrorHandler()', () => {
       mockStream.destroyed = true;
 
       //@ts-ignore
-      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+      const result = primaryErrorHandler(mockStream, mockStreamErrorHandler, mockError);
 
       await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
@@ -448,7 +448,7 @@ describe('streamErrorHandler()', () => {
       mockStream.headersSent = true;
 
       //@ts-ignore
-      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+      const result = primaryErrorHandler(mockStream, mockStreamErrorHandler, mockError);
 
       await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
@@ -456,32 +456,12 @@ describe('streamErrorHandler()', () => {
       expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
     });
   });
-
-  describe('when the passed error handler throws an error', () => {
-    test('calls console.error() with the expected argument', async () => {
-      mockStream.destroyed = true;
-
-      const mockError = Error('mock error');
-      const mockStreamErrorHandler = jest.fn(() => {
-        throw mockError;
-      });
-
-      //@ts-ignore
-      const result = streamErrorHandler(mockStream, mockStreamErrorHandler, mockError);
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).not.toHaveBeenCalled();
-      expect(mockStream.end).not.toHaveBeenCalled();
-      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
-      expect(mockConsoleError).toHaveBeenCalledWith(mockError);
-    });
-  });
 });
 
-describe('defaultErrorHandler()', () => {
+describe('defaultHandleError()', () => {
   test('calls console.error() with the expected argument', () => {
     const mockError = Error('mock error');
-    expect(defaultErrorHandler(mockError)).toBeUndefined();
+    expect(defaultHandleError(mockError)).toBeUndefined();
     expect(mockConsoleError).toHaveBeenCalledWith(mockError);
   });
 });
