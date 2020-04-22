@@ -55,6 +55,13 @@ export function findInvalidSchemaEntry(schema: any) {
 
         continue;
       }
+      case 'errorHandler': {
+        if (typeof value !== 'function') {
+          return `${formatValue(value)} is not a valid error handler.`;
+        }
+
+        continue;
+      }
       default:
         return `'${prop}' is not a valid route schema property.`;
     }
