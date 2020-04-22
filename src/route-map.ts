@@ -17,6 +17,8 @@ import {
   HTTP2_HEADER_STATUS,
 } from './constants';
 
+type RequestMethod = 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
+
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | null | Promise<TuftResponse | null>;
 }
@@ -46,9 +48,6 @@ export interface TuftRoute {
   trailingSlash?: boolean;
 }
 
-type RequestMethod =
-  'CONNECT' | 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
-
 export interface TuftRouteSchema {
   response: TuftHandler | TuftResponse;
   method?: RequestMethod | RequestMethod[];
@@ -74,8 +73,6 @@ const supportedRequestMethods = getSupportedRequestMethods();
 /**
  * Stores route data indexed by method and path. Instances of RouteMap can be added to other route
  * maps, which results in entries being merged and traits from the parent route map being inherited.
- * The createServer() and createSecureServer() methods can then be used to create a server that
- * utilizes the routes currently present in the route map.
  */
 
 export class RouteMap extends Map {
@@ -88,7 +85,7 @@ export class RouteMap extends Map {
   readonly #methods: string[];    // Default methods.
   readonly #path: string;         // Default path.
 
-  #streamErrorHandler: (err: Error) => void | Promise<void> = defaultErrorHandler;
+  #streamErrorHandler: (err: Error) => void | Promise<void> = defaultHandleError;
 
   constructor(options: RouteMapOptions = {}) {
     super();
@@ -190,7 +187,7 @@ export class RouteMap extends Map {
   }
 
   /**
-   * An alternative method to .add(), where the provided route schema is added to the route map
+   * An alternative to .add(), where the provided route schema is added to the route map
    * based on the provided string, which should be in the format of '{request method} {path}'.
    */
 
@@ -223,7 +220,7 @@ export class RouteMap extends Map {
   }
 
   /**
-   * Create and return an instance of TuftServer that utilizes the current route map.
+   * Creates and returns an instance of TuftServer that utilizes the current route map.
    */
 
   createServer(options?: ServerOptions) {
@@ -232,7 +229,7 @@ export class RouteMap extends Map {
   }
 
   /**
-   * Create and return an instance of TuftSecureServer that utilizes the current route map.
+   * Creates and returns an instance of TuftSecureServer that utilizes the current route map.
    */
 
   createSecureServer(options?: SecureServerOptions) {
@@ -242,8 +239,7 @@ export class RouteMap extends Map {
 }
 
 /**
- * Create and return a main handler function that has access to an instance of RouteManager, which
- * in turn contains all the route handlers for the application.
+ * Creates and returns a main handler function that has access to an instance of RouteManager.
  */
 
 function createPrimaryHandler(
@@ -255,9 +251,9 @@ function createPrimaryHandler(
 }
 
 /**
- * primaryHandler() is the solitary function that gets added as a listener to the 'stream' event in
- * the underlying HTTP/2 server. It serves to determine if there is a matching route, and then pass
- * any further operations on to the route handler that exists for that route.
+ * Determines if there is a matching route for the given request. If there is no matching route, or
+ * if the request method is not supported, a response is sent with the appropriate error. If there
+ * is a matching route, control of the stream is passed on to the corresponding response handler.
  */
 
 export async function primaryHandler(
@@ -267,7 +263,7 @@ export async function primaryHandler(
   headers: IncomingHttpHeaders
 ) {
   try {
-    stream.on('error', streamErrorHandler.bind(null, stream, errorHandler));
+    stream.on('error', primaryErrorHandler.bind(null, stream, errorHandler));
 
     const method = headers[HTTP2_HEADER_METHOD] as string;
 
@@ -283,15 +279,16 @@ export async function primaryHandler(
     const path = headers[HTTP2_HEADER_PATH] as string;
     const queryStringSeparatorIndex = path.indexOf('?');
 
-    // Separate the query string from the pathname, if it exists.
+    // Separate the pathname from the query string, if it exists.
     const pathname = queryStringSeparatorIndex > 0
       ? path.slice(0, queryStringSeparatorIndex)
       : path;
 
+    // Determine if a response handler exists for the given method and pathname.
     const handleResponse = routes.find(method, pathname);
 
     if (!handleResponse) {
-      // There is no matching route.
+      // There is no response handler for the given route.
       stream.respond({
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
       }, { endStream: true });
@@ -299,46 +296,54 @@ export async function primaryHandler(
       return;
     }
 
+    // Pass control of the stream on to the response handler.
     await handleResponse(stream, headers);
   }
 
   catch (err) {
-    streamErrorHandler(stream, errorHandler, err);
+    primaryErrorHandler(stream, errorHandler, err);
   }
 }
 
-export async function streamErrorHandler(
+/**
+ * To be called when an error has been thrown that was not caught by a route-level error handler, or
+ * when an `error` event is emitted on the HTTP/2 stream. Accepts a user-defined error handler which
+ * is passed the error object.
+ */
+
+export async function primaryErrorHandler(
   stream: ServerHttp2Stream,
   handleError: (err: Error) => void | Promise<void>,
   err: Error,
 ) {
-  try {
-    if (!stream.destroyed) {
-      if (!stream.headersSent) {
-        stream.respond({
-          [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-        }, { endStream: true });
-      }
-
-      else {
-        stream.end();
-      }
+  if (!stream.destroyed) {
+    if (!stream.headersSent) {
+      // The stream is still active and no headers have been sent.
+      stream.respond({
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+      }, { endStream: true });
     }
 
-    await handleError(err);
+    else {
+      // The stream is still active, but headers have already been sent.
+      stream.end();
+    }
   }
 
-  catch (err) {
-    console.error(err);
-  }
+  // Pass the error object on to the user-defined error handler.
+  await handleError(err);
 }
 
-export function defaultErrorHandler(err: Error) {
+/**
+ * Default error handler used if none are provided.
+ */
+
+export function defaultHandleError(err: Error) {
   console.error(err);
 }
 
 /**
- * Create and return a new instance of RouteMap with the provided options.
+ * Creates and returns a new instance of RouteMap with the provided options.
  */
 
 export function createRouteMap(options?: RouteMapOptions) {
