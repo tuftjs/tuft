@@ -86,7 +86,6 @@ app.add({
   },
 });
 
-
 void async function() {
   const server = app.createServer({ port: 3000 });
 
