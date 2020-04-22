@@ -2,7 +2,7 @@ import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { RouteMap, TuftRoute } from './route-map';
 
 import { createResponseHandler } from './response-handlers';
-import { getValidRequestMethods } from './utils';
+import { getSupportedRequestMethods } from './utils';
 
 /**
  * Creates an instance of RouteStore for each valid HTTP request method, and adds the routes in the
@@ -13,7 +13,7 @@ export class RouteManager {
   private readonly _routes: { [method: string]: RouteStore } = {};
 
   constructor(routes: RouteMap) {
-    for (const method of getValidRequestMethods()) {
+    for (const method of getSupportedRequestMethods()) {
       this._routes[method] = new RouteStore();
     }
 

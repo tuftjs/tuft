@@ -1,4 +1,4 @@
-import { getValidRequestMethods, getHttpErrorMap } from './utils';
+import { getSupportedRequestMethods, getHttpErrorMap } from './utils';
 
 const validPathRegexp = /^\/([0-9A-Za-z-_.~%:[\]@!$&'()*+,;=/{}]+)?$/;
 const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
@@ -36,7 +36,7 @@ export function findInvalidSchemaEntry(schema: any) {
       }
       case 'method': {
         for (const method of [value].flat()) {
-          const methods = getValidRequestMethods();
+          const methods = getSupportedRequestMethods();
           const isValidMethod = methods.includes(method.toUpperCase?.());
 
           if (!isValidMethod) {

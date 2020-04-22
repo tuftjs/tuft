@@ -8,7 +8,6 @@ export const TUFT_SERVER_DEFAULT_HOST = 'localhost';
 export const TUFT_SERVER_DEFAULT_PORT = 0;
 
 // HTTP/2 request methods
-export const HTTP2_METHOD_CONENCT   = 'CONNECT';
 export const HTTP2_METHOD_DELETE    = 'DELETE';
 export const HTTP2_METHOD_GET       = 'GET';
 export const HTTP2_METHOD_HEAD      = 'HEAD';

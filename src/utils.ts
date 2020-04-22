@@ -1,7 +1,6 @@
 import { constants } from 'http2';
 
 const {
-  HTTP2_METHOD_CONNECT,
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
   HTTP2_METHOD_HEAD,
@@ -92,12 +91,11 @@ export type HttpError =
 
 /**
  * Returns an array of strings, which represents a list of all the valid HTTP/2 request methods
- * that the application accepts.
+ * that the application supports.
  */
 
-export function getValidRequestMethods() {
+export function getSupportedRequestMethods() {
   return [
-    HTTP2_METHOD_CONNECT,
     HTTP2_METHOD_DELETE,
     HTTP2_METHOD_GET,
     HTTP2_METHOD_HEAD,
