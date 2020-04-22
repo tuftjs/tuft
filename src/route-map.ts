@@ -7,7 +7,7 @@ import { constants } from 'http2';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { findInvalidSchemaEntry } from './schema-validation';
-import { getValidRequestMethods } from './utils';
+import { getSupportedRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
@@ -64,12 +64,12 @@ type RouteMapOptions = {
 }
 
 const {
-  HTTP_STATUS_METHOD_NOT_ALLOWED,
+  HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  NGHTTP2_NO_ERROR,
+  HTTP_STATUS_NOT_IMPLEMENTED,
 } = constants;
 
-const validRequestMethods = getValidRequestMethods();
+const supportedRequestMethods = getSupportedRequestMethods();
 
 /**
  * Stores route data indexed by method and path. Instances of RouteMap can be added to other route
@@ -96,7 +96,7 @@ export class RouteMap extends Map {
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#plugins = options.plugins ?? [];
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
-    this.#methods = ([options.method ?? getValidRequestMethods()]).flat();
+    this.#methods = ([options.method ?? supportedRequestMethods]).flat();
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
   }
 
@@ -198,7 +198,7 @@ export class RouteMap extends Map {
     const [method, path] = key.split(/[ ]+/);
 
     const schema = Object.assign(route, {
-      method: method === '*' ? getValidRequestMethods() : method.split('|'),
+      method: method === '*' ? supportedRequestMethods : method.split('|'),
       path,
     });
 
@@ -271,10 +271,10 @@ export async function primaryHandler(
 
     const method = headers[HTTP2_HEADER_METHOD] as string;
 
-    if (!validRequestMethods.includes(method)) {
+    if (!supportedRequestMethods.includes(method)) {
       // The request method is not supported.
       stream.respond({
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_METHOD_NOT_ALLOWED,
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_IMPLEMENTED,
       }, { endStream: true });
 
       return;
@@ -283,19 +283,23 @@ export async function primaryHandler(
     const path = headers[HTTP2_HEADER_PATH] as string;
     const queryStringSeparatorIndex = path.indexOf('?');
 
+    // Separate the query string from the pathname, if it exists.
     const pathname = queryStringSeparatorIndex > 0
       ? path.slice(0, queryStringSeparatorIndex)
       : path;
 
-    const routeHandler = routes.find(method, pathname);
+    const handleResponse = routes.find(method, pathname);
 
-    if (!routeHandler) {
+    if (!handleResponse) {
       // There is no matching route.
-      stream.close(NGHTTP2_NO_ERROR);
+      stream.respond({
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+      }, { endStream: true });
+
       return;
     }
 
-    await routeHandler(stream, headers);
+    await handleResponse(stream, headers);
   }
 
   catch (err) {
@@ -316,8 +320,8 @@ export async function streamErrorHandler(
         }, { endStream: true });
       }
 
-      else if (!stream.closed) {
-        stream.close(NGHTTP2_NO_ERROR);
+      else {
+        stream.end();
       }
     }
 
