@@ -21,11 +21,11 @@ import {
 type RequestMethod = 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
 
 export interface TuftHandler {
-  (t: TuftContext): TuftResponse | Promise<TuftResponse>;
+  (t: TuftContext): TuftResponse | Error | Promise<TuftResponse | Error>;
 }
 
 export interface TuftPluginHandler {
-  (t: TuftContext): TuftResponse | void | Promise<TuftResponse | void>;
+  (t: TuftContext): TuftResponse | Error | void | Promise<TuftResponse | Error | void>;
 }
 
 export interface TuftStreamHandler {
