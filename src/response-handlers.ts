@@ -54,24 +54,33 @@ const mimeTypeMap: { [key: string]: string } = {
  */
 
 export function createResponseHandler({ response, plugins, errorHandler, params }: TuftRoute) {
-  const pluginHandlers = plugins ?? [];
   const options = { params };
 
   if (typeof response === 'function') {
     // The route contains a handler function
-    const boundCallPlugins = errorHandler
-      ? callPluginsWithErrorHandler.bind(null, pluginHandlers, errorHandler)
-      : callPlugins.bind(null, pluginHandlers);
+    if (plugins) {
+      const boundCallPlugins = errorHandler
+        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
+        : callPlugins.bind(null, plugins);
+
+      const handler = errorHandler
+        ? callHandlerWithErrorHandler.bind(null, response, errorHandler)
+        : response;
+
+      const boundHandleResponse = handleUnknownResponsePluginWrapper.bind(
+        null,
+        boundCallPlugins,
+        handler,
+      );
+
+      return handleResponseWithContext.bind(null, boundHandleResponse, options);
+    }
 
     const handler = errorHandler
       ? callHandlerWithErrorHandler.bind(null, response, errorHandler)
       : response;
 
-    const boundHandleResponse = handleUnknownResponse.bind(
-      null,
-      boundCallPlugins,
-      handler,
-    );
+    const boundHandleResponse = handleUnknownResponse.bind(null, handler);
 
     return handleResponseWithContext.bind(null, boundHandleResponse, options);
   }
@@ -81,10 +90,10 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
   }
 
   if (response.redirect && !response.error) {
-    if (pluginHandlers.length > 0) {
+    if (plugins) {
       const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, pluginHandlers, errorHandler)
-        : callPlugins.bind(null, pluginHandlers);
+        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
+        : callPlugins.bind(null, plugins);
 
       const boundHandleResponse = handleRedirectResponseWithPlugins.bind(
         null,
@@ -151,10 +160,10 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
     response.contentType = contentType;
     response.body = body;
 
-    if (pluginHandlers.length > 0) {
+    if (plugins) {
       const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, pluginHandlers, errorHandler)
-        : callPlugins.bind(null, pluginHandlers);
+        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
+        : callPlugins.bind(null, plugins);
 
       const boundHandleResponse = handleBodyResponseWithPlugins.bind(
         null,
@@ -170,10 +179,10 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
   }
 
   else if (response.file && !response.error) {
-    if (pluginHandlers.length > 0) {
+    if (plugins) {
       const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, pluginHandlers, errorHandler)
-        : callPlugins.bind(null, pluginHandlers);
+        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
+        : callPlugins.bind(null, plugins);
 
       const boundHandleResponse = handleFileResponseWithPlugins.bind(
         null,
@@ -189,10 +198,10 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
   }
 
   else if (response.stream && !response.error) {
-    if (pluginHandlers.length > 0) {
+    if (plugins) {
       const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, pluginHandlers, errorHandler)
-        : callPlugins.bind(null, pluginHandlers);
+        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
+        : callPlugins.bind(null, plugins);
 
       const boundHandleResponse = handleStreamResponseWithPlugins.bind(
         null,
@@ -208,10 +217,10 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
   }
 
   else {
-    if (pluginHandlers.length > 0) {
+    if (plugins) {
       const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, pluginHandlers, errorHandler)
-        : callPlugins.bind(null, pluginHandlers);
+        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
+        : callPlugins.bind(null, plugins);
 
       const boundHandleResponse = handleEmptyResponseWithPlugins.bind(
         null,
@@ -277,7 +286,7 @@ export async function callPluginsWithErrorHandler(
     catch (err) {
       const errorResponse = await handleError(err, t);
 
-      if (!errorResponse.error) {
+      if (!errorResponse?.error) {
         throw Error('Tuft error handlers must return a Tuft error object.');
       }
 
@@ -289,7 +298,7 @@ export async function callPluginsWithErrorHandler(
     if (result instanceof Error) {
       const errorResponse = await handleError(result, t);
 
-      if (!errorResponse.error) {
+      if (!errorResponse?.error) {
         throw Error('Tuft error handlers must return a Tuft error object.');
       }
 
@@ -321,7 +330,7 @@ export async function callHandlerWithErrorHandler(
   catch (err) {
     const errorResponse = await handleError(err, t);
 
-    if (!errorResponse.error) {
+    if (!errorResponse?.error) {
       throw Error('Tuft error handlers must return a Tuft error object.');
     }
 
@@ -331,7 +340,7 @@ export async function callHandlerWithErrorHandler(
   if (result instanceof Error) {
     const errorResponse = await handleError(result, t);
 
-    if (!errorResponse.error) {
+    if (!errorResponse?.error) {
       throw Error('Tuft error handlers must return a Tuft error object.');
     }
 
@@ -486,7 +495,7 @@ export function handleBodyResponse(
 // Same as above, except that pre-handlers are executed and any resulting errors are handled.
 export async function handleBodyResponseWithPlugins(
   callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
-  response: TuftResponse,
+  { status, contentType, body }: TuftResponse,
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
@@ -496,8 +505,6 @@ export async function handleBodyResponseWithPlugins(
     return;
   }
 
-  const { status, contentType, body } = response;
-
   t.setHeader(HTTP2_HEADER_STATUS, status);
   t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
   t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
@@ -505,9 +512,7 @@ export async function handleBodyResponseWithPlugins(
   stream.end(body);
 }
 
-// Handles routes where the response is not known in advance, and instead is determined by the
-// result of a user-defined handler function.
-export async function handleUnknownResponse(
+export async function handleUnknownResponsePluginWrapper(
   callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
   handler: TuftHandler,
   stream: ServerHttp2Stream,
@@ -519,7 +524,17 @@ export async function handleUnknownResponse(
     return;
   }
 
-  const result = await handler(t);
+  await handleUnknownResponse(handler, stream, t);
+}
+
+// Handles routes where the response is not known in advance, and instead is determined by the
+// result of a user-defined handler function.
+export async function handleUnknownResponse(
+  handler: TuftHandler,
+  stream: ServerHttp2Stream,
+  t: TuftContext,
+) {
+  const result = await handler(t) as TuftResponse;
 
   if (result === null || typeof result !== 'object') {
     stream.close(NGHTTP2_NO_ERROR);
