@@ -1,5 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
-import type { RouteMap, TuftRoute } from './route-map';
+import type { TuftRouteMap, TuftRoute } from './route-map';
 
 import { createResponseHandler } from './response-handlers';
 import { getSupportedRequestMethods } from './utils';
@@ -12,7 +12,7 @@ import { getSupportedRequestMethods } from './utils';
 export class RouteManager {
   private readonly _routes: { [method: string]: RouteStore } = {};
 
-  constructor(routes: RouteMap) {
+  constructor(routes: TuftRouteMap) {
     for (const method of getSupportedRequestMethods()) {
       this._routes[method] = new RouteStore();
     }

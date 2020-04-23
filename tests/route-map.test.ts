@@ -2,11 +2,10 @@ import type { TuftContext } from '../src/context';
 
 import { constants } from 'http2';
 import {
-  RouteMap,
-  createRouteMap,
+  TuftRouteMap,
+  createTuft,
   primaryHandler,
   primaryErrorHandler,
-  defaultHandleError,
 } from '../src/route-map';
 import { RouteManager } from '../src/route-manager';
 import { TuftServer, TuftSecureServer } from '../src/server';
@@ -36,16 +35,16 @@ afterAll(() => {
   mockExit.mockRestore();
 });
 
-describe('createRouteMap()', () => {
-  test('returns an instance of RouteMap', () => {
-    expect(createRouteMap()).toBeInstanceOf(RouteMap);
+describe('createTuft()', () => {
+  test('returns an instance of TuftRouteMap', () => {
+    expect(createTuft()).toBeInstanceOf(TuftRouteMap);
   });
 });
 
 describe('RouteMap.prototype.add()', () => {
   describe('adds a value to the map', () => {
     test('when `method` is set', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.add({
         method: ['GET', 'HEAD', 'POST'],
@@ -64,7 +63,7 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when `method` is NOT set', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.add({
         response: {},
@@ -81,7 +80,7 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when `path` is set', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.add({
         path: '/foo',
@@ -93,7 +92,7 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when `path` is NOT set', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.add({
         response: {},
@@ -103,7 +102,7 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when `errorHandler` is set', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.add({
         path: '/foo',
@@ -120,7 +119,7 @@ describe('RouteMap.prototype.add()', () => {
 
   describe('adds an object with the correct properties', () => {
     test('when custom RouteMap options are set', () => {
-      const routes = createRouteMap({
+      const routes = createTuft({
         method: 'POST',
         basePath: '/foo',
         path: '/bar',
@@ -142,7 +141,7 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when passed another instance of RouteMap with its own custom options as the first argument', () => {
-      const routes1 = createRouteMap({
+      const routes1 = createTuft({
         method: 'POST',
         basePath: '/foo',
         path: '/bar',
@@ -159,7 +158,7 @@ describe('RouteMap.prototype.add()', () => {
         response: {},
       });
 
-      const routes2 = createRouteMap();
+      const routes2 = createTuft();
 
       routes2.add(routes1);
 
@@ -169,13 +168,13 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when custom RouteMap options are set AND when passed another instance of RouteMap', () => {
-      const routes1 = createRouteMap();
+      const routes1 = createTuft();
 
       routes1.add({
         response: {},
       });
 
-      const routes2 = createRouteMap({
+      const routes2 = createTuft({
         method: 'POST',
         basePath: '/foo',
         path: '/bar',
@@ -196,13 +195,13 @@ describe('RouteMap.prototype.add()', () => {
     });
 
     test('when NO custom RouteMap options are set AND when passed another instance of RouteMap', () => {
-      const routes1 = createRouteMap();
+      const routes1 = createTuft();
 
       routes1.add({
         response: {},
       });
 
-      const routes2 = createRouteMap();
+      const routes2 = createTuft();
 
       routes2.add(routes1);
 
@@ -218,7 +217,7 @@ describe('RouteMap.prototype.add()', () => {
 describe('RouteMap.prototype.add()', () => {
   describe('when an invalid schema is passed as the first argument', () => {
     test('the program exits with error code 1', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       //@ts-ignore
       routes.add(42);
@@ -233,7 +232,7 @@ describe('RouteMap.prototype.add()', () => {
 describe('RouteMap.prototype.set()', () => {
   describe('adds a value to the map', () => {
     test('when passed `GET|POST|PUT /foo`', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.set('GET|HEAD|POST /foo', { response: {} });
 
@@ -249,7 +248,7 @@ describe('RouteMap.prototype.set()', () => {
     });
 
     test('when passed `* /foo`', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.set('* /foo', { response: {} });
 
@@ -268,7 +267,7 @@ describe('RouteMap.prototype.set()', () => {
 describe('RouteMap.prototype.redirect()', () => {
   describe('adds a value to the map', () => {
     test('when passed `GET /foo` and `/bar`', () => {
-      const routes = createRouteMap();
+      const routes = createTuft();
 
       routes.redirect('GET /foo', '/bar');
 
@@ -287,13 +286,13 @@ describe('RouteMap.prototype.redirect()', () => {
 
 describe('RouteMap.prototype.onError()', () => {
   test('returns RouteMap.prototype', () => {
-    const routes = createRouteMap();
+    const routes = createTuft();
     expect(routes.onError(() => {})).toBe(routes);
   });
 });
 
 describe('RouteMap.prototype.createServer()', () => {
-  const routes = createRouteMap();
+  const routes = createTuft();
 
   test('returns an instance of TuftServer', () => {
     expect(routes.createServer()).toBeInstanceOf(TuftServer);
@@ -301,7 +300,7 @@ describe('RouteMap.prototype.createServer()', () => {
 });
 
 describe('RouteMap.prototype.createSecureServer()', () => {
-  const routes = createRouteMap();
+  const routes = createTuft();
 
   test('returns an instance of TuftSecureServer', () => {
     expect(routes.createSecureServer()).toBeInstanceOf(TuftSecureServer);
@@ -319,7 +318,7 @@ describe('primaryHandler()', () => {
     mockStream.respond.mockClear();
   });
 
-  const routeMap = new RouteMap();
+  const routeMap = new TuftRouteMap();
 
   routeMap.set('GET /foo', {
     response: {},
@@ -394,7 +393,7 @@ describe('primaryHandler()', () => {
     mockStream.respond.mockClear();
   });
 
-  const routeMap = new RouteMap();
+  const routeMap = new TuftRouteMap();
 
   routeMap.set('GET /foo', {
     response: () => {
@@ -483,12 +482,12 @@ describe('primaryErrorHandler()', () => {
       expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
     });
   });
-});
 
-describe('defaultHandleError()', () => {
-  test('calls console.error() with the expected argument', () => {
-    const mockError = Error('mock error');
-    expect(defaultHandleError(mockError)).toBeUndefined();
-    expect(mockConsoleError).toHaveBeenCalledWith(mockError);
+  describe('when the provided error handler is null', () => {
+    test('returns undefined', async () => {
+      //@ts-ignore
+      const result = primaryErrorHandler(mockStream, null, mockError);
+      await expect(result).resolves.toBeUndefined();
+    });
   });
 });

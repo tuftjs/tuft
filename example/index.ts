@@ -1,6 +1,6 @@
-import { createRouteMap, cookieParserPlugin, bodyParserPlugin } from '../src';
+import { createTuft, cookieParserPlugin, bodyParserPlugin } from '../src';
 
-const app = createRouteMap({
+const app = createTuft({
   plugins: [
     cookieParserPlugin(),
     bodyParserPlugin(),

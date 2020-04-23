@@ -79,11 +79,12 @@ const {
 const supportedRequestMethods = getSupportedRequestMethods();
 
 /**
- * Stores route data indexed by method and path. Instances of RouteMap can be added to other route
- * maps, which results in entries being merged and traits from the parent route map being inherited.
+ * Stores route data indexed by method and path. Instances of TuftRouteMap can be added to other
+ * route maps, which results in entries being merged and traits from the parent route map being
+ * inherited.
  */
 
-export class RouteMap extends Map {
+export class TuftRouteMap extends Map {
   readonly #plugins: TuftPluginHandler[];
 
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
@@ -94,7 +95,7 @@ export class RouteMap extends Map {
   readonly #methods: string[];    // Default methods.
   readonly #path: string;         // Default path.
 
-  #applicationErrorHandler: (err: Error) => void | Promise<void> = defaultHandleError;
+  #applicationErrorHandler: ((err: Error) => void | Promise<void>) | null;
 
   constructor(options: RouteMapOptions = {}) {
     super();
@@ -105,13 +106,14 @@ export class RouteMap extends Map {
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#methods = ([options.method ?? supportedRequestMethods]).flat();
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
+    this.#applicationErrorHandler = null;
   }
 
   /**
    * Merges the provided instance of RouteMap with the current instance.
    */
 
-  private _merge(routes: RouteMap) {
+  private _merge(routes: TuftRouteMap) {
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
 
@@ -160,8 +162,8 @@ export class RouteMap extends Map {
    * current instance.
    */
 
-  add(schema: TuftRouteSchema | RouteMap) {
-    if (schema instanceof RouteMap) {
+  add(schema: TuftRouteSchema | TuftRouteMap) {
+    if (schema instanceof TuftRouteMap) {
       this._merge(schema);
       return this;
     }
@@ -269,8 +271,8 @@ export class RouteMap extends Map {
  */
 
 function createPrimaryHandler(
-  routeMap: RouteMap,
-  errorHandler: (err: Error) => void | Promise<void>,
+  routeMap: TuftRouteMap,
+  errorHandler: ((err: Error) => void | Promise<void>) | null,
 ) {
   const routes = new RouteManager(routeMap);
   return primaryHandler.bind(null, routes, errorHandler);
@@ -284,7 +286,7 @@ function createPrimaryHandler(
 
 export async function primaryHandler(
   routes: RouteManager,
-  errorHandler: (err: Error) => void | Promise<void>,
+  errorHandler: ((err: Error) => void | Promise<void>) | null,
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders
 ) {
@@ -339,7 +341,7 @@ export async function primaryHandler(
 
 export async function primaryErrorHandler(
   stream: ServerHttp2Stream,
-  handleError: (err: Error) => void | Promise<void>,
+  handleError: ((err: Error) => void | Promise<void>) | null,
   err: Error,
 ) {
   if (!stream.destroyed) {
@@ -357,21 +359,13 @@ export async function primaryErrorHandler(
   }
 
   // Pass the error object on to the user-defined error handler.
-  await handleError(err);
+  await handleError?.(err);
 }
 
 /**
- * Default error handler used if none are provided.
+ * Returns a new instance of TuftRouteMap, created using the provided options.
  */
 
-export function defaultHandleError(err: Error) {
-  console.error(err);
-}
-
-/**
- * Creates and returns a new instance of RouteMap with the provided options.
- */
-
-export function createRouteMap(options?: RouteMapOptions) {
-  return new RouteMap(options);
+export function createTuft(options?: RouteMapOptions) {
+  return new TuftRouteMap(options);
 }
