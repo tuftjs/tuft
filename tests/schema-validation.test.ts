@@ -4,9 +4,10 @@ describe('findInvalidSchemaEntry()', () => {
   describe('returns null when passed a route schema', () => {
     test('with all possible valid properties', () => {
       const schema = {
+        response: {},
         method: 'GET',
         path: '/',
-        response: {},
+        errorHandler: () => {},
       };
       expect(findInvalidSchemaEntry(schema)).toBeNull();
     });
@@ -40,6 +41,19 @@ describe('findInvalidSchemaEntry()', () => {
         .toBe('\'invalid\' is not a valid route schema property.');
     });
 
+    test('an object with `response` set to null', () => {
+      expect(findInvalidSchemaEntry({ response: null }))
+        .toBe('null is not a valid response object.');
+    });
+
+    test('an object with `response` set to an object containing an invalid property', () => {
+      const schema = {
+        response: { invalid: 42, },
+      };
+      expect(findInvalidSchemaEntry(schema))
+        .toBe('\'invalid\' is not a valid response object property.');
+    });
+
     test('an object with `method` set to an invalid request method string', () => {
       expect(findInvalidSchemaEntry({ method: 'LINK' }))
         .toBe('\'LINK\' is not a valid request method.');
@@ -65,17 +79,9 @@ describe('findInvalidSchemaEntry()', () => {
         .toBe('[Array] is not a valid path.');
     });
 
-    test('an object with `response` set to null', () => {
-      expect(findInvalidSchemaEntry({ response: null }))
-        .toBe('null is not a valid response object.');
-    });
-
-    test('an object with `response` set to an object containing an invalid property', () => {
-      const schema = {
-        response: { invalid: 42, },
-      };
-      expect(findInvalidSchemaEntry(schema))
-        .toBe('\'invalid\' is not a valid response object property.');
+    test('an object with `errorHandler` set to a number', () => {
+      expect(findInvalidSchemaEntry({ errorHandler: 42 }))
+        .toBe('42 is not a valid error handler.');
     });
   });
 });

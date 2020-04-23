@@ -27,6 +27,54 @@ describe('createResponseHandler()', () => {
     });
   });
 
+  describe('when passed a response handler with plugins', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: () => {
+          return {};
+        },
+        plugins: [
+          mockPlugin,
+        ],
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
+  describe('when passed a response handler with an error handler', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: () => {
+          return {};
+        },
+        errorHandler: () => {
+          return {};
+        },
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
+  describe('when passed a response handler with plugins and an error handler', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: () => {
+          return {};
+        },
+        plugins: [
+          mockPlugin,
+        ],
+        errorHandler: () => {
+          return {};
+        },
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
   describe('when passed a response object with an `error` property', () => {
     test('returns bound handleEmptyResponse()', () => {
       const result = createResponseHandler({
@@ -62,6 +110,20 @@ describe('createResponseHandler()', () => {
       const result = createResponseHandler({
         response: { redirect: '/foo' },
         plugins: [mockPlugin],
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
+  describe('when passed a response object with a `redirect` property, plugins, and an error handler', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: { redirect: '/foo' },
+        plugins: [mockPlugin],
+        errorHandler: () => {
+          return {};
+        },
       });
 
       expect(result.name).toBe('bound handleResponseWithContext');
@@ -173,6 +235,20 @@ describe('createResponseHandler()', () => {
     });
   });
 
+  describe('when passed a response object with a `body` property, plugins, and an error handler', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: { body: {} },
+        plugins: [mockPlugin],
+        errorHandler: () => {
+          return {};
+        },
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
   describe('when passed a response object with a `file` property', () => {
     test('returns bound handleFileResponse()', () => {
       const result = createResponseHandler({
@@ -188,6 +264,20 @@ describe('createResponseHandler()', () => {
       const result = createResponseHandler({
         response: { file: __filename },
         plugins: [mockPlugin],
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
+  describe('when passed a response object with a `file` property, plugins, and an error handler', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: { file: __filename },
+        plugins: [mockPlugin],
+        errorHandler: () => {
+          return {};
+        },
       });
 
       expect(result.name).toBe('bound handleResponseWithContext');
@@ -223,6 +313,24 @@ describe('createResponseHandler()', () => {
     });
   });
 
+  describe('when passed a response object with a `stream` property, plugins, and an error handler', () => {
+    test('returns bound handleResponseWithContext()', () => {
+      const result = createResponseHandler({
+        response: {
+          stream: async (write) => {
+            await write('abc');
+          },
+        },
+        plugins: [mockPlugin],
+        errorHandler: () => {
+          return {};
+        },
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
   describe('when passed an empty response object', () => {
     test('returns bound handleEmptyResponse()', () => {
       const result = createResponseHandler({ response: {} });
@@ -236,6 +344,20 @@ describe('createResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
         plugins: [mockPlugin],
+      });
+
+      expect(result.name).toBe('bound handleResponseWithContext');
+    });
+  });
+
+  describe('when passed an empty response object, plugins, and an error handler', () => {
+    test('returns bound handleResponseWithContext', () => {
+      const result = createResponseHandler({
+        response: {},
+        plugins: [mockPlugin],
+        errorHandler: () => {
+          return {};
+        },
       });
 
       expect(result.name).toBe('bound handleResponseWithContext');

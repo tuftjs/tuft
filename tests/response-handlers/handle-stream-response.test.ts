@@ -1,9 +1,8 @@
-import type { TuftPluginHandler } from '../../src/route-map';
 import { constants } from 'http2';
 import { handleStreamResponse, handleStreamResponseWithPlugins } from '../../src/response-handlers';
 import { HTTP2_HEADER_STATUS } from '../../src/constants';
 
-const { HTTP_STATUS_OK, HTTP_STATUS_BAD_REQUEST } = constants;
+const { HTTP_STATUS_OK } = constants;
 
 const mockStream = {
   respond: jest.fn(),
@@ -36,6 +35,9 @@ const mockStreamHandler = jest.fn(async (write: any) => {
   await write('baz', 'utf8');
 });
 
+const mockCallPlugins = jest.fn(async () => 0);
+const mockcallPluginsWithError = jest.fn(async () => 1);
+
 beforeEach(() => {
   mockStream.respond.mockClear();
   mockStream.write.mockClear();
@@ -46,6 +48,8 @@ beforeEach(() => {
   mockContext.outgoingHeaders = {};
   mockContext.setHeader.mockClear();
   mockStreamHandler.mockClear();
+  mockCallPlugins.mockClear();
+  mockcallPluginsWithError.mockClear();
 });
 
 describe('handleStreamResponse()', () => {
@@ -62,14 +66,14 @@ describe('handleStreamResponse()', () => {
         mockStream,
       );
 
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: response.status,
+      };
+
       await expect(result).resolves.toBeUndefined();
-
-      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
-
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
       expect(mockStream.write).toHaveBeenCalledTimes(3);
       expect(mockStream.end).toHaveBeenCalled();
-
       expect(mockStreamHandler).toHaveBeenCalled();
     });
   });
@@ -87,89 +91,84 @@ describe('handleStreamResponse()', () => {
         mockStreamWithError,
       );
 
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: response.status,
+      };
+
       await expect(result).rejects.toThrow('mock stream error');
-
-      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
-
       expect(mockStreamWithError.respond).toHaveBeenCalledWith(expectedHeaders);
       expect(mockStreamWithError.write).toHaveBeenCalledTimes(1);
       expect(mockStreamWithError.end).not.toHaveBeenCalled();
-
       expect(mockStreamHandler).toHaveBeenCalled();
     });
   });
 });
 
 describe('handleStreamResponseWithPlugins()', () => {
-  describe('when the provided stream handler DOES NOT throw an error', () => {
+  describe('when callPlugins() returns 0 and the provided stream handler does not throw', () => {
     test('stream.respond(), stream.write(), and stream.end() are all called', async () => {
-      const pluginHandlers = [() => {}];
       const response = {
         status: HTTP_STATUS_OK,
         stream: mockStreamHandler,
       };
 
       const result = handleStreamResponseWithPlugins(
-        pluginHandlers,
+        mockCallPlugins,
         response,
         //@ts-ignore
         mockStream,
         mockContext,
       );
 
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: response.status,
+      };
+
       await expect(result).resolves.toBeUndefined();
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
-
-      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
-
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
       expect(mockStream.write).toHaveBeenCalledTimes(3);
       expect(mockStream.end).toHaveBeenCalled();
-
       expect(mockStreamHandler).toHaveBeenCalled();
     });
   });
 
-  describe('when the provided stream handler DOES throw an error', () => {
+  describe('when callPlugins() returns 0 and the provided stream handler throws an error', () => {
     test('stream.respond(), stream.write(), and stream.end() are all called', async () => {
-      const pluginHandlers = [() => {}];
       const response = {
         status: HTTP_STATUS_OK,
         stream: mockStreamHandler,
       };
 
       const result = handleStreamResponseWithPlugins(
-        pluginHandlers,
+        mockCallPlugins,
         response,
         //@ts-ignore
         mockStreamWithError,
         mockContext,
       );
 
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: response.status,
+      };
+
       await expect(result).rejects.toThrow('mock stream error');
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
-
-      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
-
       expect(mockStreamWithError.respond).toHaveBeenCalledWith(expectedHeaders);
       expect(mockStreamWithError.write).toHaveBeenCalledTimes(1);
       expect(mockStreamWithError.end).not.toHaveBeenCalled();
-
       expect(mockStreamHandler).toHaveBeenCalled();
     });
 
-    describe('when a plugin returns an http error response', () => {
-      test('stream.respond() is called with the expected arguments', async () => {
-        const pluginHandlers: TuftPluginHandler[] = [() => {
-          return { error: 'BAD_REQUEST' };
-        }];
+    describe('when callPlugins() returns 1', () => {
+      test('stream.respond() is not called', async () => {
         const response = {
           status: HTTP_STATUS_OK,
           stream: mockStreamHandler,
         };
 
         const result = handleStreamResponseWithPlugins(
-          pluginHandlers,
+          mockcallPluginsWithError,
           response,
           //@ts-ignore
           mockStream,
@@ -177,16 +176,10 @@ describe('handleStreamResponseWithPlugins()', () => {
         );
 
         await expect(result).resolves.toBeUndefined();
-
-        expect(mockContext.setHeader)
-          .toHaveBeenCalledWith(HTTP2_HEADER_STATUS, HTTP_STATUS_BAD_REQUEST);
-
-        const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_BAD_REQUEST };
-
-        expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+        expect(mockContext.setHeader).not.toHaveBeenCalled();
+        expect(mockStream.respond).not.toHaveBeenCalled();
         expect(mockStreamWithError.write).not.toHaveBeenCalled();
         expect(mockStreamWithError.end).not.toHaveBeenCalled();
-
         expect(mockStreamHandler).not.toHaveBeenCalled();
       });
     });

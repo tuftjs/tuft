@@ -101,6 +101,21 @@ describe('RouteMap.prototype.add()', () => {
 
       expect(routes.get('GET /')).toBeDefined();
     });
+
+    test('when `errorHandler` is set', () => {
+      const routes = createRouteMap();
+
+      routes.add({
+        path: '/foo',
+        response: {},
+        errorHandler: () => {
+          return {};
+        },
+      });
+
+      expect(routes.get('GET /foo')).toBeDefined();
+      expect(routes.get('GET /')).toBeUndefined();
+    });
   });
 
   describe('adds an object with the correct properties', () => {
@@ -110,6 +125,12 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: true,
+        errorHandler: () => {
+          return {};
+        },
+        plugins: [
+          mockPlugin,
+        ]
       });
 
       routes.add({
@@ -126,9 +147,12 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
+        errorHandler: () => {
+          return {};
+        },
         plugins: [
           mockPlugin,
-        ]
+        ],
       });
 
       routes1.add({
@@ -156,6 +180,9 @@ describe('RouteMap.prototype.add()', () => {
         basePath: '/foo',
         path: '/bar',
         trailingSlash: false,
+        errorHandler: () => {
+          return {};
+        },
         plugins: [
           mockPlugin,
         ]
