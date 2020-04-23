@@ -27,6 +27,7 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "start:example": "ts-node ./example/index.ts",
+    "prebuild": "npm run test",
     "build": "rm -rf ./lib && tsc -b"
   },
   "devDependencies": {
