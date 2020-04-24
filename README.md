@@ -16,10 +16,10 @@ npm i tuft
 
 A simple **Hello, world!** example:
 ```js
-const { createRouteMap } = require('tuft');
+const { createTuft } = require('tuft');
 
 async function init() {
-  const app = createRouteMap();
+  const app = createTuft();
 
   app.set('GET /', {
     response: {
@@ -49,7 +49,7 @@ Hello, world!
 If we want to be able to access our example server from a browser, we'll have to rewrite the above code to use `https` instead of `http`:
 
 ```js
-const { createRouteMap } = require('tuft');
+const { createTuft } = require('tuft');
 const { readFileSync } = require('fs');
 
 ...
@@ -72,7 +72,7 @@ Place the two freshly generated `.pem` files in the example server's root direct
 
 ## Application
 
-A Tuft "application" is created by importing and calling `createRouteMap()`. A Tuft route map is simply a JavaScript `Map` object that stores a list of routes and their associated data. Once all of the routes for your application have been added, a server can be created by calling the route map's `.createServer()` or `.createSecureServer()` methods.
+A Tuft "application" is created by importing and calling `createTuft()`, which returns a JavaScript `Map` object that stores a list of routes and their associated data. Once all of the routes for your application have been added, a server can be created by calling the route map's `.createServer()` or `.createSecureServer()` methods.
 
 ## Routing
 
@@ -81,7 +81,7 @@ Tuft is a route-based framework similar to [hapi](https://hapi.dev). When a clie
 To add a route, call the route map's `.set()` method:
 
 ```js
-const app = createRouteMap();
+const app = createTuft();
 
 app.set('GET /foo', {
   response: { status: 200 }
