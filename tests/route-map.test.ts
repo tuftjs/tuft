@@ -12,7 +12,6 @@ import { TuftServer, TuftSecureServer } from '../src/server';
 import { HTTP2_HEADER_STATUS } from '../src/constants';
 
 const {
-  HTTP_STATUS_OK,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_NOT_IMPLEMENTED,
@@ -129,7 +128,10 @@ describe('RouteMap.prototype.add()', () => {
         },
         plugins: [
           mockPlugin,
-        ]
+        ],
+        responsePlugins: [
+          mockPlugin,
+        ],
       });
 
       routes.add({
@@ -150,6 +152,9 @@ describe('RouteMap.prototype.add()', () => {
           return {};
         },
         plugins: [
+          mockPlugin,
+        ],
+        responsePlugins: [
           mockPlugin,
         ],
       });
@@ -184,7 +189,10 @@ describe('RouteMap.prototype.add()', () => {
         },
         plugins: [
           mockPlugin,
-        ]
+        ],
+        responsePlugins: [
+          mockPlugin,
+        ],
       });
 
       routes2.add(routes1);
@@ -361,7 +369,7 @@ describe('primaryHandler()', () => {
       });
     });
 
-    describe('with a 200 status code', () => {
+    describe('with undefined', () => {
       test('when the value of `path` includes a query string', async () => {
         const errorHandler = () => {};
 
@@ -372,9 +380,7 @@ describe('primaryHandler()', () => {
         });
 
         expect(mockStream.on).toHaveBeenCalled();
-        expect(mockStream.respond).toHaveBeenCalledWith({
-          [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-        }, { endStream: true });
+        expect(mockStream.respond).toHaveBeenCalledWith(undefined, { endStream: true });
       });
     });
   });

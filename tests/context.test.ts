@@ -1,4 +1,5 @@
 import { constants } from 'http2';
+import { URLSearchParams } from 'url';
 import { TuftContext, createTuftContext } from '../src/context';
 import {
   HTTP2_HEADER_STATUS,
