@@ -9,7 +9,10 @@
     "removeComments": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "ES2019"
+    ]
   },
   "include": [
     "src/**/*"
