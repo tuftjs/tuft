@@ -1,4 +1,5 @@
-import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
+import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
+import type { promises as fsPromises } from 'fs';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
 import type { HttpError } from './utils';
@@ -21,11 +22,19 @@ import {
 type RequestMethod = 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
 
 export interface TuftHandler {
-  (t: TuftContext): TuftResponse | Error | Promise<TuftResponse | Error>;
+  (t: TuftContext): TuftResponse | Error | void | Promise<TuftResponse | Error | void>;
 }
 
 export interface TuftPluginHandler {
   (t: TuftContext): TuftResponse | Error | void | Promise<TuftResponse | Error | void>;
+}
+
+export interface TuftResponsePluginHandler {
+  (
+    response: TuftResponse,
+    stream: ServerHttp2Stream,
+    outgoingHeaders: OutgoingHttpHeaders,
+  ): TuftResponse | null | void | Promise<TuftResponse | null | void>;
 }
 
 export interface TuftStreamHandler {
@@ -36,19 +45,21 @@ export interface TuftErrorHandler {
   (err: Error, t: TuftContext): TuftResponse | Promise<TuftResponse>;
 }
 
-export interface TuftResponse {
+export type TuftResponse = {
+  [key in string | number]: any;
+} & {
   error?: HttpError;
   status?: number;
   redirect?: string;
   contentType?: string;
   body?: any;
-  stream?: TuftStreamHandler,
-  file?: string;
-}
+  file?: string | fsPromises.FileHandle;
+};
 
 export interface TuftRoute {
   response: TuftHandler | TuftResponse;
   plugins?: TuftPluginHandler[];
+  responsePlugins?: TuftResponsePluginHandler[],
   errorHandler?: TuftErrorHandler,
   params?: { [key: string]: string };
   trailingSlash?: boolean;
@@ -63,6 +74,7 @@ export interface TuftRouteSchema {
 
 type RouteMapOptions = {
   plugins?: TuftPluginHandler[],
+  responsePlugins?: TuftResponsePluginHandler[],
   errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
@@ -86,6 +98,7 @@ const supportedRequestMethods = getSupportedRequestMethods();
 
 export class TuftRouteMap extends Map {
   readonly #plugins: TuftPluginHandler[];
+  readonly #responsePlugins: TuftResponsePluginHandler[];
 
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
@@ -101,6 +114,7 @@ export class TuftRouteMap extends Map {
     super();
 
     this.#plugins = options.plugins ?? [];
+    this.#responsePlugins = options.responsePlugins ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
@@ -129,6 +143,10 @@ export class TuftRouteMap extends Map {
 
       if (this.#plugins.length > 0 || route.plugins?.length > 0) {
         mergedRoute.plugins = this.#plugins.concat(route.plugins ?? []);
+      }
+
+      if (this.#responsePlugins.length > 0 || route.responsePlugins?.length > 0) {
+        mergedRoute.responsePlugins = this.#responsePlugins.concat(route.responsePlugins ?? []);
       }
 
       // Below, certain properties are inherited from the added route if they exist. Otherwise,
@@ -187,6 +205,10 @@ export class TuftRouteMap extends Map {
 
     if (this.#plugins.length > 0) {
       routeProps.plugins = this.#plugins;
+    }
+
+    if (this.#responsePlugins.length > 0) {
+      routeProps.responsePlugins = this.#responsePlugins;
     }
 
     if (this.#trailingSlash !== null) {
