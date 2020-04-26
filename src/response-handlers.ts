@@ -1,12 +1,12 @@
-import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
+import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import type { TuftContext, TuftContextOptions } from './context';
 import type {
   TuftRoute,
   TuftResponse,
   TuftHandler,
   TuftPluginHandler,
-  TuftStreamHandler,
   TuftErrorHandler,
+  TuftResponsePluginHandler,
 } from './route-map';
 
 import { promises as fsPromises } from 'fs';
@@ -20,15 +20,9 @@ import {
   HTTP2_HEADER_LOCATION,
 } from './constants';
 
-const enum PluginHandlerResult {
-  Success,
-  Failure,
-}
-
 const {
-  HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
-  NGHTTP2_NO_ERROR,
+  HTTP_STATUS_BAD_REQUEST,
 } = constants;
 
 const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
@@ -53,67 +47,29 @@ const mimeTypeMap: { [key: string]: string } = {
  * properties of the provided route passed as arguments.
  */
 
-export function createResponseHandler({ response, plugins, errorHandler, params }: TuftRoute) {
+export function createResponseHandler(route: TuftRoute) {
+  const { response, plugins, responsePlugins, errorHandler, params } = route;
+
+  const pluginHandlers = plugins ?? [];
+  const responsePluginHandlers = responsePlugins ?? [];
   const options = { params };
 
+  if (errorHandler) {
+    for (const [i, handler] of pluginHandlers.entries()) {
+      pluginHandlers[i] = callHandlerWithErrorHandling.bind(null, handler, errorHandler);
+    }
+  }
+
   if (typeof response === 'function') {
-    // The route contains a handler function
-    if (plugins) {
-      const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
-        : callPlugins.bind(null, plugins);
-
-      const handler = errorHandler
-        ? callHandlerWithErrorHandler.bind(null, response, errorHandler)
-        : response;
-
-      const boundHandleResponse = handleUnknownResponsePluginWrapper.bind(
-        null,
-        boundCallPlugins,
-        handler,
-      );
-
-      return handleResponseWithContext.bind(null, boundHandleResponse, options);
-    }
-
     const handler = errorHandler
-      ? callHandlerWithErrorHandler.bind(null, response, errorHandler)
+      ? callHandlerWithErrorHandling.bind(null, response, errorHandler)
       : response;
+    const boundHandleResponse = callResponseHandler.bind(null, handler, responsePluginHandlers);
 
-    const boundHandleResponse = handleUnknownResponse.bind(null, handler);
-
-    return handleResponseWithContext.bind(null, boundHandleResponse, options);
-  }
-
-  if (!response.status) {
-    response.status = response.redirect ? HTTP_STATUS_FOUND : HTTP_STATUS_OK;
-  }
-
-  if (response.redirect && !response.error) {
-    if (plugins) {
-      const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
-        : callPlugins.bind(null, plugins);
-
-      const boundHandleResponse = handleRedirectResponseWithPlugins.bind(
-        null,
-        boundCallPlugins,
-        response,
-      );
-
-      // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, boundHandleResponse, options);
-    }
-
-    return handleRedirectResponse.bind(null, response);
-  }
-
-  if (response.error) {
-    response.status = httpErrorMap[response.error];
+    return handleResponseWithContext.bind(null, pluginHandlers, boundHandleResponse, options);
   }
 
   if (response.body !== undefined) {
-    // The route contains a body, which should be pre-processed based on its content type.
     let { contentType, body } = response;
 
     contentType = contentType && mimeTypeMap[contentType];
@@ -122,7 +78,7 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
       if (contentType === 'text/plain' || contentType === 'text/html') {
         body = body.toString();
       }
-      else if (contentType === 'application/json') {
+      else if (contentType === 'application/json' && typeof body !== 'string') {
         body = JSON.stringify(body);
       }
     }
@@ -159,85 +115,26 @@ export function createResponseHandler({ response, plugins, errorHandler, params 
 
     response.contentType = contentType;
     response.body = body;
-
-    if (plugins) {
-      const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
-        : callPlugins.bind(null, plugins);
-
-      const boundHandleResponse = handleBodyResponseWithPlugins.bind(
-        null,
-        boundCallPlugins,
-        response,
-      );
-
-      // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, boundHandleResponse, options);
-    }
-
-    return handleBodyResponse.bind(null, response);
   }
 
-  else if (response.file && !response.error) {
-    if (plugins) {
-      const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
-        : callPlugins.bind(null, plugins);
+  if (pluginHandlers.length > 0) {
+    const handler = errorHandler
+      ? callHandlerWithErrorHandling.bind(null, returnResponse.bind(null, response), errorHandler)
+      : returnResponse.bind(null, response);
+    const boundHandleResponse = callResponseHandler.bind(null, handler, responsePluginHandlers);
 
-      const boundHandleResponse = handleFileResponseWithPlugins.bind(
-        null,
-        boundCallPlugins,
-        response,
-      );
-
-      // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, boundHandleResponse, options);
-    }
-
-    return handleFileResponse.bind(null, response);
+    return handleResponseWithContext.bind(null, pluginHandlers, boundHandleResponse, options);
   }
 
-  else if (response.stream && !response.error) {
-    if (plugins) {
-      const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
-        : callPlugins.bind(null, plugins);
-
-      const boundHandleResponse = handleStreamResponseWithPlugins.bind(
-        null,
-        boundCallPlugins,
-        response,
-      );
-
-      // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, boundHandleResponse, options);
-    }
-
-    return handleStreamResponse.bind(null, response);
-  }
-
-  else {
-    if (plugins) {
-      const boundCallPlugins = errorHandler
-        ? callPluginsWithErrorHandler.bind(null, plugins, errorHandler)
-        : callPlugins.bind(null, plugins);
-
-      const boundHandleResponse = handleEmptyResponseWithPlugins.bind(
-        null,
-        boundCallPlugins,
-        response,
-      );
-
-      // The route contains pre-handlers, so return a handler that uses TuftContext
-      return handleResponseWithContext.bind(null, boundHandleResponse, options);
-    }
-
-    return handleEmptyResponse.bind(null, response);
-  }
+  return handleResponseWithoutContext.bind(null, responsePluginHandlers, response);
 }
 
-// Creates an instance of TuftContext and passes it to the user-defined route handler.
+export function returnResponse(response: TuftResponse) {
+  return response;
+}
+
 export async function handleResponseWithContext(
+  requestPluginHandlers: TuftPluginHandler[],
   handleResponse: (
     stream: ServerHttp2Stream,
     t: TuftContext
@@ -246,81 +143,49 @@ export async function handleResponseWithContext(
   stream: ServerHttp2Stream,
   headers: IncomingHttpHeaders,
 ) {
-  const context = createTuftContext(stream, headers, options);
-  await handleResponse(stream, context);
-}
+  const t = createTuftContext(stream, headers, options);
 
-export async function callPlugins(
-  pluginHandlers: TuftPluginHandler[],
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  for (let i = 0; i < pluginHandlers.length; i++) {
-    const pluginHandler = pluginHandlers[i];
-    const result = await pluginHandler(t) as TuftResponse;
+  for (let i = 0; i < requestPluginHandlers.length; i++) {
+    const handler = requestPluginHandlers[i];
+    const response = await handler(t) as TuftResponse;
 
-    if (result?.error) {
-      handleHttpErrorResponse(result, stream, t);
-      return PluginHandlerResult.Failure;
+    if (response?.error) {
+      handleHttpErrorResponse(response, stream, t.outgoingHeaders);
+      return;
     }
   }
 
-  return PluginHandlerResult.Success;
+  await handleResponse(stream, t);
 }
 
-export async function callPluginsWithErrorHandler(
-  pluginHandlers: TuftPluginHandler[],
-  handleError: TuftErrorHandler,
+export async function handleResponseWithoutContext(
+  responsePluginHandlers: TuftResponsePluginHandler[],
+  response: TuftResponse,
   stream: ServerHttp2Stream,
-  t: TuftContext,
 ) {
-  for (let i = 0; i < pluginHandlers.length; i++) {
-    const pluginHandler = pluginHandlers[i];
+  const outgoingHeaders = {};
 
-    let result;
+  if (await handleResponse(response, stream, outgoingHeaders) !== response) {
+    return;
+  }
 
-    try {
-      result = await pluginHandler(t) as TuftResponse;
-    }
+  for (let i = 0; i < responsePluginHandlers.length; i++) {
+    const handler = responsePluginHandlers[i];
 
-    catch (err) {
-      const errorResponse = await handleError(err, t);
-
-      if (!errorResponse?.error) {
-        throw Error('Tuft error handlers must return a Tuft error object.');
-      }
-
-      handleHttpErrorResponse(errorResponse, stream, t);
-
-      return PluginHandlerResult.Failure;
-    }
-
-    if (result instanceof Error) {
-      const errorResponse = await handleError(result, t);
-
-      if (!errorResponse?.error) {
-        throw Error('Tuft error handlers must return a Tuft error object.');
-      }
-
-      handleHttpErrorResponse(errorResponse, stream, t);
-
-      return PluginHandlerResult.Failure;
-    }
-
-    else if (result?.error) {
-      handleHttpErrorResponse(result, stream, t);
-      return PluginHandlerResult.Failure;
+    if (await handler(response, stream, outgoingHeaders) !== response) {
+      return;
     }
   }
 
-  return PluginHandlerResult.Success;
+  stream.respond(undefined, { endStream: true });
 }
 
-export async function callHandlerWithErrorHandler(
-  handler: TuftHandler,
+export async function callHandlerWithErrorHandling(
+  handler: TuftHandler | TuftPluginHandler,
   handleError: TuftErrorHandler,
   t: TuftContext,
 ) {
+  let e;
   let result;
 
   try {
@@ -328,305 +193,143 @@ export async function callHandlerWithErrorHandler(
   }
 
   catch (err) {
-    const errorResponse = await handleError(err, t);
-
-    if (!errorResponse?.error) {
-      throw Error('Tuft error handlers must return a Tuft error object.');
-    }
-
-    return errorResponse;
+    e = err;
   }
 
   if (result instanceof Error) {
-    const errorResponse = await handleError(result, t);
+    e = result;
+  }
 
-    if (!errorResponse?.error) {
-      throw Error('Tuft error handlers must return a Tuft error object.');
+  if (e) {
+    const response = await handleError(e, t);
+
+    if (!response?.error) {
+      throw Error('Error handlers must return a Tuft error object.');
     }
 
-    return errorResponse;
+    return response;
   }
 
   return result;
 }
 
-export function handleRedirectResponse(response: TuftResponse, stream: ServerHttp2Stream) {
-  const outgoingHeaders = {
-    [HTTP2_HEADER_STATUS]: response.status,
-    [HTTP2_HEADER_LOCATION]: response.redirect,
-  };
-  stream.respond(outgoingHeaders, { endStream: true });
-}
-
-export async function handleRedirectResponseWithPlugins(
-  callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
-  response: TuftResponse,
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  const pluginResult = await callPlugins(stream, t);
-
-  if (pluginResult === PluginHandlerResult.Failure) {
-    return;
-  }
-
-  t.setHeader(HTTP2_HEADER_STATUS, response.status);
-  t.setHeader(HTTP2_HEADER_LOCATION, response.redirect);
-  stream.respond(t.outgoingHeaders, { endStream: true });
-}
-
-// Handles routes that do not contain a response body, send a file, or implement a stream.
-export function handleEmptyResponse(response: TuftResponse, stream: ServerHttp2Stream) {
-  const outgoingHeaders = { [HTTP2_HEADER_STATUS]: response.status };
-  stream.respond(outgoingHeaders, { endStream: true });
-}
-
-// Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleEmptyResponseWithPlugins(
-  callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
-  response: TuftResponse,
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  const pluginResult = await callPlugins(stream, t);
-
-  if (pluginResult === PluginHandlerResult.Failure) {
-    return;
-  }
-
-  t.setHeader(HTTP2_HEADER_STATUS, response.status);
-
-  stream.respond(t.outgoingHeaders, { endStream: true });
-}
-
-// Handles routes that send a file.
-export async function handleFileResponse(response: TuftResponse, stream: ServerHttp2Stream) {
-  const fileHandle = await fsPromises.open(response.file as string, 'r');
-  const stat = await fileHandle.stat();
-
-  const outgoingHeaders = {
-    [HTTP2_HEADER_STATUS]: response.status,
-    [HTTP2_HEADER_CONTENT_LENGTH]: stat.size,
-  };
-  stream.respondWithFD(fileHandle, outgoingHeaders);
-}
-
-// Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleFileResponseWithPlugins(
-  callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
-  response: TuftResponse,
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  const pluginResult = await callPlugins(stream, t);
-
-  if (pluginResult === PluginHandlerResult.Failure) {
-    return;
-  }
-
-  const fileHandle = await fsPromises.open(response.file as string, 'r');
-  const stat = await fileHandle.stat();
-
-  t.setHeader(HTTP2_HEADER_STATUS, response.status);
-  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
-  stream.respondWithFD(fileHandle, t.outgoingHeaders);
-}
-
-// Handles routes that implement a writable stream.
-export async function handleStreamResponse(response: TuftResponse, stream: ServerHttp2Stream) {
-  stream.respond({ [HTTP2_HEADER_STATUS]: response.status });
-
-  const streamHandler = response.stream as TuftStreamHandler;
-
-  await streamHandler((chunk: any, encoding?: string) => {
-    return new Promise((resolve, reject) => {
-      stream.write(chunk, encoding, (err) => {
-        err ? reject(err) : resolve();
-      });
-    });
-  });
-
-  stream.end();
-}
-
-// Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleStreamResponseWithPlugins(
-  callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
-  response: TuftResponse,
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  const pluginResult = await callPlugins(stream, t);
-
-  if (pluginResult === PluginHandlerResult.Failure) {
-    return;
-  }
-
-  t.setHeader(HTTP2_HEADER_STATUS, response.status);
-  stream.respond(t.outgoingHeaders);
-
-  const streamHandler = response.stream as TuftStreamHandler;
-
-  await streamHandler((chunk: any, encoding?: string) => {
-    return new Promise((resolve, reject) => {
-      stream.write(chunk, encoding, (err) => {
-        err ? reject(err) : resolve();
-      });
-    });
-  });
-
-  stream.end();
-}
-
-// Handles routes that include a response body.
-export function handleBodyResponse(
-  { status, contentType, body }: TuftResponse,
-  stream: ServerHttp2Stream,
-) {
-  const outgoingHeaders = {
-    [HTTP2_HEADER_STATUS]: status,
-    [HTTP2_HEADER_CONTENT_TYPE]: contentType,
-    [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
-  };
-  stream.respond(outgoingHeaders);
-  stream.end(body);
-}
-
-// Same as above, except that pre-handlers are executed and any resulting errors are handled.
-export async function handleBodyResponseWithPlugins(
-  callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
-  { status, contentType, body }: TuftResponse,
-  stream: ServerHttp2Stream,
-  t: TuftContext,
-) {
-  const pluginResult = await callPlugins(stream, t);
-
-  if (pluginResult === PluginHandlerResult.Failure) {
-    return;
-  }
-
-  t.setHeader(HTTP2_HEADER_STATUS, status);
-  t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
-  stream.respond(t.outgoingHeaders);
-  stream.end(body);
-}
-
-export async function handleUnknownResponsePluginWrapper(
-  callPlugins: (stream: ServerHttp2Stream, t: TuftContext) => Promise<number>,
+export async function callResponseHandler(
   handler: TuftHandler,
+  responsePluginHandlers: TuftResponsePluginHandler[],
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
-  const pluginResult = await callPlugins(stream, t);
+  const response = await handler(t) as TuftResponse;
 
-  if (pluginResult === PluginHandlerResult.Failure) {
+  if (response === null || typeof response !== 'object') {
+    throw TypeError(`'${response}' is not a valid Tuft response object.`);
+  }
+
+  if (await handleResponse(response, stream, t.outgoingHeaders) !== response) {
     return;
   }
 
-  await handleUnknownResponse(handler, stream, t);
+  for (let i = 0; i < responsePluginHandlers.length; i++) {
+    const handler = responsePluginHandlers[i];
+
+    if (await handler(response, stream, t.outgoingHeaders) !== response) {
+      return;
+    }
+  }
+
+  stream.respond(undefined, { endStream: true });
 }
 
-// Handles routes where the response is not known in advance, and instead is determined by the
-// result of a user-defined handler function.
-export async function handleUnknownResponse(
-  handler: TuftHandler,
+export async function handleResponse(
+  response: TuftResponse,
   stream: ServerHttp2Stream,
-  t: TuftContext,
+  outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  const result = await handler(t) as TuftResponse;
+  const { error, redirect, status, body, contentType, file } = response;
 
-  if (result === null || typeof result !== 'object') {
-    stream.close(NGHTTP2_NO_ERROR);
+  if (error) {
+    handleHttpErrorResponse(response, stream, outgoingHeaders);
     return;
   }
 
-  let { status, contentType, body, file, stream: streamHandler } = result;
-
-  if (result.error) {
-    handleHttpErrorResponse(result, stream, t);
+  else if (redirect) {
+    handleRedirectResponse(redirect, stream, outgoingHeaders);
     return;
   }
 
-  if (status) {
-    t.setHeader(HTTP2_HEADER_STATUS, status);
-  }
+  else if (body !== undefined) {
+    if (status) {
+      outgoingHeaders[HTTP2_HEADER_STATUS] = status;
+    }
 
-  if (body !== undefined) {
-    handleUnknownBodyResponse(stream, t, body, contentType);
+    handleBodyResponse(body, contentType, stream, outgoingHeaders);
     return;
   }
 
-  if (file) {
-    const fileHandle = typeof file === 'string'
-      ? await fsPromises.open(file, 'r')
-      : file;
+  else if (file) {
+    if (status) {
+      outgoingHeaders[HTTP2_HEADER_STATUS] = status;
+    }
 
-    const stat = await fileHandle.stat();
-
-    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, stat.size);
-    stream.respondWithFD(fileHandle, t.outgoingHeaders);
-
+    await handleFileResponse(file, stream, outgoingHeaders);
     return;
   }
 
-  if (streamHandler) {
-    stream.respond(t.outgoingHeaders);
-
-    await streamHandler((chunk: any, encoding?: string) => {
-      return new Promise((resolve, reject) => {
-        stream.write(chunk, encoding, (err) => {
-          err ? reject(err) : resolve();
-        });
-      });
-    });
-
-    stream.end();
+  else if (status) {
+    handleStatusResponse(status, stream, outgoingHeaders);
     return;
   }
 
-  stream.respond(t.outgoingHeaders, { endStream: true });
+  return response;
 }
 
 export function handleHttpErrorResponse(
-  { error, contentType, body }: TuftResponse,
+  { error, body, contentType }: TuftResponse,
   stream: ServerHttp2Stream,
-  t: TuftContext
+  outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  const statusCode = httpErrorMap[error as HttpError];
-
-  if (statusCode === undefined) {
-    throw TypeError('The \'error\' property must refer to a valid HTTP error.');
-  }
-
-  t.setHeader(HTTP2_HEADER_STATUS, statusCode);
+  const status = httpErrorMap[error as HttpError] ?? HTTP_STATUS_BAD_REQUEST;
+  outgoingHeaders[HTTP2_HEADER_STATUS] = status;
 
   if (body !== undefined) {
-    handleUnknownBodyResponse(stream, t, body, contentType);
+    handleBodyResponse(body, contentType, stream, outgoingHeaders);
     return;
   }
 
-  if (!stream.destroyed) {
-    stream.respond(t.outgoingHeaders, { endStream: true });
-  }
+  stream.respond(outgoingHeaders, { endStream: true });
 }
 
-// Converts the provided body value to a type that can be written to the response stream.
-function handleUnknownBodyResponse(
+export function handleRedirectResponse(
+  url: string,
   stream: ServerHttp2Stream,
-  t: TuftContext,
-  body: any,
-  contentType?: string,
+  outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  if (contentType) {
-    contentType = mimeTypeMap[contentType];
+  outgoingHeaders[HTTP2_HEADER_STATUS] = HTTP_STATUS_FOUND;
+  outgoingHeaders[HTTP2_HEADER_LOCATION] = url;
+  stream.respond(outgoingHeaders, { endStream: true });
+}
+
+export function handleBodyResponse(
+  body: any,
+  type: string | undefined,
+  stream: ServerHttp2Stream,
+  outgoingHeaders: OutgoingHttpHeaders,
+) {
+  let contentType;
+
+  if (type) {
+    contentType = mimeTypeMap[type];
 
     if (contentType === 'text/plain' || contentType === 'text/html') {
       body = body.toString();
     }
 
-    else if (contentType === 'application/json') {
+    else if (contentType === 'application/json' && typeof body !== 'string') {
       body = JSON.stringify(body);
+    }
+
+    else {
+      throw TypeError(`${type} is not a valid value for 'contentType'`);
     }
   }
 
@@ -634,7 +337,7 @@ function handleUnknownBodyResponse(
     switch (typeof body) {
       case 'boolean':
       case 'number': {
-        contentType = 'application/json';
+        contentType = 'text/plain';
         body = body.toString();
         break;
       }
@@ -652,15 +355,38 @@ function handleUnknownBodyResponse(
         body = JSON.stringify(body);
         break;
       }
-      default: {
-        stream.close(NGHTTP2_NO_ERROR);
+      default:
         throw TypeError(`'${typeof body}' is not a supported response body type.`);
-      }
     }
   }
 
-  t.setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType);
-  t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, body.length);
-  stream.respond(t.outgoingHeaders);
+  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = contentType;
+  outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = body.length;
+
+  stream.respond(outgoingHeaders);
   stream.end(body);
+}
+
+export async function handleFileResponse(
+  file: string | fsPromises.FileHandle,
+  stream: ServerHttp2Stream,
+  outgoingHeaders: OutgoingHttpHeaders,
+) {
+  const fileHandle = typeof file === 'string'
+    ? await fsPromises.open(file, 'r')
+    : file;
+  const stat = await fileHandle.stat();
+
+  outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = stat.size;
+  stream.respondWithFD(fileHandle, outgoingHeaders);
+  return;
+}
+
+export function handleStatusResponse(
+  status: number,
+  stream: ServerHttp2Stream,
+  outgoingHeaders: OutgoingHttpHeaders,
+) {
+  outgoingHeaders[HTTP2_HEADER_STATUS] = status;
+  stream.respond(outgoingHeaders, { endStream: true });
 }
