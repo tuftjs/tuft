@@ -10,8 +10,12 @@ import {
   HTTP2_METHOD_TRACE,
 } from '../src/constants';
 
-describe('getValidRequestMethod()', () => {
-  test('returns an array of http request methods as strings', () => {
+/**
+ * getValidRequestMethods()
+ */
+
+describe('getValidRequestMethods()', () => {
+  test('returns an array of HTTP request methods as strings', () => {
     const result = getSupportedRequestMethods();
     expect(result).toContain(HTTP2_METHOD_DELETE);
     expect(result).toContain(HTTP2_METHOD_GET);
@@ -24,6 +28,10 @@ describe('getValidRequestMethod()', () => {
   });
 });
 
+/**
+ * createPromise()
+ */
+
 describe('createPromise()', () => {
   test('returns a promise that resolves to the expected value', async () => {
     const result = createPromise(done => done(null, 42));
@@ -31,7 +39,8 @@ describe('createPromise()', () => {
   });
 
   test('returns a promise that rejects with an error', async () => {
-    const result = createPromise(done => done(Error('mock error')));
-    await expect(result).rejects.toThrow('mock error');
+    const err = Error('mock error');
+    const result = createPromise(done => done(err));
+    await expect(result).rejects.toThrow(err.message);
   });
 });

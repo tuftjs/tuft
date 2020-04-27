@@ -127,7 +127,7 @@ describe('createResponseHandler()', () => {
           return {};
         },
         plugins: [mockPlugin],
-        responsePlugins: [mockPlugin],
+        responders: [mockPlugin],
       });
 
       expect(result.name).toBe('bound handleResponseWithContext');
@@ -154,7 +154,7 @@ describe('createResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
         plugins: [mockPlugin],
-        responsePlugins: [mockPlugin],
+        responders: [mockPlugin],
       });
 
       expect(result.name).toBe('bound handleResponseWithContext');
@@ -166,7 +166,7 @@ describe('createResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
         plugins: [mockPlugin],
-        responsePlugins: [mockPlugin],
+        responders: [mockPlugin],
         errorHandler: () => {
           return {};
         },

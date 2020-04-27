@@ -1,5 +1,3 @@
-import type { TuftContext } from '../src/context';
-
 import { constants } from 'http2';
 import {
   TuftRouteMap,
@@ -17,16 +15,30 @@ const {
   HTTP_STATUS_NOT_IMPLEMENTED,
 } = constants;
 
-function mockPlugin(t: TuftContext) {
-  t.request.foo = 42;
-}
-
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => { });
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+const mockStream = {
+  destroyed: false,
+  headersSent: false,
+  on: jest.fn(),
+  respond: jest.fn(),
+  end: jest.fn(),
+};
+
+const mockErrorHandler = jest.fn();
 
 beforeEach(() => {
   mockConsoleError.mockClear();
   mockExit.mockClear();
+
+  mockStream.destroyed = false;
+  mockStream.headersSent = false;
+  mockStream.on.mockClear();
+  mockStream.respond.mockClear();
+  mockStream.end.mockClear();
+
+  mockErrorHandler.mockClear();
 });
 
 afterAll(() => {
@@ -34,466 +46,453 @@ afterAll(() => {
   mockExit.mockRestore();
 });
 
-describe('createTuft()', () => {
-  test('returns an instance of TuftRouteMap', () => {
-    expect(createTuft()).toBeInstanceOf(TuftRouteMap);
+/**
+ * TuftRouteMap
+ */
+
+describe('TuftRouteMap', () => {
+  describe('new TuftRouteMap()', () => {
+    test('returns an instance of TuftRouteMap', () => {
+      const result = new TuftRouteMap();
+
+      expect(result).toBeInstanceOf(TuftRouteMap);
+    });
+  });
+
+  describe('TuftRouteMap.prototype.add()', () => {
+    describe('when the `method` property is set to [\'GET\', \'HEAD\', \'POST\']', () => {
+      test('adds `GET /`, `HEAD /`, and `POST /` entries to the map', () => {
+        const map = createTuft();
+
+        map.add({
+          method: ['GET', 'HEAD', 'POST'],
+          response: {},
+        });
+
+        expect(map.has('GET /')).toBe(true);
+        expect(map.has('HEAD /')).toBe(true);
+        expect(map.has('POST /')).toBe(true);
+      });
+    });
+
+    describe('when the `method` property is not set', () => {
+      test('adds entries for all valid request methods to the map', () => {
+        const map = createTuft();
+
+        map.add({
+          response: {},
+        });
+
+        expect(map.has('DELETE /')).toBe(true);
+        expect(map.has('GET /')).toBe(true);
+        expect(map.has('HEAD /')).toBe(true);
+        expect(map.has('OPTIONS /')).toBe(true);
+        expect(map.has('PATCH /')).toBe(true);
+        expect(map.has('POST /')).toBe(true);
+        expect(map.has('PUT /')).toBe(true);
+        expect(map.has('TRACE /')).toBe(true);
+      });
+    });
+
+    describe('when the `path` property is set to `/foo`', () => {
+      test('adds a `GET /foo` entry to the map', () => {
+        const map = createTuft();
+
+        map.add({
+          path: '/foo',
+          method: 'GET',
+          response: {},
+        });
+
+        expect(map.has('GET /foo')).toBe(true);
+      });
+    });
+
+    describe('when the `path` property is not set', () => {
+      test('adds a `GET /` entry to the map', () => {
+        const map = createTuft();
+
+        map.add({
+          method: 'GET',
+          response: {},
+        });
+
+        expect(map.has('GET /')).toBe(true);
+      });
+    });
+
+    describe('when the `errorHandler` property is set', () => {
+      test('adds a `GET /` entry to the map', () => {
+        const map = createTuft();
+
+        map.add({
+          method: 'GET',
+          path: '/',
+          response: {},
+          errorHandler: () => {
+            return {};
+          },
+        });
+
+        expect(map.has('GET /')).toBe(true);
+      });
+    });
+
+    describe('when passed an options object with all supported properties set', () => {
+      test('adds a `POST /foo/bar` entry to the map', () => {
+        const map = createTuft({
+          method: 'POST',
+          basePath: '/foo',
+          path: '/bar',
+          trailingSlash: true,
+          errorHandler: () => ({}),
+          plugins: [() => { }],
+          responders: [() => { }],
+        });
+
+        map.add({
+          response: {},
+        });
+
+        expect(map.has('POST /foo/bar')).toBe(true);
+      });
+    });
+
+    describe('when passed another instance of TuftRouteMap with its own custom options', () => {
+      test('adds a `POST /foo/bar` entry to the map', () => {
+        const map1 = createTuft({
+          method: 'POST',
+          basePath: '/foo',
+          path: '/bar',
+          trailingSlash: true,
+          errorHandler: () => ({}),
+          plugins: [() => { }],
+          responders: [() => { }],
+        });
+
+        map1.add({
+          response: {},
+        });
+
+        const map2 = createTuft();
+        map2.add(map1);
+
+        expect(map2.has('POST /foo/bar')).toBe(true);
+      });
+    });
+
+    describe('when passed an options object with all supported properties set and when passed another instance of TuftRouteMap', () => {
+      test('adds a `POST /foo` entry to the map', () => {
+        const map1 = createTuft();
+
+        map1.add({
+          response: {},
+        });
+
+        const map2 = createTuft({
+          method: 'POST',
+          basePath: '/foo',
+          path: '/bar',
+          trailingSlash: true,
+          errorHandler: () => ({}),
+          plugins: [() => { }],
+          responders: [() => { }],
+        });
+
+        map2.add(map1);
+
+        expect(map2.has('POST /foo')).toBe(true);
+      });
+    });
+
+    describe('when passed another instance of TuftRouteMap with no custom options', () => {
+      test('adds a `GET /` entry to the map', () => {
+        const map1 = createTuft();
+
+        map1.add({
+          response: {},
+        });
+
+        const map2 = createTuft();
+        map2.add(map1);
+
+        expect(map2.has('GET /')).toBe(true);
+      });
+    });
+
+    describe('when passed a non-object', () => {
+      test('calls console.error() and exits with error code 1', () => {
+        const map = createTuft();
+
+        //@ts-ignore
+        map.add(42);
+
+        const expectedError = TypeError('42 is not a valid route schema object.');
+        expect(mockConsoleError).toHaveBeenCalledWith(expectedError);
+        expect(mockExit).toHaveBeenCalledWith(1);
+      });
+    });
+  });
+
+  describe('TuftRouteMap.prototype.set()', () => {
+    describe('when passed `GET|HEAD|POST /`', () => {
+      test('adds `GET /`, `HEAD /`, and `POST /` entries to the map', () => {
+        const map = createTuft();
+
+        map.set('GET|HEAD|POST /', { response: {} });
+
+        expect(map.has('GET /')).toBe(true);
+        expect(map.has('HEAD /')).toBe(true);
+        expect(map.has('POST /')).toBe(true);
+      });
+    });
+
+    describe('when passed `* /`', () => {
+      test('adds entries for all valid request methods to the map', () => {
+        const map = createTuft();
+
+        map.set('* /', { response: {} });
+
+        expect(map.has('DELETE /')).toBe(true);
+        expect(map.has('GET /')).toBe(true);
+        expect(map.has('HEAD /')).toBe(true);
+        expect(map.has('OPTIONS /')).toBe(true);
+        expect(map.has('PATCH /')).toBe(true);
+        expect(map.has('POST /')).toBe(true);
+        expect(map.has('PUT /')).toBe(true);
+        expect(map.has('TRACE /')).toBe(true);
+      });
+    });
+  });
+
+  describe('TuftRouteMap.prototype.redirect()', () => {
+    describe('when passed `GET /foo` and `/bar`', () => {
+      test('adds a `GET /foo` entry to the map', () => {
+        const map = createTuft();
+
+        map.redirect('GET /foo', '/bar');
+
+        expect(map.get('GET /foo')).toBeDefined();
+      });
+    });
+  });
+
+  describe('TuftRouteMap.prototype.onError()', () => {
+    test('returns TuftRouteMap.prototype', () => {
+      const map = createTuft();
+
+      expect(map.onError(() => { })).toBe(map);
+    });
+  });
+
+  describe('TuftRouteMap.prototype.createServer()', () => {
+    test('returns an instance of TuftServer', () => {
+      const map = createTuft();
+      const result = map.createServer();
+
+      expect(result).toBeInstanceOf(TuftServer);
+    });
+  });
+
+  describe('TuftRouteMap.prototype.createSecureServer()', () => {
+    test('returns an instance of TuftSecureServer', () => {
+      const map = createTuft();
+      const result = map.createSecureServer();
+
+      expect(result).toBeInstanceOf(TuftSecureServer);
+    });
   });
 });
 
-describe('RouteMap.prototype.add()', () => {
-  describe('adds a value to the map', () => {
-    test('when `method` is set', () => {
-      const routes = createTuft();
-
-      routes.add({
-        method: ['GET', 'HEAD', 'POST'],
-        response: {},
-      });
-
-      expect(routes.get('GET /')).toBeDefined();
-      expect(routes.get('HEAD /')).toBeDefined();
-      expect(routes.get('POST /')).toBeDefined();
-
-      expect(routes.get('DELETE /')).toBeUndefined();
-      expect(routes.get('OPTIONS /')).toBeUndefined();
-      expect(routes.get('PATCH /')).toBeUndefined();
-      expect(routes.get('PUT /')).toBeUndefined();
-      expect(routes.get('TRACE /')).toBeUndefined();
-    });
-
-    test('when `method` is NOT set', () => {
-      const routes = createTuft();
-
-      routes.add({
-        response: {},
-      });
-
-      expect(routes.get('DELETE /')).toBeDefined();
-      expect(routes.get('GET /')).toBeDefined();
-      expect(routes.get('HEAD /')).toBeDefined();
-      expect(routes.get('OPTIONS /')).toBeDefined();
-      expect(routes.get('PATCH /')).toBeDefined();
-      expect(routes.get('POST /')).toBeDefined();
-      expect(routes.get('PUT /')).toBeDefined();
-      expect(routes.get('TRACE /')).toBeDefined();
-    });
-
-    test('when `path` is set', () => {
-      const routes = createTuft();
-
-      routes.add({
-        path: '/foo',
-        response: {},
-      });
-
-      expect(routes.get('GET /foo')).toBeDefined();
-      expect(routes.get('GET /')).toBeUndefined();
-    });
-
-    test('when `path` is NOT set', () => {
-      const routes = createTuft();
-
-      routes.add({
-        response: {},
-      });
-
-      expect(routes.get('GET /')).toBeDefined();
-    });
-
-    test('when `errorHandler` is set', () => {
-      const routes = createTuft();
-
-      routes.add({
-        path: '/foo',
-        response: {},
-        errorHandler: () => {
-          return {};
-        },
-      });
-
-      expect(routes.get('GET /foo')).toBeDefined();
-      expect(routes.get('GET /')).toBeUndefined();
-    });
-  });
-
-  describe('adds an object with the correct properties', () => {
-    test('when custom RouteMap options are set', () => {
-      const routes = createTuft({
-        method: 'POST',
-        basePath: '/foo',
-        path: '/bar',
-        trailingSlash: true,
-        errorHandler: () => {
-          return {};
-        },
-        plugins: [
-          mockPlugin,
-        ],
-        responsePlugins: [
-          mockPlugin,
-        ],
-      });
-
-      routes.add({
-        response: {},
-      });
-
-      const route = routes.get('POST /foo/bar');
-      expect(route).toHaveProperty('trailingSlash', true);
-    });
-
-    test('when passed another instance of RouteMap with its own custom options as the first argument', () => {
-      const routes1 = createTuft({
-        method: 'POST',
-        basePath: '/foo',
-        path: '/bar',
-        trailingSlash: false,
-        errorHandler: () => {
-          return {};
-        },
-        plugins: [
-          mockPlugin,
-        ],
-        responsePlugins: [
-          mockPlugin,
-        ],
-      });
-
-      routes1.add({
-        response: {},
-      });
-
-      const routes2 = createTuft();
-
-      routes2.add(routes1);
-
-      const route = routes2.get('POST /foo/bar');
-
-      expect(route).toHaveProperty('trailingSlash', false);
-    });
-
-    test('when custom RouteMap options are set AND when passed another instance of RouteMap', () => {
-      const routes1 = createTuft();
-
-      routes1.add({
-        response: {},
-      });
-
-      const routes2 = createTuft({
-        method: 'POST',
-        basePath: '/foo',
-        path: '/bar',
-        trailingSlash: false,
-        errorHandler: () => {
-          return {};
-        },
-        plugins: [
-          mockPlugin,
-        ],
-        responsePlugins: [
-          mockPlugin,
-        ],
-      });
-
-      routes2.add(routes1);
-
-      const route = routes2.get('POST /foo');
-
-      expect(route).toHaveProperty('trailingSlash', false);
-    });
-
-    test('when NO custom RouteMap options are set AND when passed another instance of RouteMap', () => {
-      const routes1 = createTuft();
-
-      routes1.add({
-        response: {},
-      });
-
-      const routes2 = createTuft();
-
-      routes2.add(routes1);
-
-      const route = routes2.get('GET /');
-
-      expect(route).not.toHaveProperty('plugins');
-      expect(route).not.toHaveProperty('errorHandler');
-      expect(route).not.toHaveProperty('trailingSlash');
-    });
-  });
-});
-
-describe('RouteMap.prototype.add()', () => {
-  describe('when an invalid schema is passed as the first argument', () => {
-    test('the program exits with error code 1', () => {
-      const routes = createTuft();
-
-      //@ts-ignore
-      routes.add(42);
-
-      const err = TypeError('42 is not a valid route schema object.');
-      expect(mockConsoleError).toHaveBeenCalledWith(err);
-      expect(mockExit).toHaveBeenCalledWith(1);
-    });
-  });
-});
-
-describe('RouteMap.prototype.set()', () => {
-  describe('adds a value to the map', () => {
-    test('when passed `GET|POST|PUT /foo`', () => {
-      const routes = createTuft();
-
-      routes.set('GET|HEAD|POST /foo', { response: {} });
-
-      expect(routes.get('GET /foo')).toBeDefined();
-      expect(routes.get('HEAD /foo')).toBeDefined();
-      expect(routes.get('POST /foo')).toBeDefined();
-
-      expect(routes.get('DELETE /foo')).toBeUndefined();
-      expect(routes.get('OPTIONS /foo')).toBeUndefined();
-      expect(routes.get('PATCH /foo')).toBeUndefined();
-      expect(routes.get('PUT /foo')).toBeUndefined();
-      expect(routes.get('TRACE /foo')).toBeUndefined();
-    });
-
-    test('when passed `* /foo`', () => {
-      const routes = createTuft();
-
-      routes.set('* /foo', { response: {} });
-
-      expect(routes.get('GET /foo')).toBeDefined();
-      expect(routes.get('HEAD /foo')).toBeDefined();
-      expect(routes.get('POST /foo')).toBeDefined();
-      expect(routes.get('DELETE /foo')).toBeDefined();
-      expect(routes.get('OPTIONS /foo')).toBeDefined();
-      expect(routes.get('PATCH /foo')).toBeDefined();
-      expect(routes.get('PUT /foo')).toBeDefined();
-      expect(routes.get('TRACE /foo')).toBeDefined();
-    });
-  });
-});
-
-describe('RouteMap.prototype.redirect()', () => {
-  describe('adds a value to the map', () => {
-    test('when passed `GET /foo` and `/bar`', () => {
-      const routes = createTuft();
-
-      routes.redirect('GET /foo', '/bar');
-
-      expect(routes.get('GET /foo')).toBeDefined();
-
-      expect(routes.get('HEAD /foo')).toBeUndefined();
-      expect(routes.get('POST /foo')).toBeUndefined();
-      expect(routes.get('DELETE /foo')).toBeUndefined();
-      expect(routes.get('OPTIONS /foo')).toBeUndefined();
-      expect(routes.get('PATCH /foo')).toBeUndefined();
-      expect(routes.get('PUT /foo')).toBeUndefined();
-      expect(routes.get('TRACE /foo')).toBeUndefined();
-    });
-  });
-});
-
-describe('RouteMap.prototype.onError()', () => {
-  test('returns RouteMap.prototype', () => {
-    const routes = createTuft();
-    expect(routes.onError(() => {})).toBe(routes);
-  });
-});
-
-describe('RouteMap.prototype.createServer()', () => {
-  const routes = createTuft();
-
-  test('returns an instance of TuftServer', () => {
-    expect(routes.createServer()).toBeInstanceOf(TuftServer);
-  });
-});
-
-describe('RouteMap.prototype.createSecureServer()', () => {
-  const routes = createTuft();
-
-  test('returns an instance of TuftSecureServer', () => {
-    expect(routes.createSecureServer()).toBeInstanceOf(TuftSecureServer);
-  });
-});
+/**
+ * primaryHandler()
+ */
 
 describe('primaryHandler()', () => {
-  const mockStream = {
-    on: jest.fn(),
-    respond: jest.fn(),
-  };
+  const map = new TuftRouteMap();
 
-  beforeEach(() => {
-    mockStream.on.mockClear();
-    mockStream.respond.mockClear();
-  });
-
-  const routeMap = new TuftRouteMap();
-
-  routeMap.set('GET /foo', {
+  map.set('GET /foo', {
     response: {},
   });
 
-  const routes = new RouteManager(routeMap);
+  const routes = new RouteManager(map);
 
-  describe('stream.respond() is called', () => {
-    describe('with a 404 status code', () => {
-      test('when the value of `:path` does not match a route', () => {
-        const errorHandler = () => {};
-
+  describe('when the value of `:path` does not match a route', () => {
+    test('stream.respond() is called with a 404 status code', async () => {
+      const result = primaryHandler(
+        routes,
+        mockErrorHandler,
         //@ts-ignore
-        primaryHandler(routes, errorHandler, mockStream, {
+        mockStream,
+        {
           ':method': 'GET',
           ':path': '/does_not_exist',
-        });
+        },
+      );
 
-        expect(mockStream.on).toHaveBeenCalled();
-        expect(mockStream.respond).toHaveBeenCalledWith({
-          [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
-        }, { endStream: true });
-      });
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith({
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+      }, { endStream: true });
     });
+  });
 
-    describe('with a 501 status code', () => {
-      test('when the value of `:method` is not a supported request method', () => {
-        const errorHandler = () => {};
-
+  describe('when the value of `:method` is not a supported request method', () => {
+    test('stream.respond() is called with a 501 status code', async () => {
+      const result = primaryHandler(
+        routes,
+        mockErrorHandler,
         //@ts-ignore
-        primaryHandler(routes, errorHandler, mockStream, {
+        mockStream,
+        {
           ':method': 'LINK',
           ':path': '/foo',
-        });
+        },
+      );
 
-        expect(mockStream.on).toHaveBeenCalled();
-        expect(mockStream.respond).toHaveBeenCalledWith({
-          [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_IMPLEMENTED,
-        }, { endStream: true });
-      });
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith({
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_IMPLEMENTED,
+      }, { endStream: true });
     });
+  });
 
-    describe('with undefined', () => {
-      test('when the value of `path` includes a query string', async () => {
-        const errorHandler = () => {};
 
+  describe('when the value of `path` includes a query string', () => {
+    test('returns undefined', async () => {
+      const result = primaryHandler(
+        routes,
+        mockErrorHandler,
         //@ts-ignore
-        await primaryHandler(routes, errorHandler, mockStream, {
+        mockStream,
+        {
           ':method': 'GET',
           ':path': '/foo?bar=baz',
-        });
+        },
+      );
 
-        expect(mockStream.on).toHaveBeenCalled();
-        expect(mockStream.respond).toHaveBeenCalledWith(undefined, { endStream: true });
-      });
+      await expect(result).resolves.toBeUndefined();
     });
   });
 });
 
 describe('primaryHandler()', () => {
-  const mockErrorHandler = jest.fn();
+  const err = Error('mock error');
+  const map = new TuftRouteMap();
 
-  const mockStream = {
-    on: jest.fn(),
-    respond: jest.fn(),
-  };
-
-  beforeEach(() => {
-    mockStream.on.mockClear();
-    mockStream.respond.mockClear();
+  map.set('GET /foo', {
+    response: () => { throw err; },
   });
 
-  const routeMap = new TuftRouteMap();
+  const routes = new RouteManager(map);
 
-  routeMap.set('GET /foo', {
-    response: () => {
-      throw Error('mock error');
-    },
-  });
+  describe('when the response handler throws an error', () => {
+    test('the passed error handler is called', async () => {
+      const result = primaryHandler(
+        routes,
+        mockErrorHandler,
+        //@ts-ignore
+        mockStream,
+        {
+          ':method': 'GET',
+          ':path': '/foo',
+        },
+      );
 
-  const routes = new RouteManager(routeMap);
-
-  describe('mock error handler is called', () => {
-    test('when the response handler throws an error', async () => {
-      //@ts-ignore
-      await primaryHandler(routes, mockErrorHandler, mockStream, {
-        ':method': 'GET',
-        ':path': '/foo',
-      });
-
-      expect(mockErrorHandler).toHaveBeenCalledWith(Error('mock error'));
+      await expect(result).resolves.toBeUndefined();
+      expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });
 });
 
+/**
+ * primaryErrorHandler()
+ */
+
 describe('primaryErrorHandler()', () => {
-  const mockStreamErrorHandler = jest.fn();
-
-  const mockStream = {
-    destroyed: false,
-    headersSent: false,
-    respond: jest.fn(),
-    end: jest.fn(),
-  };
-  const mockError = Error('mock error');
-
-  beforeEach(() => {
-    mockStream.destroyed = false;
-    mockStream.headersSent = false;
-    mockStream.respond.mockClear();
-    mockStream.end.mockClear();
-    mockStreamErrorHandler.mockClear();
-  });
-
   describe('when `stream.destroyed` is set to false', () => {
-    test('calls the passed error handler with an error', async () => {
+    test('stream.respond() is called with a 501 status code and the passed error handler is called', async () => {
+      const err = Error('mock error');
       mockStream.destroyed = false;
 
-      //@ts-ignore
-      const result = primaryErrorHandler(mockStream, mockStreamErrorHandler, mockError);
-
-      await expect(result).resolves.toBeUndefined();
+      const result = primaryErrorHandler(
+        //@ts-ignore
+        mockStream,
+        mockErrorHandler,
+        err,
+      );
 
       const expectedHeaders = {
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       };
 
+      await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
-      expect(mockStream.end).not.toHaveBeenCalled();
-      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
+      expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });
 
   describe('when `stream.destroyed` is set to true', () => {
-    test('calls the passed error handler with an error', async () => {
+    test('stream.respond() is not called and the passed error handler is called', async () => {
+      const err = Error('mock error');
       mockStream.destroyed = true;
 
-      //@ts-ignore
-      const result = primaryErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+      const result = primaryErrorHandler(
+        //@ts-ignore
+        mockStream,
+        mockErrorHandler,
+        err,
+      );
 
       await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
-      expect(mockStream.end).not.toHaveBeenCalled();
-      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
+      expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });
 
   describe('when `stream.destroyed` is set to false and `stream.headerSent` is set to true', () => {
-    test('calls the passed error handler with an error', async () => {
+    test('stream.respond() is not called and the passed error handler is called', async () => {
+      const err = Error('mock error');
       mockStream.destroyed = false;
       mockStream.headersSent = true;
 
-      //@ts-ignore
-      const result = primaryErrorHandler(mockStream, mockStreamErrorHandler, mockError);
+      const result = primaryErrorHandler(
+        //@ts-ignore
+        mockStream,
+        mockErrorHandler,
+        err,
+      );
 
       await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockStreamErrorHandler).toHaveBeenCalledWith(mockError);
+      expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });
 
   describe('when the provided error handler is null', () => {
     test('returns undefined', async () => {
-      //@ts-ignore
-      const result = primaryErrorHandler(mockStream, null, mockError);
+      const err = Error('mock error');
+
+      const result = primaryErrorHandler(
+        //@ts-ignore
+        mockStream,
+        null,
+        err,
+      );
+
       await expect(result).resolves.toBeUndefined();
     });
+  });
+});
+
+/**
+ * createTuft()
+ */
+
+describe('createTuft()', () => {
+  test('returns an instance of TuftRouteMap', () => {
+    const result = createTuft();
+
+    expect(result).toBeInstanceOf(TuftRouteMap);
   });
 });

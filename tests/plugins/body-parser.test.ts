@@ -42,10 +42,14 @@ const mockContext: MockTuftContext = {
   }
 };
 
+/**
+ * bodyParserPlugin() without an options argument
+ */
+
 describe('bodyParserPlugin() without an options argument', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin();
     expect(typeof bodyParser).toBe('function');
@@ -57,7 +61,7 @@ describe('bodyParserPlugin() without an options argument', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -73,7 +77,7 @@ describe('bodyParserPlugin() without an options argument', () => {
         'content-length': '3',
       };
 
-      test('adds a \'body\' property set to the expected value to the request object', async () => {
+      test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitData(Buffer.from('foo'));
         context.stream.emitEnd();
@@ -90,7 +94,7 @@ describe('bodyParserPlugin() without an options argument', () => {
         'content-length': '11',
       };
 
-      test('adds a \'body\' property set to the expected value to the request object', async () => {
+      test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitData(Buffer.from('foo '));
         context.stream.emitData(Buffer.from('bar '));
@@ -102,13 +106,13 @@ describe('bodyParserPlugin() without an options argument', () => {
       });
     });
 
-    describe('when passed a stream with data and no \'content-type\' header', () => {
+    describe('when passed a stream with data and no `content-type` header', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {
         'content-length': '11',
       };
 
-      test('adds a \'body\' property set to the expected value to the request object', async () => {
+      test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitData(Buffer.from('foo '));
         context.stream.emitData(Buffer.from('bar '));
@@ -120,7 +124,7 @@ describe('bodyParserPlugin() without an options argument', () => {
       });
     });
 
-    describe('when passed a stream with data but no \'content-length\' header', () => {
+    describe('when passed a stream with data but no `content-length` header', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {
         'content-type': 'text/plain',
@@ -140,10 +144,14 @@ describe('bodyParserPlugin() without an options argument', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'text\' set to true', () => {
+/**
+ * bodyParserPlugin() with option `text` set to true
+ */
+
+describe('bodyParserPlugin() with option `text` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ text: true });
     expect(typeof bodyParser).toBe('function');
@@ -155,7 +163,7 @@ describe('bodyParserPlugin() with a option \'text\' set to true', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -171,7 +179,7 @@ describe('bodyParserPlugin() with a option \'text\' set to true', () => {
         'content-length': '11',
       };
 
-      test('adds a \'body\' property set to the expected value to the request object', async () => {
+      test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitData(Buffer.from('foo '));
         context.stream.emitData(Buffer.from('bar '));
@@ -185,10 +193,14 @@ describe('bodyParserPlugin() with a option \'text\' set to true', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'text\' set to 0', () => {
+/**
+ * bodyParserPlugin() with option `text` set to 0
+ */
+
+describe('bodyParserPlugin() with option `text` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ text: 0 });
     expect(typeof bodyParser).toBe('function');
@@ -200,7 +212,7 @@ describe('bodyParserPlugin() with a option \'text\' set to 0', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -211,10 +223,14 @@ describe('bodyParserPlugin() with a option \'text\' set to 0', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'text\' set to 1', () => {
+/**
+ * bodyParserPlugin() with option `text` set to 1
+ */
+
+describe('bodyParserPlugin() with option `text` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ text: 1 });
     expect(typeof bodyParser).toBe('function');
@@ -226,7 +242,7 @@ describe('bodyParserPlugin() with a option \'text\' set to 1', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -235,7 +251,7 @@ describe('bodyParserPlugin() with a option \'text\' set to 1', () => {
       });
     });
 
-    describe('when passed a stream with data that exeeds the set body size limit', () => {
+    describe('when passed a stream with data that exceeds the set body size limit', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {
         'content-type': 'text/plain',
@@ -256,10 +272,14 @@ describe('bodyParserPlugin() with a option \'text\' set to 1', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'json\' set to true', () => {
+/**
+ * bodyParserPlugin() with option `json` set to true
+ */
+
+describe('bodyParserPlugin() with option `json` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ json: true });
     expect(typeof bodyParser).toBe('function');
@@ -271,7 +291,7 @@ describe('bodyParserPlugin() with a option \'json\' set to true', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -287,7 +307,7 @@ describe('bodyParserPlugin() with a option \'json\' set to true', () => {
         'content-length': '10',
       };
 
-      test('adds a \'body\' property set to the expected value to the request object', async () => {
+      test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitData(Buffer.from('{"foo"'));
         context.stream.emitData(Buffer.from(':42}'));
@@ -300,10 +320,14 @@ describe('bodyParserPlugin() with a option \'json\' set to true', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'json\' set to 0', () => {
+/**
+ * bodyParserPlugin() with option `json` set to 0
+ */
+
+describe('bodyParserPlugin() with option `json` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ json: 0 });
     expect(typeof bodyParser).toBe('function');
@@ -315,7 +339,7 @@ describe('bodyParserPlugin() with a option \'json\' set to 0', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -326,10 +350,14 @@ describe('bodyParserPlugin() with a option \'json\' set to 0', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'json\' set to 1', () => {
+/**
+ * bodyParserPlugin() with option `json` set to 1
+ */
+
+describe('bodyParserPlugin() with option `json` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ json: 1 });
     expect(typeof bodyParser).toBe('function');
@@ -341,7 +369,7 @@ describe('bodyParserPlugin() with a option \'json\' set to 1', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -350,7 +378,7 @@ describe('bodyParserPlugin() with a option \'json\' set to 1', () => {
       });
     });
 
-    describe('when passed a stream with data that exeeds the set body size limit', () => {
+    describe('when passed a stream with data that exceeds the set body size limit', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {
         'content-type': 'application/json',
@@ -370,10 +398,14 @@ describe('bodyParserPlugin() with a option \'json\' set to 1', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'urlEncoded\' set to true', () => {
+/**
+ * bodyParserPlugin() with option `urlEncoded` set to true
+ */
+
+describe('bodyParserPlugin() with option `urlEncoded` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ urlEncoded: true });
     expect(typeof bodyParser).toBe('function');
@@ -385,7 +417,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to true', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -401,7 +433,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to true', () => {
         'content-length': '6',
       };
 
-      test('adds a \'body\' property set to the expected value to the request object', async () => {
+      test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitData(Buffer.from('foo='));
         context.stream.emitData(Buffer.from('42'));
@@ -420,7 +452,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to true', () => {
       'content-length': '14',
     };
 
-    test('adds a \'body\' property set to the expected value to the request object', async () => {
+    test('adds a `body` property set to the expected value to the request object', async () => {
       const promise = bodyParser(context);
       context.stream.emitData(Buffer.from('foo='));
       context.stream.emitData(Buffer.from('42'));
@@ -435,10 +467,14 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to true', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'urlEncoded\' set to 0', () => {
+/**
+ * bodyParserPlugin() with option `urlEncoded` set to 0
+ */
+
+describe('bodyParserPlugin() with option `urlEncoded` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ urlEncoded: 0 });
     expect(typeof bodyParser).toBe('function');
@@ -450,7 +486,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to 0', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -461,10 +497,14 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to 0', () => {
   });
 });
 
-describe('bodyParserPlugin() with a option \'urlEncoded\' set to 1', () => {
+/**
+ * bodyParserPlugin() with option `urlEncoded` set to 1
+ */
+
+describe('bodyParserPlugin() with option `urlEncoded` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
-  test('returns a function named \'bodyParser\'', () => {
+  test('returns a function named `bodyParser`', () => {
     //@ts-ignore
     bodyParser = bodyParserPlugin({ urlEncoded: 1 });
     expect(typeof bodyParser).toBe('function');
@@ -476,7 +516,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to 1', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {};
 
-      test('adds a \'body\' property set to null to the request object', async () => {
+      test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
         context.stream.emitEnd();
 
@@ -485,7 +525,7 @@ describe('bodyParserPlugin() with a option \'urlEncoded\' set to 1', () => {
       });
     });
 
-    describe('when passed a stream with data that exeeds the set body size limit', () => {
+    describe('when passed a stream with data that exceeds the set body size limit', () => {
       const context = cloneDeep(mockContext);
       context.request.headers = {
         'content-type': 'application/x-www-form-urlencoded',

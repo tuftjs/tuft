@@ -10,63 +10,88 @@ import {
 
 const { HTTP_STATUS_OK } = constants;
 
+const mockStream = {
+  on: jest.fn((_, callback) => {
+    callback();
+  }),
+  sentHeaders: {},
+  pushAllowed: false,
+};
+
+const request = {
+  headers: {},
+  method: 'GET',
+  pathname: '/',
+  searchParams: new URLSearchParams(),
+  params: {},
+  cookies: {},
+  body: null,
+};
+
+beforeEach(() => {
+  mockStream.on.mockClear();
+});
+
+/**
+ * TuftContext
+ */
+
 describe('TuftContext', () => {
-  const mockStream = {
-    on: jest.fn((_, callback) => {
-      callback();
-    }),
-    sentHeaders: {},
-    pushAllowed: false,
-  };
+  describe('new TuftContext()', () => {
+    test('returns an instance of TuftContext with the expected properties', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
-  const request = {
-    headers: {},
-    method: 'GET',
-    pathname: '/',
-    searchParams: new URLSearchParams(),
-    params: {},
-    cookies: {},
-    body: null,
-  };
-
-  test('has the expected properties', () => {
-    //@ts-ignore
-    const t = new TuftContext(mockStream, request);
-    expect(t).toHaveProperty('stream', mockStream);
-    expect(t).toHaveProperty('request', request);
-    expect(t).toHaveProperty('outgoingHeaders', {});
+      expect(t).toBeInstanceOf(TuftContext);
+      expect(t).toHaveProperty('stream', mockStream);
+      expect(t).toHaveProperty('request', request);
+      expect(t).toHaveProperty('outgoingHeaders', {});
+    });
   });
 
   describe('TuftContext.prototype.setHeader()', () => {
-    //@ts-ignore
-    const t = new TuftContext(mockStream, request);
-
     test('returns undefined', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
+
       expect(t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK)).toBeUndefined();
     });
   });
 
   describe('TuftContext.prototype.getHeader()', () => {
-    //@ts-ignore
-    const t = new TuftContext(mockStream, request);
-    t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
-
     test('returns the expected value', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
+
+      t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
+
       expect(t.getHeader(HTTP2_HEADER_STATUS)).toBe(HTTP_STATUS_OK);
     });
   });
 
   describe('TuftContext.prototype.setCookie()', () => {
-    //@ts-ignore
-    const t = new TuftContext(mockStream, request);
+    const t = new TuftContext(
+      //@ts-ignore
+      mockStream,
+      request,
+    );
 
-    test('adds \'set-cookie\' to the \'outgoingHeaders\' property', () => {
+    test('adds `set-cookie` to the `outgoingHeaders` property', () => {
       expect(t.outgoingHeaders).not.toHaveProperty('set-cookie');
       expect(t.setCookie('a', 'foo')).toBeUndefined();
       expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
     });
 
-    test('updates the \'set-cookie\' entry of the \'outgoingHeaders\' property', () => {
+    test('updates the `set-cookie` entry of the `outgoingHeaders` property', () => {
       expect(t.outgoingHeaders).toHaveProperty('set-cookie');
       expect(t.setCookie('b', 'foo')).toBeUndefined();
       expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo', 'b=foo']);
@@ -75,8 +100,11 @@ describe('TuftContext', () => {
 
   describe('TuftContext.prototype.setCookie()', () => {
     describe('when passed an options object', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         const expires = new Date();
@@ -97,8 +125,11 @@ describe('TuftContext', () => {
     });
 
     describe('when passed an options object with an invalid property', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { invalidProperty: 42 });
@@ -106,9 +137,12 @@ describe('TuftContext', () => {
       });
     });
 
-    describe('when passed an options object with \'secure\' and \'httpOnly\' set to false', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+    describe('when passed an options object with `secure` and `httpOnly` set to false', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', {
@@ -120,9 +154,12 @@ describe('TuftContext', () => {
       });
     });
 
-    describe('when passed an options object with \'sameSite\' set to \'strict\'', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+    describe('when passed an options object with `sameSite` set to `strict`', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'strict' });
@@ -130,9 +167,12 @@ describe('TuftContext', () => {
       });
     });
 
-    describe('when passed an options object with \'sameSite\' set to \'lax\'', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+    describe('when passed an options object with `sameSite` set to `lax`', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'lax' });
@@ -140,9 +180,12 @@ describe('TuftContext', () => {
       });
     });
 
-    describe('when passed an options object with \'sameSite\' set to \'none\'', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+    describe('when passed an options object with `sameSite` set to `none`', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'none' });
@@ -150,9 +193,12 @@ describe('TuftContext', () => {
       });
     });
 
-    describe('when passed an options object with \'sameSite\' set to an invalid value', () => {
-      //@ts-ignore
-      const t = new TuftContext(mockStream, request);
+    describe('when passed an options object with `sameSite` set to an invalid value', () => {
+      const t = new TuftContext(
+        //@ts-ignore
+        mockStream,
+        request,
+      );
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'foo' });
@@ -162,59 +208,66 @@ describe('TuftContext', () => {
   });
 });
 
+/**
+ * createTuftContext()
+ */
+
 describe('createTuftContext()', () => {
-  const mockStream = {
-    on: jest.fn((_, callback) => {
-      callback();
-    }),
-  };
-
-  beforeAll(() => {
-    mockStream.on.mockClear();
-  });
-
   describe('with no options', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/',
-    };
-
     test('returns an instance of TuftContext', () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders);
+      const headers = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+        [HTTP2_HEADER_PATH]: '/',
+      };
+
+      const result = createTuftContext(
+        //@ts-ignore
+        mockStream,
+        headers,
+      );
+
       expect(result).toBeInstanceOf(TuftContext);
     });
   });
 
   describe('with a path that includes a query string', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/foo?bar=baz',
-    };
-
     test('returns an instance of TuftContext', () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders);
+      const headers = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+        [HTTP2_HEADER_PATH]: '/foo?bar=baz',
+      };
+
+      const result = createTuftContext(
+        //@ts-ignore
+        mockStream,
+        headers,
+      );
+
       expect(result).toBeInstanceOf(TuftContext);
     });
   });
 
-  describe('with option \'params\' set', () => {
-    const mockHeaders = {
-      [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
-      [HTTP2_HEADER_PATH]: '/foo/bar/baz',
-    };
-
-    const options = {
-      params: {
-        0: 'one',
-        2: 'three',
-      },
-    };
-
+  describe('with option `params` set', () => {
     test('returns an instance of TuftContext', () => {
-      //@ts-ignore
-      const result = createTuftContext(mockStream, mockHeaders, options);
+      const headers = {
+        [HTTP2_HEADER_METHOD]: HTTP2_METHOD_GET,
+        [HTTP2_HEADER_PATH]: '/foo/bar/baz',
+      };
+
+      const options = {
+        params: {
+          0: 'one',
+          2: 'three',
+        },
+      };
+
+      const result = createTuftContext(
+        //@ts-ignore
+        mockStream,
+        headers,
+        options,
+      );
+
       expect(result).toBeInstanceOf(TuftContext);
     });
   });

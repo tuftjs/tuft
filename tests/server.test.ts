@@ -2,20 +2,28 @@ import {
   TuftServer,
   TuftSecureServer,
   emitError,
-
   emitSessionError,
   emitTimeout,
 } from '../src/server';
 import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from '../src/constants';
 
+const mockCallback = jest.fn();
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+beforeEach(() => {
+  mockCallback.mockClear();
+});
 
 afterAll(() => {
   mockConsoleError.mockRestore();
 });
 
+/**
+ * TuftServer
+ */
+
 describe('TuftServer', () => {
-  describe('RouteMap.prototype.createServer()', () => {
+  describe('new TuftServer()', () => {
     describe('without an options argument', () => {
       const server = new TuftServer(() => {});
 
@@ -27,15 +35,14 @@ describe('TuftServer', () => {
     });
 
     describe('with an options argument', () => {
-      const server = new TuftServer(() => {}, {
-        host: 'example.com',
-        port: 8080,
-      });
+      const host = 'example.com';
+      const port = 8080;
+      const server = new TuftServer(() => {}, { host, port });
 
       test('returns an instance of TuftServer with custom options', () => {
         expect(server).toBeInstanceOf(TuftServer);
-        expect(server).toHaveProperty('host', 'example.com');
-        expect(server).toHaveProperty('port', 8080);
+        expect(server).toHaveProperty('host', host);
+        expect(server).toHaveProperty('port', port);
       });
     });
   });
@@ -83,19 +90,35 @@ describe('TuftServer', () => {
   describe('TuftServer.prototype.address()', () => {
     const server = new TuftServer(() => {});
 
-    beforeAll(async () => await server.start());
-    afterAll(async () => await server.stop());
+    describe('when the server is running', () => {
+      test('returns an object containing the expected properties', async () => {
+        await server.start();
+        const result = server.address();
 
-    test('returns an object containing the expected properties', async () => {
-      expect(server.address()).toHaveProperty('address');
-      expect(server.address()).toHaveProperty('family');
-      expect(server.address()).toHaveProperty('port');
+        expect(result).toHaveProperty('address');
+        expect(result).toHaveProperty('family');
+        expect(result).toHaveProperty('port');
+
+        await server.stop();
+      });
+    });
+
+    describe('when the server is not running', () => {
+      test('returns null', async () => {
+        const result = server.address();
+
+        expect(result).toBe(null);
+      });
     });
   });
 });
 
+/**
+ * TuftSecureServer
+ */
+
 describe('TuftSecureServer', () => {
-  describe('RouteMap.prototype.createSecureServer()', () => {
+  describe('new TuftSecureServer()', () => {
     describe('without an options argument', () => {
       const server = new TuftSecureServer(() => {});
 
@@ -107,15 +130,14 @@ describe('TuftSecureServer', () => {
     });
 
     describe('with an options argument', () => {
-      const server = new TuftSecureServer(() => {}, {
-        host: 'example.com',
-        port: 8080,
-      });
+      const host = 'example.com';
+      const port = 8080;
+      const server = new TuftSecureServer(() => {}, { host, port });
 
       test('returns an instance of TuftSecureServer with custom options', () => {
         expect(server).toBeInstanceOf(TuftSecureServer);
-        expect(server).toHaveProperty('host', 'example.com');
-        expect(server).toHaveProperty('port', 8080);
+        expect(server).toHaveProperty('host', host);
+        expect(server).toHaveProperty('port', port);
       });
     });
   });
@@ -152,10 +174,10 @@ describe('TuftSecureServer', () => {
     });
   });
 
-  describe('TuftServer.prototype.setTimeout()', () => {
+  describe('TuftSecureServer.prototype.setTimeout()', () => {
     const server = new TuftSecureServer(() => {});
 
-    test('returns TuftServer.prototype', () => {
+    test('returns TuftSecureServer.prototype', () => {
       expect(server.setTimeout()).toBe(server);
     });
   });
@@ -163,56 +185,83 @@ describe('TuftSecureServer', () => {
   describe('TuftSecureServer.prototype.address()', () => {
     const server = new TuftSecureServer(() => {});
 
-    beforeAll(async () => await server.start());
-    afterAll(async () => await server.stop());
+    describe('when the server is running', () => {
+      test('returns an object containing the expected properties', async () => {
+        await server.start();
+        const result = server.address();
 
-    test('returns an object containing the expected properties', async () => {
-      expect(server.address()).toHaveProperty('address');
-      expect(server.address()).toHaveProperty('family');
-      expect(server.address()).toHaveProperty('port');
+        expect(result).toHaveProperty('address');
+        expect(result).toHaveProperty('family');
+        expect(result).toHaveProperty('port');
+
+        await server.stop();
+      });
+    });
+
+    describe('when the server is not running', () => {
+      test('returns null', async () => {
+        const result = server.address();
+
+        expect(result).toBe(null);
+      });
     });
   });
 });
+
+/**
+ * emitError()
+ */
 
 describe('emitError()', () => {
   const server = new TuftServer(() => {});
-  const mockError = Error('mock error');
-  const mockCallback = jest.fn();
+  const err = Error('mock error');
+
   server.on('error', mockCallback);
 
-  describe('when bound to an instance of TuftServer', () => {
-    test('results in the \'error event being emitted\'', () => {
-      const emit = emitError.bind(server);
-      expect(emit(mockError)).toBeUndefined();
-      expect(mockCallback).toHaveBeenCalledWith(mockError);
+  describe('when bound to an instance of TuftServer and passed an error', () => {
+    test('mock callback is called with the same error', () => {
+      const result = emitError.bind(server)(err);
+
+      expect(result).toBeUndefined();
+      expect(mockCallback).toHaveBeenCalledWith(err);
     });
   });
 });
+
+/**
+ * emitSessionError()
+ */
 
 describe('emitSessionError()', () => {
   const server = new TuftServer(() => {});
-  const mockSessionError = Error('mock session error');
-  const mockCallback = jest.fn();
+  const err = Error('mock error');
+
   server.on('sessionError', mockCallback);
 
-  describe('when bound to an instance of TuftServer', () => {
-    test('results in the \'error event being emitted\'', () => {
-      const emit = emitSessionError.bind(server);
-      expect(emit(mockSessionError)).toBeUndefined();
-      expect(mockCallback).toHaveBeenCalledWith(mockSessionError);
+  describe('when bound to an instance of TuftServer and passed an error', () => {
+    test('mock callback is called with the same error', () => {
+      const result = emitSessionError.bind(server)(err);
+
+      expect(result).toBeUndefined();
+      expect(mockCallback).toHaveBeenCalledWith(err);
     });
   });
 });
 
+/**
+ * emitTimeout()
+ */
+
 describe('emitTimeout()', () => {
   const server = new TuftServer(() => {});
-  const mockCallback = jest.fn();
+
   server.on('timeout', mockCallback);
 
-  describe('when bound to an instance of TuftServer', () => {
-    test('results in the \'error event being emitted\'', () => {
-      const emit = emitTimeout.bind(server);
-      expect(emit()).toBeUndefined();
+  describe('when bound to an instance of TuftServer and called', () => {
+    test('mock callback is called', () => {
+      const result = emitTimeout.bind(server)();
+
+      expect(result).toBeUndefined();
       expect(mockCallback).toHaveBeenCalled();
     });
   });
