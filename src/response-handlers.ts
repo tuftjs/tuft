@@ -77,11 +77,9 @@ export function createResponseHandler(route: TuftRoute) {
 
     if (contentType) {
       if (contentType === 'text/plain' || contentType === 'text/html') {
-        contentType += '; charset=utf-8';
         body = body.toString();
       }
       else if (contentType === 'application/json' && typeof body !== 'string') {
-        contentType = 'application/json; charset=utf-8';
         body = JSON.stringify(body);
       }
     }
@@ -90,12 +88,12 @@ export function createResponseHandler(route: TuftRoute) {
       switch (typeof body) {
         case 'boolean':
         case 'number': {
-          contentType = 'text/plain; charset=utf-8';
+          contentType = 'text/plain';
           body = body.toString();
           break;
         }
         case 'string': {
-          contentType = 'text/plain; charset=utf-8';
+          contentType = 'text/plain';
           break;
         }
         case 'object': {
@@ -104,7 +102,7 @@ export function createResponseHandler(route: TuftRoute) {
             break;
           }
 
-          contentType = 'application/json; charset=utf-8';
+          contentType = 'application/json';
           body = JSON.stringify(body);
           break;
         }
@@ -335,6 +333,10 @@ export function handleBodyResponse(
     else if (contentType === 'application/json' && typeof body !== 'string') {
       contentType = 'application/json; charset=utf-8';
       body = JSON.stringify(body);
+    }
+
+    else if (contentType === 'application/json') {
+      contentType = 'application/json; charset=utf-8';
     }
 
     else {
