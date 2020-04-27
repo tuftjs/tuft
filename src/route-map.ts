@@ -1,5 +1,4 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
-import type { promises as fsPromises } from 'fs';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
 import type { HttpError } from './utils';
@@ -49,7 +48,7 @@ export type TuftResponse = {
   redirect?: string;
   contentType?: string;
   body?: any;
-  file?: string | fsPromises.FileHandle;
+  file?: string;
 };
 
 export interface TuftRoute {

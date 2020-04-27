@@ -9,7 +9,6 @@ import type {
   TuftResponder,
 } from './route-map';
 
-import { promises as fsPromises } from 'fs';
 import { constants } from 'http2';
 import { createTuftContext } from './context';
 import { getHttpErrorMap, HttpError } from './utils';
@@ -21,6 +20,7 @@ import {
 } from './constants';
 
 const {
+  HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
 } = constants;
@@ -77,9 +77,11 @@ export function createResponseHandler(route: TuftRoute) {
 
     if (contentType) {
       if (contentType === 'text/plain' || contentType === 'text/html') {
+        contentType += '; charset=utf-8';
         body = body.toString();
       }
       else if (contentType === 'application/json' && typeof body !== 'string') {
+        contentType = 'application/json; charset=utf-8';
         body = JSON.stringify(body);
       }
     }
@@ -88,12 +90,12 @@ export function createResponseHandler(route: TuftRoute) {
       switch (typeof body) {
         case 'boolean':
         case 'number': {
-          contentType = 'application/json';
+          contentType = 'text/plain; charset=utf-8';
           body = body.toString();
           break;
         }
         case 'string': {
-          contentType = 'text/plain';
+          contentType = 'text/plain; charset=utf-8';
           break;
         }
         case 'object': {
@@ -102,7 +104,7 @@ export function createResponseHandler(route: TuftRoute) {
             break;
           }
 
-          contentType = 'application/json';
+          contentType = 'application/json; charset=utf-8';
           body = JSON.stringify(body);
           break;
         }
@@ -178,7 +180,9 @@ export async function handleResponseWithoutContext(
     return;
   }
 
-  stream.respond(undefined, { endStream: true });
+  stream.respond({
+    [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+  }, { endStream: true });
 }
 
 export async function callHandlerWithErrorHandling(
@@ -238,7 +242,9 @@ export async function callResponseHandler(
     return;
   }
 
-  stream.respond(undefined, { endStream: true });
+  stream.respond({
+    [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+  }, { endStream: true });
 }
 
 export async function handleResponse(
@@ -246,7 +252,7 @@ export async function handleResponse(
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  const { error, redirect, status, body, contentType, file } = response;
+  const { error, redirect, body, contentType, file, status } = response;
 
   if (error) {
     handleHttpErrorResponse(response, stream, outgoingHeaders);
@@ -272,7 +278,7 @@ export async function handleResponse(
       outgoingHeaders[HTTP2_HEADER_STATUS] = status;
     }
 
-    await handleFileResponse(file, stream, outgoingHeaders);
+    handleFileResponse(file, stream, outgoingHeaders);
     return;
   }
 
@@ -322,10 +328,12 @@ export function handleBodyResponse(
     contentType = mimeTypeMap[type];
 
     if (contentType === 'text/plain' || contentType === 'text/html') {
+      contentType += '; charset=utf-8';
       body = body.toString();
     }
 
     else if (contentType === 'application/json' && typeof body !== 'string') {
+      contentType = 'application/json; charset=utf-8';
       body = JSON.stringify(body);
     }
 
@@ -338,12 +346,12 @@ export function handleBodyResponse(
     switch (typeof body) {
       case 'boolean':
       case 'number': {
-        contentType = 'text/plain';
+        contentType = 'text/plain; charset=utf-8';
         body = body.toString();
         break;
       }
       case 'string': {
-        contentType = 'text/plain';
+        contentType = 'text/plain; charset=utf-8';
         break;
       }
       case 'object': {
@@ -352,7 +360,7 @@ export function handleBodyResponse(
           break;
         }
 
-        contentType = 'application/json';
+        contentType = 'application/json; charset=utf-8';
         body = JSON.stringify(body);
         break;
       }
@@ -368,19 +376,12 @@ export function handleBodyResponse(
   stream.end(body);
 }
 
-export async function handleFileResponse(
-  file: string | fsPromises.FileHandle,
+export function handleFileResponse(
+  file: string,
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  const fileHandle = typeof file === 'string'
-    ? await fsPromises.open(file, 'r')
-    : file;
-  const stat = await fileHandle.stat();
-
-  outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = stat.size;
-  stream.respondWithFD(fileHandle, outgoingHeaders);
-  return;
+  stream.respondWithFile(file, outgoingHeaders);
 }
 
 export function handleStatusResponse(
