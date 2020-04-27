@@ -29,16 +29,12 @@ export interface TuftPluginHandler {
   (t: TuftContext): TuftResponse | Error | void | Promise<TuftResponse | Error | void>;
 }
 
-export interface TuftResponsePluginHandler {
+export interface TuftResponder {
   (
     response: TuftResponse,
     stream: ServerHttp2Stream,
     outgoingHeaders: OutgoingHttpHeaders,
   ): TuftResponse | null | void | Promise<TuftResponse | null | void>;
-}
-
-export interface TuftStreamHandler {
-  (write: (chunk: any, encoding?: string) => Promise<void>): Promise<void>
 }
 
 export interface TuftErrorHandler {
@@ -59,7 +55,7 @@ export type TuftResponse = {
 export interface TuftRoute {
   response: TuftHandler | TuftResponse;
   plugins?: TuftPluginHandler[];
-  responsePlugins?: TuftResponsePluginHandler[],
+  responders?: TuftResponder[],
   errorHandler?: TuftErrorHandler,
   params?: { [key: string]: string };
   trailingSlash?: boolean;
@@ -74,7 +70,7 @@ export interface TuftRouteSchema {
 
 type RouteMapOptions = {
   plugins?: TuftPluginHandler[],
-  responsePlugins?: TuftResponsePluginHandler[],
+  responders?: TuftResponder[],
   errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
@@ -98,7 +94,7 @@ const supportedRequestMethods = getSupportedRequestMethods();
 
 export class TuftRouteMap extends Map {
   readonly #plugins: TuftPluginHandler[];
-  readonly #responsePlugins: TuftResponsePluginHandler[];
+  readonly #responders: TuftResponder[];
 
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
@@ -114,7 +110,7 @@ export class TuftRouteMap extends Map {
     super();
 
     this.#plugins = options.plugins ?? [];
-    this.#responsePlugins = options.responsePlugins ?? [];
+    this.#responders = options.responders ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
@@ -145,8 +141,8 @@ export class TuftRouteMap extends Map {
         mergedRoute.plugins = this.#plugins.concat(route.plugins ?? []);
       }
 
-      if (this.#responsePlugins.length > 0 || route.responsePlugins?.length > 0) {
-        mergedRoute.responsePlugins = this.#responsePlugins.concat(route.responsePlugins ?? []);
+      if (this.#responders.length > 0 || route.responders?.length > 0) {
+        mergedRoute.responders = this.#responders.concat(route.responders ?? []);
       }
 
       // Below, certain properties are inherited from the added route if they exist. Otherwise,
@@ -207,8 +203,8 @@ export class TuftRouteMap extends Map {
       routeProps.plugins = this.#plugins;
     }
 
-    if (this.#responsePlugins.length > 0) {
-      routeProps.responsePlugins = this.#responsePlugins;
+    if (this.#responders.length > 0) {
+      routeProps.responders = this.#responders;
     }
 
     if (this.#trailingSlash !== null) {

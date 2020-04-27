@@ -6,7 +6,7 @@ import type {
   TuftHandler,
   TuftPluginHandler,
   TuftErrorHandler,
-  TuftResponsePluginHandler,
+  TuftResponder,
 } from './route-map';
 
 import { promises as fsPromises } from 'fs';
@@ -48,10 +48,11 @@ const mimeTypeMap: { [key: string]: string } = {
  */
 
 export function createResponseHandler(route: TuftRoute) {
-  const { response, plugins, responsePlugins, errorHandler, params } = route;
+  const { response, errorHandler, params } = route;
 
-  const pluginHandlers = plugins ?? [];
-  const responsePluginHandlers = responsePlugins ?? [];
+  const pluginHandlers = route.plugins ?? [];
+  const responders = route.responders ?? [];
+
   const options = { params };
 
   if (errorHandler) {
@@ -64,7 +65,7 @@ export function createResponseHandler(route: TuftRoute) {
     const handler = errorHandler
       ? callHandlerWithErrorHandling.bind(null, response, errorHandler)
       : response;
-    const boundHandleResponse = callResponseHandler.bind(null, handler, responsePluginHandlers);
+    const boundHandleResponse = callResponseHandler.bind(null, handler, responders);
 
     return handleResponseWithContext.bind(null, pluginHandlers, boundHandleResponse, options);
   }
@@ -121,12 +122,12 @@ export function createResponseHandler(route: TuftRoute) {
     const handler = errorHandler
       ? callHandlerWithErrorHandling.bind(null, returnResponse.bind(null, response), errorHandler)
       : returnResponse.bind(null, response);
-    const boundHandleResponse = callResponseHandler.bind(null, handler, responsePluginHandlers);
+    const boundHandleResponse = callResponseHandler.bind(null, handler, responders);
 
     return handleResponseWithContext.bind(null, pluginHandlers, boundHandleResponse, options);
   }
 
-  return handleResponseWithoutContext.bind(null, responsePluginHandlers, response);
+  return handleResponseWithoutContext.bind(null, responders, response);
 }
 
 export function returnResponse(response: TuftResponse) {
@@ -159,15 +160,11 @@ export async function handleResponseWithContext(
 }
 
 export async function handleResponseWithoutContext(
-  responsePluginHandlers: TuftResponsePluginHandler[],
+  responsePluginHandlers: TuftResponder[],
   response: TuftResponse,
   stream: ServerHttp2Stream,
 ) {
   const outgoingHeaders = {};
-
-  if (await handleResponse(response, stream, outgoingHeaders) !== response) {
-    return;
-  }
 
   for (let i = 0; i < responsePluginHandlers.length; i++) {
     const handler = responsePluginHandlers[i];
@@ -175,6 +172,10 @@ export async function handleResponseWithoutContext(
     if (await handler(response, stream, outgoingHeaders) !== response) {
       return;
     }
+  }
+
+  if (await handleResponse(response, stream, outgoingHeaders) !== response) {
+    return;
   }
 
   stream.respond(undefined, { endStream: true });
@@ -215,7 +216,7 @@ export async function callHandlerWithErrorHandling(
 
 export async function callResponseHandler(
   handler: TuftHandler,
-  responsePluginHandlers: TuftResponsePluginHandler[],
+  responsePluginHandlers: TuftResponder[],
   stream: ServerHttp2Stream,
   t: TuftContext,
 ) {
@@ -225,16 +226,16 @@ export async function callResponseHandler(
     throw TypeError(`'${response}' is not a valid Tuft response object.`);
   }
 
-  if (await handleResponse(response, stream, t.outgoingHeaders) !== response) {
-    return;
-  }
-
   for (let i = 0; i < responsePluginHandlers.length; i++) {
     const handler = responsePluginHandlers[i];
 
     if (await handler(response, stream, t.outgoingHeaders) !== response) {
       return;
     }
+  }
+
+  if (await handleResponse(response, stream, t.outgoingHeaders) !== response) {
+    return;
   }
 
   stream.respond(undefined, { endStream: true });
