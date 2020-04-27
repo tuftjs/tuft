@@ -28,6 +28,7 @@ import {
 } from '../src/constants';
 
 const {
+  HTTP_STATUS_OK,
   HTTP_STATUS_TEAPOT,
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_FOUND,
@@ -63,7 +64,7 @@ const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined 
 
 const mockStream = {
   respond: jest.fn(),
-  respondWithFD: jest.fn(),
+  respondWithFile: jest.fn(),
   end: jest.fn(),
 };
 
@@ -91,6 +92,7 @@ const invalidMockErrorHandler2 = jest.fn(() => {
 
 beforeEach(() => {
   mockStream.respond.mockClear();
+  mockStream.respondWithFile.mockClear();
   mockStream.end.mockClear();
   mockErrorHandler.mockClear();
   invalidMockErrorHandler1.mockClear();
@@ -364,8 +366,12 @@ describe('handleResponseWithoutContext()', () => {
         mockStream,
       );
 
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+      };
+
       await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(undefined, { endStream: true });
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
   });
 
@@ -499,8 +505,12 @@ describe('callResponseHandler()', () => {
         mockContext,
       );
 
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+      };
+
       await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(undefined, { endStream: true });
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
   });
 
@@ -781,7 +791,7 @@ describe('handleBodyResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=utf-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
       };
 
@@ -805,7 +815,7 @@ describe('handleBodyResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(body).length,
       };
 
@@ -845,7 +855,7 @@ describe('handleBodyResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: body.toString().length,
       };
 
@@ -868,7 +878,7 @@ describe('handleBodyResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
       };
 
@@ -914,7 +924,7 @@ describe('handleBodyResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(body).length,
       };
 
@@ -946,42 +956,17 @@ describe('handleBodyResponse()', () => {
  */
 
 describe('handleFileResponse()', () => {
-  describe('when passed a `file` arguments of type string', () => {
-    test('stream.respondWithFD() is called with the expected arguments', async () => {
-      const file = __filename;
-      const result = handleFileResponse(
-        file,
-        //@ts-ignore
-        mockStream,
-        {},
-      );
+  test('stream.respondWithFile() is called with the expected arguments', () => {
+    const file = __filename;
+    const result = handleFileResponse(
+      file,
+      //@ts-ignore
+      mockStream,
+      {},
+    );
 
-      const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_LENGTH]: CONTENT_LENGTH,
-      };
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respondWithFD).toHaveBeenCalledWith(mockFileHandle, expectedHeaders);
-    });
-  });
-
-  describe('when passed a `file` arguments of type FileHandle', () => {
-    test('stream.respondWithFD() is called with the expected arguments', async () => {
-      const file = mockFileHandle;
-      const result = handleFileResponse(
-        file,
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_LENGTH]: CONTENT_LENGTH,
-      };
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respondWithFD).toHaveBeenCalledWith(mockFileHandle, expectedHeaders);
-    });
+    expect(result).toBeUndefined();
+    expect(mockStream.respondWithFile).toHaveBeenCalledWith(file, {});
   });
 });
 
