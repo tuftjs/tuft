@@ -825,6 +825,30 @@ describe('handleBodyResponse()', () => {
     });
   });
 
+  describe('when passed a `type` argument of `json` and the body is already a string', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
+      const body = '{"abc":123}';
+      const type = 'json';
+
+      const result = handleBodyResponse(
+        body,
+        type,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(body);
+    });
+  });
+
   describe('when passed an invalid `type` value', () => {
     test('throws an error', () => {
       const body = { abc: 123 };
