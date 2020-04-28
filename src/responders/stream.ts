@@ -1,13 +1,20 @@
 import type { ServerHttp2Stream, OutgoingHttpHeaders } from 'http2';
 import type { TuftResponse } from '../route-map';
 import { createPromise } from '../utils';
+import { HTTP2_HEADER_STATUS } from '../constants';
 
 export async function streamResponder(
   response: TuftResponse,
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  if (typeof response.writeStream === 'function') {
+  const { writeStream, status } = response;
+
+  if (typeof writeStream === 'function') {
+    if (status) {
+      outgoingHeaders[HTTP2_HEADER_STATUS] = status;
+    }
+
     stream.respond(outgoingHeaders);
 
     await response.writeStream((chunk: any, encoding?: string) => {
