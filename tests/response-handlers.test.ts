@@ -17,6 +17,8 @@ import {
   handleBodyResponse,
   handleFileResponse,
   handleStatusResponse,
+  statCheck,
+  onError,
 } from '../src/response-handlers';
 import {
   HTTP2_HEADER_METHOD,
@@ -32,6 +34,8 @@ const {
   HTTP_STATUS_TEAPOT,
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_FOUND,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } = constants;
 
 const CONTENT_LENGTH = 42;
@@ -66,6 +70,7 @@ const mockStream = {
   respond: jest.fn(),
   respondWithFile: jest.fn(),
   end: jest.fn(),
+  emit: jest.fn(),
 };
 
 const mockContext: any = {
@@ -94,6 +99,7 @@ beforeEach(() => {
   mockStream.respond.mockClear();
   mockStream.respondWithFile.mockClear();
   mockStream.end.mockClear();
+  mockStream.emit.mockClear();
   mockErrorHandler.mockClear();
   invalidMockErrorHandler1.mockClear();
   invalidMockErrorHandler2.mockClear();
@@ -783,8 +789,7 @@ describe('handleBodyResponse()', () => {
       const type = 'html';
 
       const result = handleBodyResponse(
-        body,
-        type,
+        { body, type },
         //@ts-ignore
         mockStream,
         {},
@@ -807,8 +812,7 @@ describe('handleBodyResponse()', () => {
       const type = 'json';
 
       const result = handleBodyResponse(
-        body,
-        type,
+        { body, type },
         //@ts-ignore
         mockStream,
         {},
@@ -831,8 +835,7 @@ describe('handleBodyResponse()', () => {
       const type = 'json';
 
       const result = handleBodyResponse(
-        body,
-        type,
+        { body, type },
         //@ts-ignore
         mockStream,
         {},
@@ -855,8 +858,7 @@ describe('handleBodyResponse()', () => {
       const type = 'foo';
 
       const fn = () => handleBodyResponse(
-        body,
-        type,
+        { body, type },
         //@ts-ignore
         mockStream,
         {},
@@ -871,8 +873,7 @@ describe('handleBodyResponse()', () => {
       const body = true;
 
       const result = handleBodyResponse(
-        body,
-        undefined,
+        { body },
         //@ts-ignore
         mockStream,
         {},
@@ -894,8 +895,7 @@ describe('handleBodyResponse()', () => {
       const body = 'abc';
 
       const result = handleBodyResponse(
-        body,
-        undefined,
+        { body },
         //@ts-ignore
         mockStream,
         {},
@@ -917,8 +917,7 @@ describe('handleBodyResponse()', () => {
       const body = Buffer.from('abc');
 
       const result = handleBodyResponse(
-        body,
-        undefined,
+        { body },
         //@ts-ignore
         mockStream,
         {},
@@ -940,8 +939,7 @@ describe('handleBodyResponse()', () => {
       const body = { abc: 123 };
 
       const result = handleBodyResponse(
-        body,
-        undefined,
+        { body },
         //@ts-ignore
         mockStream,
         {},
@@ -963,8 +961,7 @@ describe('handleBodyResponse()', () => {
       const body = Symbol();
 
       const fn = () => handleBodyResponse(
-        body,
-        undefined,
+        { body },
         //@ts-ignore
         mockStream,
         {},
@@ -976,11 +973,11 @@ describe('handleBodyResponse()', () => {
 });
 
 /**
- * handleBodyResponse()
+ * handleFileResponse()
  */
 
 describe('handleFileResponse()', () => {
-  test('stream.respondWithFile() is called with the expected arguments', () => {
+  test('stream.respondWithFile() is called', () => {
     const file = __filename;
     const result = handleFileResponse(
       file,
@@ -990,12 +987,12 @@ describe('handleFileResponse()', () => {
     );
 
     expect(result).toBeUndefined();
-    expect(mockStream.respondWithFile).toHaveBeenCalledWith(file, {});
+    expect(mockStream.respondWithFile).toHaveBeenCalled();
   });
 });
 
 /**
- * handleBodyResponse()
+ * handleStatusResponse()
  */
 
 describe('handleStatusResponse()', () => {
@@ -1014,6 +1011,78 @@ describe('handleStatusResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+    });
+  });
+});
+
+/**
+ * statCheck()
+ */
+
+describe('statCheck()', () => {
+  describe('when passed a mock stat argument', () => {
+    test('calls stat.mtime.toUTCString()', () => {
+      const date = new Date();
+      const mockStat = {
+        mtime: {
+          toUTCString: jest.fn(() => {
+            return date.toUTCString();
+          }),
+        },
+      };
+      //@ts-ignore
+      const result = statCheck(mockStat, {});
+
+      expect(result).toBeUndefined();
+      expect(mockStat.mtime.toUTCString).toHaveBeenCalled();
+    });
+  });
+});
+
+/**
+ * onError()
+ */
+
+describe('onError()', () => {
+  describe('when passed a stream and a `ENOENT` error', () => {
+    test('stream.respond() is called with the expected argument', () => {
+      const err = Error('mock error') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+
+      const result = onError(
+        //@ts-ignore
+        mockStream,
+        err,
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalled();
+      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
+    });
+  });
+
+  describe('when passed a stream and a generic error', () => {
+    test('stream.respond() is called with the expected argument', () => {
+      const err = Error('mock error') as NodeJS.ErrnoException;
+      const result = onError(
+        //@ts-ignore
+        mockStream,
+        err,
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalled();
+      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
     });
   });
 });

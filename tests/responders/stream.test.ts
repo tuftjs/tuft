@@ -38,6 +38,28 @@ describe('streamResponder()', () => {
     });
   });
 
+  describe('when passed an object with a `writeStream` property and a `status` property', () => {
+    test('stream.respond(), stream.write(), and stream.end() are called', async () => {
+      const response = {
+        status: 200,
+        writeStream: (write: any) => {
+          write('abc');
+        },
+      };
+      const result = streamResponder(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalled();
+      expect(mockStream.write).toHaveBeenCalled();
+      expect(mockStream.end).toHaveBeenCalled();
+    });
+  });
+
   describe('when passed an empty object', () => {
     test('returns the same object', async () => {
       const response = {};
