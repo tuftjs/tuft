@@ -1,4 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
+import type { Stats } from 'fs';
 import type { TuftContext, TuftContextOptions } from './context';
 import type {
   TuftRoute,
@@ -17,12 +18,15 @@ import {
   HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_LOCATION,
+  HTTP2_HEADER_LAST_MODIFIED,
 } from './constants';
 
 const {
   HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } = constants;
 
 const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
@@ -250,7 +254,7 @@ export async function handleResponse(
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  const { error, redirect, body, contentType, file, status } = response;
+  const { error, redirect, body, file, status } = response;
 
   if (error) {
     handleHttpErrorResponse(response, stream, outgoingHeaders);
@@ -267,7 +271,7 @@ export async function handleResponse(
       outgoingHeaders[HTTP2_HEADER_STATUS] = status;
     }
 
-    handleBodyResponse(body, contentType, stream, outgoingHeaders);
+    handleBodyResponse(response, stream, outgoingHeaders);
     return;
   }
 
@@ -297,7 +301,7 @@ export function handleHttpErrorResponse(
   outgoingHeaders[HTTP2_HEADER_STATUS] = status;
 
   if (body !== undefined) {
-    handleBodyResponse(body, contentType, stream, outgoingHeaders);
+    handleBodyResponse({ body, contentType }, stream, outgoingHeaders);
     return;
   }
 
@@ -315,8 +319,7 @@ export function handleRedirectResponse(
 }
 
 export function handleBodyResponse(
-  body: any,
-  type: string | undefined,
+  { body, type }: TuftResponse,
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
@@ -383,7 +386,14 @@ export function handleFileResponse(
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  stream.respondWithFile(file, outgoingHeaders);
+  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'text/plain';
+
+  const options = {
+    statCheck,
+    onError: onError.bind(null, stream),
+  };
+
+  stream.respondWithFile(file, outgoingHeaders, options);
 }
 
 export function handleStatusResponse(
@@ -393,4 +403,25 @@ export function handleStatusResponse(
 ) {
   outgoingHeaders[HTTP2_HEADER_STATUS] = status;
   stream.respond(outgoingHeaders, { endStream: true });
+}
+
+export function statCheck(stat: Stats, headers: OutgoingHttpHeaders) {
+  headers[HTTP2_HEADER_LAST_MODIFIED] = stat.mtime.toUTCString();
+}
+
+export function onError(stream: ServerHttp2Stream, err: NodeJS.ErrnoException) {
+  if (err.code === 'ENOENT') {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+    });
+  }
+
+  else {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    });
+  }
+
+  stream.end();
+  stream.emit('error', err);
 }
