@@ -10,7 +10,6 @@ import { findInvalidSchemaEntry } from './schema-validation';
 import { getSupportedRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
-  ROUTE_MAP_DEFAULT_ERROR_HANDLER,
   ROUTE_MAP_DEFAULT_BASE_PATH,
   ROUTE_MAP_DEFAULT_PATH,
   HTTP2_HEADER_METHOD,
@@ -36,10 +35,6 @@ export interface TuftResponder {
   ): TuftResponse | null | void | Promise<TuftResponse | null | void>;
 }
 
-export interface TuftErrorHandler {
-  (err: Error, t: TuftContext): TuftResponse | Promise<TuftResponse>;
-}
-
 export type TuftResponse = {
   [key in string | number]: any;
 } & {
@@ -55,7 +50,6 @@ export interface TuftRoute {
   response: TuftHandler | TuftResponse;
   plugins?: TuftPluginHandler[];
   responders?: TuftResponder[],
-  errorHandler?: TuftErrorHandler,
   params?: { [key: string]: string };
   trailingSlash?: boolean;
 }
@@ -64,13 +58,11 @@ export interface TuftRouteSchema {
   response: TuftHandler | TuftResponse;
   method?: RequestMethod | RequestMethod[];
   path?: string;
-  errorHandler?: TuftErrorHandler,
 }
 
 type RouteMapOptions = {
   plugins?: TuftPluginHandler[],
   responders?: TuftResponder[],
-  errorHandler?: TuftErrorHandler,
   basePath?: string,
   method?: RequestMethod | RequestMethod[],
   path?: string,
@@ -97,7 +89,6 @@ export class TuftRouteMap extends Map {
 
   // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
   readonly #trailingSlash: boolean | null;
-  readonly #errorHandler: TuftErrorHandler | null;
 
   readonly #basePath: string;     // Prepended to any path added to the route map.
   readonly #methods: string[];    // Default methods.
@@ -111,7 +102,6 @@ export class TuftRouteMap extends Map {
     this.#plugins = options.plugins ?? [];
     this.#responders = options.responders ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
-    this.#errorHandler = options.errorHandler ?? ROUTE_MAP_DEFAULT_ERROR_HANDLER;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#methods = ([options.method ?? supportedRequestMethods]).flat();
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
@@ -152,14 +142,6 @@ export class TuftRouteMap extends Map {
       }
       else if (this.#trailingSlash !== null) {
         mergedRoute.trailingSlash = this.#trailingSlash;
-      }
-
-      if (route.errorHandler) {
-        mergedRoute.errorHandler = route.errorHandler;
-      }
-
-      else if (this.#errorHandler) {
-        mergedRoute.errorHandler = this.#errorHandler;
       }
 
       Object.freeze(mergedRoute);
@@ -208,14 +190,6 @@ export class TuftRouteMap extends Map {
 
     if (this.#trailingSlash !== null) {
       routeProps.trailingSlash = this.#trailingSlash;
-    }
-
-    if (schema.errorHandler) {
-      routeProps.errorHandler = schema.errorHandler;
-    }
-
-    else if (this.#errorHandler) {
-      routeProps.errorHandler = this.#errorHandler;
     }
 
     // Add a copy of the route data for each method.
@@ -366,13 +340,10 @@ export async function primaryErrorHandler(
       // The stream is still active and no headers have been sent.
       stream.respond({
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-      }, { endStream: true });
+      });
     }
 
-    else {
-      // The stream is still active, but headers have already been sent.
-      stream.end();
-    }
+    stream.end();
   }
 
   // Pass the error object on to the user-defined error handler.
