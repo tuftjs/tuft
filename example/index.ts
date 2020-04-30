@@ -13,11 +13,6 @@ const app = createTuft({
   responders: [
     streamResponder,
   ],
-  errorHandler: () => {
-    return {
-      error: 'BAD_REQUEST',
-    };
-  },
 });
 
 app.onError(err => console.error(err));
