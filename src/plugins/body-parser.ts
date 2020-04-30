@@ -1,4 +1,5 @@
 import type { TuftContext } from '../context';
+import { createPromise } from '../utils';
 import {
   DEFAULT_MAX_BODY_SIZE,
   HTTP2_HEADER_CONTENT_LENGTH,
@@ -46,12 +47,12 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
 
     const chunks: Buffer[] = [];
 
-    await new Promise<void>(resolve => {
-      stream.on('data', (chunk: any) => {
-        chunks.push(chunk as Buffer);
+    await createPromise(done => {
+      stream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
       });
 
-      stream.on('end', resolve);
+      stream.on('end', done);
     });
 
     let body: null | Buffer | string | { [key in string | number]: any };
