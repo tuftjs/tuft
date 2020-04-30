@@ -1,4 +1,7 @@
+import type { OutgoingHttpHeaders, ServerHttp2Stream } from 'http2';
+import type { Stats } from 'fs';
 import { constants } from 'http2';
+import { HTTP2_HEADER_LAST_MODIFIED, HTTP2_HEADER_STATUS } from './constants';
 
 const {
   HTTP2_METHOD_DELETE,
@@ -155,7 +158,7 @@ type DoneCallback = (err?: Error | null, ...args: any[]) => void;
 /**
  * A convenience function for converting a callback-based function to a promise-based function.
  * Accepts a function that receives an error-first callback as its first and only argument. If the
- * callback is then called with an error as its first argument, the promise will reject with that
+ * callback is then invoked with an error as its first argument, the promise will reject with that
  * error. Otherwise, the promise will be resolved with any remaining arguments being returned as an
  * array.
  */
@@ -168,4 +171,33 @@ export function createPromise(fn: (callback: DoneCallback) => void) {
 
     fn(callback);
   });
+}
+
+/**
+ * Passed as an option to stream.respondWithFile() to add a 'last-modified' header to the response.
+ */
+
+export function statCheck(stat: Stats, headers: OutgoingHttpHeaders) {
+  headers[HTTP2_HEADER_LAST_MODIFIED] = stat.mtime.toUTCString();
+}
+
+/**
+ * Error handler to be passed as an option to stream.respondWithFile().
+ */
+
+export function onError(stream: ServerHttp2Stream, err: NodeJS.ErrnoException) {
+  if (err.code === 'ENOENT') {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+    });
+  }
+
+  else {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    });
+  }
+
+  stream.end();
+  stream.emit('error', err);
 }
