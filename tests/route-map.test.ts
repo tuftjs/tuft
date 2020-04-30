@@ -121,23 +121,6 @@ describe('TuftRouteMap', () => {
       });
     });
 
-    describe('when the `errorHandler` property is set', () => {
-      test('adds a `GET /` entry to the map', () => {
-        const map = createTuft();
-
-        map.add({
-          method: 'GET',
-          path: '/',
-          response: {},
-          errorHandler: () => {
-            return {};
-          },
-        });
-
-        expect(map.has('GET /')).toBe(true);
-      });
-    });
-
     describe('when passed an options object with all supported properties set', () => {
       test('adds a `POST /foo/bar` entry to the map', () => {
         const map = createTuft({
@@ -145,7 +128,6 @@ describe('TuftRouteMap', () => {
           basePath: '/foo',
           path: '/bar',
           trailingSlash: true,
-          errorHandler: () => ({}),
           plugins: [() => { }],
           responders: [() => { }],
         });
@@ -165,7 +147,6 @@ describe('TuftRouteMap', () => {
           basePath: '/foo',
           path: '/bar',
           trailingSlash: true,
-          errorHandler: () => ({}),
           plugins: [() => { }],
           responders: [() => { }],
         });
@@ -194,7 +175,6 @@ describe('TuftRouteMap', () => {
           basePath: '/foo',
           path: '/bar',
           trailingSlash: true,
-          errorHandler: () => ({}),
           plugins: [() => { }],
           responders: [() => { }],
         });
@@ -411,7 +391,7 @@ describe('primaryHandler()', () => {
 
 describe('primaryErrorHandler()', () => {
   describe('when `stream.destroyed` is set to false', () => {
-    test('stream.respond() is called with a 501 status code and the passed error handler is called', async () => {
+    test('stream.respond() is called with a 500 status code and the passed error handler is called', async () => {
       const err = Error('mock error');
       mockStream.destroyed = false;
 
@@ -427,7 +407,8 @@ describe('primaryErrorHandler()', () => {
       };
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalled();
       expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });
@@ -446,6 +427,7 @@ describe('primaryErrorHandler()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.end).not.toHaveBeenCalled();
       expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });
@@ -465,6 +447,7 @@ describe('primaryErrorHandler()', () => {
 
       await expect(result).resolves.toBeUndefined();
       expect(mockStream.respond).not.toHaveBeenCalled();
+      expect(mockStream.end).toHaveBeenCalled();
       expect(mockErrorHandler).toHaveBeenCalledWith(err);
     });
   });

@@ -1,32 +1,27 @@
 import type { TuftContext } from '../src/context';
 import type { HttpError } from '../src/utils';
-import type { TuftResponse } from '../src/route-map';
 
 import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
 import {
   createResponseHandler,
   returnResponse,
-  handleResponseWithContext,
-  handleResponseWithoutContext,
-  callHandlerWithErrorHandling,
-  callResponseHandler,
-  handleResponse,
+  handleResponseObject,
+  handleResponseHandler,
+  handleUnknownResponse,
   handleHttpErrorResponse,
   handleRedirectResponse,
   handleBodyResponse,
   handleFileResponse,
   handleStatusResponse,
-  statCheck,
-  onError,
 } from '../src/response-handlers';
 import {
-  HTTP2_HEADER_METHOD,
-  HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_LOCATION,
   HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP2_HEADER_METHOD,
+  HTTP2_HEADER_PATH,
 } from '../src/constants';
 
 const {
@@ -34,8 +29,6 @@ const {
   HTTP_STATUS_TEAPOT,
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_FOUND,
-  HTTP_STATUS_NOT_FOUND,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } = constants;
 
 const CONTENT_LENGTH = 42;
@@ -44,17 +37,10 @@ function mockPlugin(t: TuftContext) {
   t.request.foo = 42;
 }
 
-function mockResponsePluginThatReturnsResponse(response: TuftResponse) {
-  return response;
-}
-
-function mockResponsePluginThatReturnsUndefined() {
-  return;
-}
-
-function mockResponsePluginThatReturnsErrObject() {
-  return { error: 'TEAPOT' as HttpError };
-}
+const mockIncomingHeaders = {
+  [HTTP2_HEADER_METHOD]: 'GET',
+  [HTTP2_HEADER_PATH]: '/',
+};
 
 const mockFileHandle = {
   stat: async () => {
@@ -70,7 +56,6 @@ const mockStream = {
   respond: jest.fn(),
   respondWithFile: jest.fn(),
   end: jest.fn(),
-  emit: jest.fn(),
 };
 
 const mockContext: any = {
@@ -99,7 +84,6 @@ beforeEach(() => {
   mockStream.respond.mockClear();
   mockStream.respondWithFile.mockClear();
   mockStream.end.mockClear();
-  mockStream.emit.mockClear();
   mockErrorHandler.mockClear();
   invalidMockErrorHandler1.mockClear();
   invalidMockErrorHandler2.mockClear();
@@ -117,76 +101,30 @@ afterAll(() => {
 
 describe('createResponseHandler()', () => {
   describe('when passed a response handler', () => {
-    test('returns bound handleResponseWithContext()', () => {
+    test('returns bound handleResponseHandler()', () => {
       const result = createResponseHandler({
-        response: () => {
-          return {};
-        },
+        response: () => {},
       });
 
-      expect(result.name).toBe('bound handleResponseWithContext');
-    });
-  });
-
-  describe('when passed a response handler with plugins', () => {
-    test('returns bound handleResponseWithContext()', () => {
-      const result = createResponseHandler({
-        response: () => {
-          return {};
-        },
-        plugins: [mockPlugin],
-        responders: [mockPlugin],
-      });
-
-      expect(result.name).toBe('bound handleResponseWithContext');
-    });
-  });
-
-  describe('when passed a response handler with an error handler', () => {
-    test('returns bound handleResponseWithContext()', () => {
-      const result = createResponseHandler({
-        response: () => {
-          return {};
-        },
-        errorHandler: () => {
-          return {};
-        },
-      });
-
-      expect(result.name).toBe('bound handleResponseWithContext');
+      expect(result.name).toBe('bound handleResponseHandler');
     });
   });
 
   describe('when passed a response object with plugins', () => {
-    test('returns bound handleResponseWithContext()', () => {
+    test('returns bound handleResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
         plugins: [mockPlugin],
         responders: [mockPlugin],
       });
 
-      expect(result.name).toBe('bound handleResponseWithContext');
-    });
-  });
-
-  describe('when passed a response object with plugins and an error handler', () => {
-    test('returns bound handleResponseWithContext()', () => {
-      const result = createResponseHandler({
-        response: {},
-        plugins: [mockPlugin],
-        responders: [mockPlugin],
-        errorHandler: () => {
-          return {};
-        },
-      });
-
-      expect(result.name).toBe('bound handleResponseWithContext');
+      expect(result.name).toBe('bound handleResponseHandler');
     });
   });
 
   describe('when passed a response object with a `body` property', () => {
     describe('and a `contentType` property set to `text`', () => {
-      test('returns bound handleResponseWithoutContext()', () => {
+      test('returns bound handleResponseObject()', () => {
         const result = createResponseHandler({
           response: {
             contentType: 'text',
@@ -194,12 +132,12 @@ describe('createResponseHandler()', () => {
           },
         });
 
-        expect(result.name).toBe('bound handleResponseWithoutContext');
+        expect(result.name).toBe('bound handleResponseObject');
       });
     });
 
     describe('and a `contentType` property set to `json`', () => {
-      test('returns bound handleResponseWithoutContext()', () => {
+      test('returns bound handleResponseObject()', () => {
         const result = createResponseHandler({
           response: {
             contentType: 'json',
@@ -207,12 +145,12 @@ describe('createResponseHandler()', () => {
           },
         });
 
-        expect(result.name).toBe('bound handleResponseWithoutContext');
+        expect(result.name).toBe('bound handleResponseObject');
       });
     });
 
     describe('and a `contentType` property set to `buffer`', () => {
-      test('returns bound handleResponseWithoutContext()', () => {
+      test('returns bound handleResponseObject()', () => {
         const result = createResponseHandler({
           response: {
             contentType: 'buffer',
@@ -220,48 +158,48 @@ describe('createResponseHandler()', () => {
           },
         });
 
-        expect(result.name).toBe('bound handleResponseWithoutContext');
+        expect(result.name).toBe('bound handleResponseObject');
       });
     });
   });
 
   describe('when passed a response object with a `body` property of type boolean', () => {
-    test('returns bound handleResponseWithoutContext()', () => {
+    test('returns bound handleResponseObject()', () => {
       const result = createResponseHandler({
         response: { body: true },
       });
 
-      expect(result.name).toBe('bound handleResponseWithoutContext');
+      expect(result.name).toBe('bound handleResponseObject');
     });
   });
 
   describe('when passed a response object with a `body` property of type string', () => {
-    test('returns bound handleResponseWithoutContext()', () => {
+    test('returns bound handleResponseObject()', () => {
       const result = createResponseHandler({
         response: { body: 'abc' },
       });
 
-      expect(result.name).toBe('bound handleResponseWithoutContext');
+      expect(result.name).toBe('bound handleResponseObject');
     });
   });
 
   describe('when passed a response object with a `body` property of type Buffer', () => {
-    test('returns bound handleResponseWithoutContext()', () => {
+    test('returns bound handleResponseObject()', () => {
       const result = createResponseHandler({
         response: { body: Buffer.from('abc') },
       });
 
-      expect(result.name).toBe('bound handleResponseWithoutContext');
+      expect(result.name).toBe('bound handleResponseObject');
     });
   });
 
   describe('when passed a response object with a `body` property of type object', () => {
-    test('returns bound handleResponseWithoutContext()', () => {
+    test('returns bound handleResponseObject()', () => {
       const result = createResponseHandler({
         response: { body: {} },
       });
 
-      expect(result.name).toBe('bound handleResponseWithoutContext');
+      expect(result.name).toBe('bound handleResponseObject');
     });
   });
 
@@ -291,396 +229,319 @@ describe('returnResponse()', () => {
 });
 
 /**
- * handleResponseWithContext()
+ * handleResponseObject()
  */
 
-describe('handleResponseWithContext()', () => {
-  const mockHandleResponse = jest.fn();
+describe('handleResponseObject()', () => {
+  describe('when passed a responder that returns the passed response object', () => {
+    test('resolves to be undefined', async () => {
+      const response = {};
+      const responder = (response: {}) => response;
 
-  const headers = {
-    [HTTP2_HEADER_METHOD]: 'GET',
-    [HTTP2_HEADER_PATH]: '/',
-  };
-
-  describe('when an error object is NOT returned', () => {
-    test('mockHandleResponse() is called', async () => {
-      mockHandleResponse.mockClear();
-
-      const result = handleResponseWithContext(
-        [mockPlugin],
-        mockHandleResponse,
-        {},
-        //@ts-ignore
-        mockStream,
-        headers,
-      );
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockHandleResponse).toHaveBeenCalled();
-    });
-  });
-
-  describe('when an error object is returned', () => {
-    test('mockHandleResponse() is NOT called', async () => {
-      mockHandleResponse.mockClear();
-
-      const result = handleResponseWithContext(
-        [mockResponsePluginThatReturnsErrObject],
-        mockHandleResponse,
-        {},
-        //@ts-ignore
-        mockStream,
-        headers,
-      );
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockHandleResponse).not.toHaveBeenCalled();
-    });
-  });
-});
-
-/**
- * handleResponseWithoutContext()
- */
-
-describe('handleResponseWithoutContext()', () => {
-  describe('when the passed response object has a `status` property', () => {
-    test('stream.respond() is called with the expected arguments', async () => {
-      const response = { status: HTTP_STATUS_TEAPOT };
-      const result = handleResponseWithoutContext(
-        [mockResponsePluginThatReturnsResponse],
+      const result = handleResponseObject(
         response,
-        //@ts-ignore
-        mockStream,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT,
-      };
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
-    });
-  });
-
-  describe('when the passed response object has no properties', () => {
-    test('stream.respond() is called with the expected arguments', async () => {
-      const result = handleResponseWithoutContext(
-        [mockResponsePluginThatReturnsResponse],
-        {},
-        //@ts-ignore
-        mockStream,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-      };
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
-    });
-  });
-
-  describe('when the passed response plugin returns undefined', () => {
-    test('stream.respond() is NOT called', async () => {
-      const result = handleResponseWithoutContext(
-        [mockResponsePluginThatReturnsUndefined],
+        [responder],
         {},
         //@ts-ignore
         mockStream,
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when passed a responder that does not return the passed response object', () => {
+    test('resolves to be undefined', async () => {
+      const response = {};
+      const responder = () => {};
+
+      const result = handleResponseObject(
+        response,
+        [responder],
+        {},
+        //@ts-ignore
+        mockStream,
+      );
+
+      await expect(result).resolves.toBeUndefined();
     });
   });
 });
 
 /**
- * callHandlerWithErrorHandling()
+ * handleResponseHandler()
  */
 
-describe('callHandlerWithErrorHandling()', () => {
-  describe('when passed a handler that does not throw or return an error', () => {
-    test('returns the expected object', async () => {
-      const response = {};
-      const handler = () => response;
-
-      const result = callHandlerWithErrorHandling(
-        handler,
-        mockErrorHandler,
-        mockContext
-      );
-
-      await expect(result).resolves.toBe(response);
-      expect(mockErrorHandler).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('when passed a handler that returns an error', () => {
-    test('returns the expected object', async () => {
-      const err = Error('mock error');
-      const handler = () => err;
-
-      const result = callHandlerWithErrorHandling(
-        handler,
-        mockErrorHandler,
-        mockContext
-      );
-
-      await expect(result).resolves.toEqual({ error: 'TEAPOT' });
-      expect(mockErrorHandler).toHaveBeenCalledWith(err, mockContext);
-    });
-  });
-
-  describe('when passed a handler that throws an error and invalidMockErrorHandler1', () => {
-    test('rejects with an error', async () => {
-      const err = Error('mock error');
+describe('handleResponseHandler()', () => {
+  describe('when passed a handler that returns an object', () => {
+    test('resolves to be undefined', async () => {
       const handler = () => {
-        throw err;
+        return {};
       };
-
-      const result = callHandlerWithErrorHandling(
+      const result = handleResponseHandler(
         handler,
-        invalidMockErrorHandler1,
-        mockContext
+        [],
+        [],
+        {},
+        //@ts-ignore
+        mockStream,
+        mockIncomingHeaders,
       );
 
-      await expect(result).rejects.toThrow('Error handlers must return a Tuft error object.');
-      expect(invalidMockErrorHandler1).toHaveBeenCalledWith(err, mockContext);
+      await expect(result).resolves.toBeUndefined();
     });
   });
 
-  describe('when passed a handler that throws an error and invalidMockErrorHandler2', () => {
+  describe('when passed a handler that returns null', () => {
     test('rejects with an error', async () => {
-      const err = Error('mock error');
       const handler = () => {
-        throw err;
+        return null;
       };
-
-      const result = callHandlerWithErrorHandling(
-        handler,
+      const result = handleResponseHandler(
         //@ts-ignore
-        invalidMockErrorHandler2,
-        mockContext
+        handler,
+        [],
+        [],
+        {},
+        //@ts-ignore
+        mockStream,
+        mockIncomingHeaders,
       );
 
-      await expect(result).rejects.toThrow('Error handlers must return a Tuft error object.');
-      expect(invalidMockErrorHandler2).toHaveBeenCalledWith(err, mockContext);
+      await expect(result).rejects.toThrow('\'null\' is not a valid Tuft response object.');
+    });
+  });
+
+  describe('when passed a plugin handler that returns an error response', () => {
+    test('resolves to be undefined', async () => {
+      const handler = () => {
+        return {};
+      };
+      const pluginHandler = () => {
+        return {
+          error: 'TEAPOT' as HttpError,
+        };
+      };
+      const result = handleResponseHandler(
+        handler,
+        [pluginHandler],
+        [],
+        {},
+        //@ts-ignore
+        mockStream,
+        mockIncomingHeaders,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+    });
+  });
+
+  describe('when passed a plugin handler that returns undefined', () => {
+    test('resolves to be undefined', async () => {
+      const handler = () => {
+        return {};
+      };
+      const pluginHandler = () => {};
+      const result = handleResponseHandler(
+        handler,
+        [pluginHandler],
+        [],
+        {},
+        //@ts-ignore
+        mockStream,
+        mockIncomingHeaders,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+    });
+  });
+
+  describe('when passed a responder that returns the passed response object', () => {
+    test('resolves to be undefined', async () => {
+      const response = {};
+      const handler = () => {
+        return response;
+      };
+      const responder = (response: {}) => response;
+      const result = handleResponseHandler(
+        handler,
+        [],
+        [responder],
+        {},
+        //@ts-ignore
+        mockStream,
+        mockIncomingHeaders,
+      );
+
+      await expect(result).resolves.toBeUndefined();
+    });
+  });
+
+  describe('when passed a responder that does not return the passed response object', () => {
+    test('resolves to be undefined', async () => {
+      const response = {};
+      const handler = () => {
+        return response;
+      };
+      const responder = () => {};
+      const result = handleResponseHandler(
+        handler,
+        [],
+        [responder],
+        {},
+        //@ts-ignore
+        mockStream,
+        mockIncomingHeaders,
+      );
+
+      await expect(result).resolves.toBeUndefined();
     });
   });
 });
 
 /**
- * callResponseHandler()
+ * handleUnknownResponse()
  */
 
-describe('callResponseHandler()', () => {
-  describe('when passed a handler that returns an non-empty response', () => {
-    test('stream.respond() is called with the expected arguments', async () => {
-      const response = { status: HTTP_STATUS_TEAPOT };
-      const handler = () => response;
-
-      const result = callResponseHandler(
-        handler,
-        [mockResponsePluginThatReturnsResponse],
-        //@ts-ignore
-        mockStream,
-        mockContext,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_TEAPOT,
-      };
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
-    });
-  });
-
-  describe('when passed a handler that returns an empty response', () => {
-    test('stream.respond() is called with the expected arguments', async () => {
-      const response = {};
-      const handler = () => response;
-
-      const result = callResponseHandler(
-        handler,
-        [mockResponsePluginThatReturnsResponse],
-        //@ts-ignore
-        mockStream,
-        mockContext,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-      };
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
-    });
-  });
-
-  describe('when passed a response plugin that does not return the original response', () => {
-    test('stream.respond() is not called', async () => {
-      const response = {};
-      const handler = () => response;
-
-      const result = callResponseHandler(
-        handler,
-        [() => {}],
-        //@ts-ignore
-        mockStream,
-        mockContext,
-      );
-
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('when passed a handler that returns a number', () => {
-    test('rejects with an error', async () => {
-      const response = 42;
-      const handler = () => response;
-
-      const result = callResponseHandler(
-        //@ts-ignore
-        handler,
-        [mockResponsePluginThatReturnsResponse],
-        //@ts-ignore
-        mockStream,
-        mockContext,
-      );
-
-      await expect(result).rejects.toThrow(`'${response}' is not a valid Tuft response object.`);
-      expect(mockStream.respond).not.toHaveBeenCalled();
-    });
-  });
-});
-
-/**
- * handleResponse()
- */
-
-describe('handleResponse()', () => {
+describe('handleUnknownResponse()', () => {
   describe('when passed a response with an `error` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         error: 'TEAPOT' as HttpError,
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
     });
   });
 
   describe('when passed a response with a `redirect` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         redirect: '/foo',
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
     });
   });
 
   describe('when passed a response with a `body` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         body: 'abc',
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
     });
   });
 
   describe('when passed a response with both `body` and `status` properties', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
         body: 'abc',
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
     });
   });
 
   describe('when passed a response with a `file` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         file: __filename,
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
     });
   });
 
   describe('when passed a response with both `file` and `status` properties', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
         file: __filename,
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
     });
   });
 
   describe('when passed a response with a `status` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
       };
 
-      const result = handleResponse(
+      const result = handleUnknownResponse(
         response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('when passed an empty response', () => {
+    test('returns undefined and stream.respond() is called with the expected arguments', () => {
+      const response = {};
+
+      const result = handleUnknownResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toBeCalledWith(expectedHeaders, { endStream: true });
     });
   });
 });
@@ -759,9 +620,11 @@ describe('handleHttpErrorResponse', () => {
 describe('handleRedirectResponse()', () => {
   describe('when passed a string for the `url` parameter', () => {
     test('stream.respond() is called with the expected arguments', () => {
-      const url = '/foo';
+      const response = {
+        redirect: '/foo',
+      };
       const result = handleRedirectResponse(
-        url,
+        response,
         //@ts-ignore
         mockStream,
         {},
@@ -769,7 +632,7 @@ describe('handleRedirectResponse()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_FOUND,
-        [HTTP2_HEADER_LOCATION]: url,
+        [HTTP2_HEADER_LOCATION]: response.redirect,
       };
 
       expect(result).toBeUndefined();
@@ -864,7 +727,7 @@ describe('handleBodyResponse()', () => {
         {},
       );
 
-      expect(fn).toThrow(`${type} is not a valid value for 'contentType'`);
+      expect(fn).toThrow(`'${type}' is not a valid value for 'contentType'`);
     });
   });
 
@@ -978,9 +841,11 @@ describe('handleBodyResponse()', () => {
 
 describe('handleFileResponse()', () => {
   test('stream.respondWithFile() is called', () => {
-    const file = __filename;
+    const response = {
+      file: __filename,
+    };
     const result = handleFileResponse(
-      file,
+      response,
       //@ts-ignore
       mockStream,
       {},
@@ -998,8 +863,11 @@ describe('handleFileResponse()', () => {
 describe('handleStatusResponse()', () => {
   describe('when passed a `status` argument of 418', () => {
     test('stream.respond() is called with the expected arguments', () => {
+      const response = {
+        status: HTTP_STATUS_TEAPOT,
+      };
       const result = handleStatusResponse(
-        HTTP_STATUS_TEAPOT,
+        response,
         //@ts-ignore
         mockStream,
         {},
@@ -1011,78 +879,6 @@ describe('handleStatusResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
-    });
-  });
-});
-
-/**
- * statCheck()
- */
-
-describe('statCheck()', () => {
-  describe('when passed a mock stat argument', () => {
-    test('calls stat.mtime.toUTCString()', () => {
-      const date = new Date();
-      const mockStat = {
-        mtime: {
-          toUTCString: jest.fn(() => {
-            return date.toUTCString();
-          }),
-        },
-      };
-      //@ts-ignore
-      const result = statCheck(mockStat, {});
-
-      expect(result).toBeUndefined();
-      expect(mockStat.mtime.toUTCString).toHaveBeenCalled();
-    });
-  });
-});
-
-/**
- * onError()
- */
-
-describe('onError()', () => {
-  describe('when passed a stream and a `ENOENT` error', () => {
-    test('stream.respond() is called with the expected argument', () => {
-      const err = Error('mock error') as NodeJS.ErrnoException;
-      err.code = 'ENOENT';
-
-      const result = onError(
-        //@ts-ignore
-        mockStream,
-        err,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
-      };
-
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
-    });
-  });
-
-  describe('when passed a stream and a generic error', () => {
-    test('stream.respond() is called with the expected argument', () => {
-      const err = Error('mock error') as NodeJS.ErrnoException;
-      const result = onError(
-        //@ts-ignore
-        mockStream,
-        err,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-      };
-
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
     });
   });
 });
