@@ -304,7 +304,7 @@ routes.onError(err => {
 Note: At present, Tuft only supports a single error listener. Multiple calls to `.onError()` will override the previously added callback.
 
 ### `.createServer([options])`
-Returns an instance of [`TuftServer`](#Class:`TuftServer`), which is an `http` server instance that listens for and responds to requests based on the routes that were added to the route map. Accepts an `options` object, which may contain any of the following properties:
+Returns an instance of [`TuftServer`](#class-tuftserver), which is an `http` server instance that listens for and responds to requests based on the routes that were added to the route map. Accepts an `options` object, which may contain any of the following properties:
 
 #### `host`
 * A `string` that represents that host address the server should listen on.
@@ -317,7 +317,7 @@ Returns an instance of [`TuftServer`](#Class:`TuftServer`), which is an `http` s
   Defaults to `0` (random port).
 
 ### `.createSecureServer([options])`
-Returns an instance of `TuftSecureServer`, which is an `https` server instance that listens for and responds to requests based on the routes that were added to the route map. Accepts an `options` object, which may contain any of the following properties:
+Returns an instance of [`TuftSecureServer`](#class-tuftsecureserver), which is an `https` server instance that listens for and responds to requests based on the routes that were added to the route map. Accepts an `options` object, which may contain any of the following properties:
 
 #### `host`
 * A `string` that represents that host address the server should listen on.
