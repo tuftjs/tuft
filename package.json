@@ -1,6 +1,6 @@
 {
   "name": "tuft",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "A lightweight HTTP/2 web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
