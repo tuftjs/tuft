@@ -81,7 +81,7 @@ Tuft is a route-based framework similar to [hapi](https://hapi.dev). When a clie
 To add a route, call the route map's `.set()` method:
 
 ```js
-const app = createTuft();
+const app = createRouteMap();
 
 app.set('GET /foo', {
   response: { status: 200 }
