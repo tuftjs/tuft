@@ -35,28 +35,22 @@ export interface TuftRequest {
   [key: string]: any;
 }
 
+export const sym_stream = Symbol('Http2Stream');
+
 /**
  * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
  * and only argument to a route handler.
  */
 
 export class TuftContext {
-  private readonly _stream: ServerHttp2Stream;
-  private readonly _request: TuftRequest;
   private readonly _outgoingHeaders: OutgoingHttpHeaders;
+  readonly [sym_stream]: ServerHttp2Stream;
+  readonly request: TuftRequest;
 
   constructor(stream: ServerHttp2Stream, request: TuftRequest) {
-    this._stream = stream;
-    this._request = request;
-    this._outgoingHeaders = {};
-  }
-
-  get stream() {
-    return this._stream;
-  }
-
-  get request() {
-    return this._request;
+    this._outgoingHeaders = Object.create(null);
+    this[sym_stream] = stream;
+    this.request = request;
   }
 
   get outgoingHeaders() {
@@ -78,6 +72,10 @@ export class TuftContext {
 
     const cookieHeader = this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] as string[];
     let cookie = name + '=' + value;
+
+    if (!options.path) {
+      options.path = '/';
+    }
 
     for (const option in options) {
       const addCookieOptionString = cookieOptionStringGenerators[option];
@@ -169,7 +167,8 @@ export function createTuftContext(
 
       if (paramKeys[i]) {
         key = paramKeys[i];
-        params[key] = pathname.slice(begin, end < 0 ? undefined : end);
+        const value = pathname.slice(begin, end < 0 ? undefined : end);
+        params[key] = encodeURIComponent(value);
       }
     }
   }
