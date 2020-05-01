@@ -354,6 +354,6 @@ export async function primaryErrorHandler(
  * Returns a new instance of TuftRouteMap, created using the provided options.
  */
 
-export function createTuft(options?: RouteMapOptions) {
+export function createRouteMap(options?: RouteMapOptions) {
   return new TuftRouteMap(options);
 }

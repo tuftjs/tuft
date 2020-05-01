@@ -8,7 +8,7 @@ export type {
   TuftRouteMap,
 } from './route-map';
 
-export { createTuft } from './route-map';
+export { createRouteMap } from './route-map';
 export { createPromise } from './utils';
 export { cookieParserPlugin } from './plugins/cookie-parser';
 export { bodyParserPlugin } from './plugins/body-parser';
