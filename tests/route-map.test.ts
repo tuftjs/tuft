@@ -1,7 +1,7 @@
 import { constants } from 'http2';
 import {
   TuftRouteMap,
-  createTuft,
+  createRouteMap,
   primaryHandler,
   primaryErrorHandler,
 } from '../src/route-map';
@@ -62,7 +62,7 @@ describe('TuftRouteMap', () => {
   describe('TuftRouteMap.prototype.add()', () => {
     describe('when the `method` property is set to [\'GET\', \'HEAD\', \'POST\']', () => {
       test('adds `GET /`, `HEAD /`, and `POST /` entries to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.add({
           method: ['GET', 'HEAD', 'POST'],
@@ -77,7 +77,7 @@ describe('TuftRouteMap', () => {
 
     describe('when the `method` property is not set', () => {
       test('adds entries for all valid request methods to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.add({
           response: {},
@@ -96,7 +96,7 @@ describe('TuftRouteMap', () => {
 
     describe('when the `path` property is set to `/foo`', () => {
       test('adds a `GET /foo` entry to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.add({
           path: '/foo',
@@ -110,7 +110,7 @@ describe('TuftRouteMap', () => {
 
     describe('when the `path` property is not set', () => {
       test('adds a `GET /` entry to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.add({
           method: 'GET',
@@ -123,7 +123,7 @@ describe('TuftRouteMap', () => {
 
     describe('when passed an options object with all supported properties set', () => {
       test('adds a `POST /foo/bar` entry to the map', () => {
-        const map = createTuft({
+        const map = new TuftRouteMap({
           method: 'POST',
           basePath: '/foo',
           path: '/bar',
@@ -142,7 +142,7 @@ describe('TuftRouteMap', () => {
 
     describe('when passed another instance of TuftRouteMap with its own custom options', () => {
       test('adds a `POST /foo/bar` entry to the map', () => {
-        const map1 = createTuft({
+        const map1 = new TuftRouteMap({
           method: 'POST',
           basePath: '/foo',
           path: '/bar',
@@ -155,7 +155,7 @@ describe('TuftRouteMap', () => {
           response: {},
         });
 
-        const map2 = createTuft();
+        const map2 = new TuftRouteMap();
         map2.add(map1);
 
         expect(map2.has('POST /foo/bar')).toBe(true);
@@ -164,13 +164,13 @@ describe('TuftRouteMap', () => {
 
     describe('when passed an options object with all supported properties set and when passed another instance of TuftRouteMap', () => {
       test('adds a `POST /foo` entry to the map', () => {
-        const map1 = createTuft();
+        const map1 = new TuftRouteMap();
 
         map1.add({
           response: {},
         });
 
-        const map2 = createTuft({
+        const map2 = new TuftRouteMap({
           method: 'POST',
           basePath: '/foo',
           path: '/bar',
@@ -187,13 +187,13 @@ describe('TuftRouteMap', () => {
 
     describe('when passed another instance of TuftRouteMap with no custom options', () => {
       test('adds a `GET /` entry to the map', () => {
-        const map1 = createTuft();
+        const map1 = new TuftRouteMap();
 
         map1.add({
           response: {},
         });
 
-        const map2 = createTuft();
+        const map2 = new TuftRouteMap();
         map2.add(map1);
 
         expect(map2.has('GET /')).toBe(true);
@@ -202,7 +202,7 @@ describe('TuftRouteMap', () => {
 
     describe('when passed a non-object', () => {
       test('calls console.error() and exits with error code 1', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         //@ts-ignore
         map.add(42);
@@ -217,7 +217,7 @@ describe('TuftRouteMap', () => {
   describe('TuftRouteMap.prototype.set()', () => {
     describe('when passed `GET|HEAD|POST /`', () => {
       test('adds `GET /`, `HEAD /`, and `POST /` entries to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.set('GET|HEAD|POST /', { response: {} });
 
@@ -229,7 +229,7 @@ describe('TuftRouteMap', () => {
 
     describe('when passed `* /`', () => {
       test('adds entries for all valid request methods to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.set('* /', { response: {} });
 
@@ -248,7 +248,7 @@ describe('TuftRouteMap', () => {
   describe('TuftRouteMap.prototype.redirect()', () => {
     describe('when passed `GET /foo` and `/bar`', () => {
       test('adds a `GET /foo` entry to the map', () => {
-        const map = createTuft();
+        const map = new TuftRouteMap();
 
         map.redirect('GET /foo', '/bar');
 
@@ -259,7 +259,7 @@ describe('TuftRouteMap', () => {
 
   describe('TuftRouteMap.prototype.onError()', () => {
     test('returns TuftRouteMap.prototype', () => {
-      const map = createTuft();
+      const map = new TuftRouteMap();
 
       expect(map.onError(() => { })).toBe(map);
     });
@@ -267,7 +267,7 @@ describe('TuftRouteMap', () => {
 
   describe('TuftRouteMap.prototype.createServer()', () => {
     test('returns an instance of TuftServer', () => {
-      const map = createTuft();
+      const map = new TuftRouteMap();
       const result = map.createServer();
 
       expect(result).toBeInstanceOf(TuftServer);
@@ -276,7 +276,7 @@ describe('TuftRouteMap', () => {
 
   describe('TuftRouteMap.prototype.createSecureServer()', () => {
     test('returns an instance of TuftSecureServer', () => {
-      const map = createTuft();
+      const map = new TuftRouteMap();
       const result = map.createSecureServer();
 
       expect(result).toBeInstanceOf(TuftSecureServer);
@@ -469,12 +469,12 @@ describe('primaryErrorHandler()', () => {
 });
 
 /**
- * createTuft()
+ * createRouteMap()
  */
 
-describe('createTuft()', () => {
+describe('createRouteMap()', () => {
   test('returns an instance of TuftRouteMap', () => {
-    const result = createTuft();
+    const result = createRouteMap();
 
     expect(result).toBeInstanceOf(TuftRouteMap);
   });

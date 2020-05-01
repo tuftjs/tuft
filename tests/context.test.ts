@@ -46,7 +46,6 @@ describe('TuftContext', () => {
       );
 
       expect(t).toBeInstanceOf(TuftContext);
-      expect(t).toHaveProperty('stream', mockStream);
       expect(t).toHaveProperty('request', request);
       expect(t).toHaveProperty('outgoingHeaders', {});
     });
@@ -88,13 +87,13 @@ describe('TuftContext', () => {
     test('adds `set-cookie` to the `outgoingHeaders` property', () => {
       expect(t.outgoingHeaders).not.toHaveProperty('set-cookie');
       expect(t.setCookie('a', 'foo')).toBeUndefined();
-      expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+      expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/']);
     });
 
     test('updates the `set-cookie` entry of the `outgoingHeaders` property', () => {
       expect(t.outgoingHeaders).toHaveProperty('set-cookie');
       expect(t.setCookie('b', 'foo')).toBeUndefined();
-      expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo', 'b=foo']);
+      expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/', 'b=foo; Path=/']);
     });
   });
 
@@ -133,7 +132,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { invalidProperty: 42 });
-        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/']);
       });
     });
 
@@ -150,7 +149,7 @@ describe('TuftContext', () => {
           httpOnly: false,
         });
 
-        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/']);
       });
     });
 
@@ -163,7 +162,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'strict' });
-        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Strict']);
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Strict; Path=/']);
       });
     });
 
@@ -176,7 +175,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'lax' });
-        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Lax']);
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Lax; Path=/']);
       });
     });
 
@@ -189,7 +188,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'none' });
-        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=None']);
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=None; Path=/']);
       });
     });
 
@@ -202,7 +201,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'foo' });
-        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo']);
+        expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/']);
       });
     });
   });
