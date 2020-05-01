@@ -1,11 +1,10 @@
-import type { TuftContext } from '../context';
+import { TuftContext, sym_stream } from '../context';
 import { createPromise } from '../utils';
 import {
   DEFAULT_MAX_BODY_SIZE,
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_CONTENT_TYPE,
 } from '../constants';
-
 
 type BodyParserOptions = {
   text?: boolean | number,
@@ -43,7 +42,7 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
   }
 
   return async function bodyParser(t: TuftContext) {
-    const { stream, request } = t;
+    const stream = t[sym_stream];
 
     const chunks: Buffer[] = [];
 
@@ -60,7 +59,7 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
     body = null;
 
     if (chunks.length > 0) {
-      const { headers } = request;
+      const { headers } = t.request;
 
       if (!headers[HTTP2_HEADER_CONTENT_LENGTH]) {
         // The 'content-length' header is missing.
