@@ -452,4 +452,4 @@ A `number` that represents port that the server will listen on when it's running
 ---
 
 ### Class: `TuftSecureServer`
-An instance of `TuftSecureServer` is returned whenever the `.createSecureServer()` method is called. Its methods and properties are identical to that of `TuftServer`.
+An instance of `TuftSecureServer` is returned whenever the `.createSecureServer()` method is called. Its methods and properties are identical to that of [`TuftServer`](#class-tuftserver).
