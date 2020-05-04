@@ -11,9 +11,12 @@ import {
   handleUnknownResponse,
   handleHttpErrorResponse,
   handleRedirectResponse,
-  handleBodyResponse,
   handleFileResponse,
   handleStatusResponse,
+  handleBufferResponse,
+  handleTextResponse,
+  handleHtmlResponse,
+  handleJsonResponse,
 } from '../src/response-handlers';
 import {
   HTTP2_HEADER_STATUS,
@@ -110,109 +113,37 @@ describe('createResponseHandler()', () => {
     });
   });
 
-  describe('when passed a response object with plugins', () => {
+  describe('when passed a response object with a `json` property', () => {
+    test('returns bound handleResponseObject()', () => {
+      const result = createResponseHandler({
+        response: {
+          json: {},
+        },
+      });
+
+      expect(result.name).toBe('bound handleResponseObject');
+    });
+  });
+
+  describe('when passed a response object with plugins and responders', () => {
     test('returns bound handleResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
         plugins: [mockPlugin],
-        responders: [mockPlugin],
+        responders: [mockPlugin]
       });
 
       expect(result.name).toBe('bound handleResponseHandler');
     });
   });
 
-  describe('when passed a response object with a `body` property', () => {
-    describe('and a `contentType` property set to `text`', () => {
-      test('returns bound handleResponseObject()', () => {
-        const result = createResponseHandler({
-          response: {
-            contentType: 'text',
-            body: 'abc',
-          },
-        });
-
-        expect(result.name).toBe('bound handleResponseObject');
-      });
-    });
-
-    describe('and a `contentType` property set to `json`', () => {
-      test('returns bound handleResponseObject()', () => {
-        const result = createResponseHandler({
-          response: {
-            contentType: 'json',
-            body: { abc: 123 },
-          },
-        });
-
-        expect(result.name).toBe('bound handleResponseObject');
-      });
-    });
-
-    describe('and a `contentType` property set to `buffer`', () => {
-      test('returns bound handleResponseObject()', () => {
-        const result = createResponseHandler({
-          response: {
-            contentType: 'buffer',
-            body: Buffer.from('abc'),
-          },
-        });
-
-        expect(result.name).toBe('bound handleResponseObject');
-      });
-    });
-  });
-
-  describe('when passed a response object with a `body` property of type boolean', () => {
+  describe('when passed a response object without plugins', () => {
     test('returns bound handleResponseObject()', () => {
       const result = createResponseHandler({
-        response: { body: true },
+        response: {},
       });
 
       expect(result.name).toBe('bound handleResponseObject');
-    });
-  });
-
-  describe('when passed a response object with a `body` property of type string', () => {
-    test('returns bound handleResponseObject()', () => {
-      const result = createResponseHandler({
-        response: { body: 'abc' },
-      });
-
-      expect(result.name).toBe('bound handleResponseObject');
-    });
-  });
-
-  describe('when passed a response object with a `body` property of type Buffer', () => {
-    test('returns bound handleResponseObject()', () => {
-      const result = createResponseHandler({
-        response: { body: Buffer.from('abc') },
-      });
-
-      expect(result.name).toBe('bound handleResponseObject');
-    });
-  });
-
-  describe('when passed a response object with a `body` property of type object', () => {
-    test('returns bound handleResponseObject()', () => {
-      const result = createResponseHandler({
-        response: { body: {} },
-      });
-
-      expect(result.name).toBe('bound handleResponseObject');
-    });
-  });
-
-  describe('when passed a response object with a `body` property of type symbol', () => {
-    test('logs an error and exits with a non-zero exit code', () => {
-      const expectedError = TypeError('\'symbol\' is not a supported response body type.');
-      const result = createResponseHandler({
-        response: { body: Symbol() },
-      });
-
-      expect(result).toBeUndefined();
-      expect(mockConsoleError).toHaveBeenCalledWith(expectedError);
-      expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
 });
@@ -438,10 +369,10 @@ describe('handleUnknownResponse()', () => {
     });
   });
 
-  describe('when passed a response with a `body` property', () => {
+  describe('when passed a response with a `raw` property', () => {
     test('returns undefined', () => {
       const response = {
-        body: 'abc',
+        raw: Buffer.from('abc'),
       };
 
       const result = handleUnknownResponse(
@@ -455,11 +386,44 @@ describe('handleUnknownResponse()', () => {
     });
   });
 
-  describe('when passed a response with both `body` and `status` properties', () => {
+  describe('when passed a response with a `text` property', () => {
     test('returns undefined', () => {
       const response = {
-        status: HTTP_STATUS_TEAPOT,
-        body: 'abc',
+        text: 'abc',
+      };
+
+      const result = handleUnknownResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('when passed a response with an `html` property', () => {
+    test('returns undefined', () => {
+      const response = {
+        html: '<h1>abc</h1>',
+      };
+
+      const result = handleUnknownResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('when passed a response with a `json` property', () => {
+    test('returns undefined', () => {
+      const response = {
+        json: JSON.stringify('abc'),
       };
 
       const result = handleUnknownResponse(
@@ -476,24 +440,6 @@ describe('handleUnknownResponse()', () => {
   describe('when passed a response with a `file` property', () => {
     test('returns undefined', () => {
       const response = {
-        file: __filename,
-      };
-
-      const result = handleUnknownResponse(
-        response,
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('when passed a response with both `file` and `status` properties', () => {
-    test('returns undefined', () => {
-      const response = {
-        status: HTTP_STATUS_TEAPOT,
         file: __filename,
       };
 
@@ -594,23 +540,6 @@ describe('handleHttpErrorResponse', () => {
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders, { endStream: true });
     });
   });
-
-  describe('when passed an object with a `body` property', () => {
-    test('return undefined', () => {
-      const response = {
-        body: 'abc',
-      };
-
-      const result = handleHttpErrorResponse(
-        response,
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      expect(result).toBeUndefined();
-    });
-  });
 });
 
 /**
@@ -642,145 +571,45 @@ describe('handleRedirectResponse()', () => {
 });
 
 /**
- * handleBodyResponse()
+ * handleBufferResponse()
  */
 
-describe('handleBodyResponse()', () => {
-  describe('when passed a `type` argument of `text/html`', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = '<p>abc</p>';
-      const type = 'html';
+describe('handleBufferResponse()', () => {
+  describe('with a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const raw = Buffer.from('abc');
+      const response = {
+        status: HTTP_STATUS_OK,
+        raw,
+      };
 
-      const result = handleBodyResponse(
-        { body, type },
+      const result = handleBufferResponse(
+        response,
         //@ts-ignore
         mockStream,
         {},
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=utf-8',
-        [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/octet-stream',
+        [HTTP2_HEADER_CONTENT_LENGTH]: raw.length,
       };
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(body);
     });
   });
 
-  describe('when passed a `type` argument of `json`', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = { abc: 123 };
-      const type = 'json';
-
-      const result = handleBodyResponse(
-        { body, type },
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
-        [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(body).length,
+  describe('without a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const raw = Buffer.from('abc');
+      const response = {
+        raw,
       };
 
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(JSON.stringify(body));
-    });
-  });
-
-  describe('when passed a `type` argument of `json` and the body is already a string', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = '{"abc":123}';
-      const type = 'json';
-
-      const result = handleBodyResponse(
-        { body, type },
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
-        [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
-      };
-
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(body);
-    });
-  });
-
-  describe('when passed an invalid `type` value', () => {
-    test('throws an error', () => {
-      const body = { abc: 123 };
-      const type = 'foo';
-
-      const fn = () => handleBodyResponse(
-        { body, type },
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      expect(fn).toThrow(`'${type}' is not a valid value for 'contentType'`);
-    });
-  });
-
-  describe('when passed a `body` argument of type boolean with `type` argument undefined', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = true;
-
-      const result = handleBodyResponse(
-        { body },
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
-        [HTTP2_HEADER_CONTENT_LENGTH]: body.toString().length,
-      };
-
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(body.toString());
-    });
-  });
-
-  describe('when passed a `body` argument of type string with `type` argument undefined', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = 'abc';
-
-      const result = handleBodyResponse(
-        { body },
-        //@ts-ignore
-        mockStream,
-        {},
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
-        [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
-      };
-
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(body);
-    });
-  });
-
-  describe('when passed a `body` argument of type buffer with `type` argument undefined', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = Buffer.from('abc');
-
-      const result = handleBodyResponse(
-        { body },
+      const result = handleBufferResponse(
+        response,
         //@ts-ignore
         mockStream,
         {},
@@ -788,21 +617,191 @@ describe('handleBodyResponse()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_CONTENT_TYPE]: 'application/octet-stream',
-        [HTTP2_HEADER_CONTENT_LENGTH]: body.length,
+        [HTTP2_HEADER_CONTENT_LENGTH]: raw.length,
       };
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(body);
+    });
+  });
+});
+
+/**
+ * handleTextResponse()
+ */
+
+describe('handleTextResponse()', () => {
+  describe('with a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const text = 'abc';
+      const response = {
+        status: HTTP_STATUS_OK,
+        text,
+      };
+
+      const result = handleTextResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: text.length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
     });
   });
 
-  describe('when passed a `body` argument of type object with `type` argument undefined', () => {
-    test('stream.respond() and stream.end() are called with the expected arguments', () => {
-      const body = { abc: 123 };
+  describe('without a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const text = 'abc';
+      const response = {
+        text,
+      };
 
-      const result = handleBodyResponse(
-        { body },
+      const result = handleTextResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: text.length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+    });
+  });
+
+  describe('when passed a boolean value', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const text = true;
+      const response = {
+        text,
+      };
+
+      const result = handleTextResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: text.toString().length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+    });
+  });
+});
+
+/**
+ * handleHtmlResponse()
+ */
+
+describe('handleHtmlResponse()', () => {
+  describe('with a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const html = '<h1>abc</h1>';
+      const response = {
+        status: HTTP_STATUS_OK,
+        html,
+      };
+
+      const result = handleHtmlResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: html.length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+    });
+  });
+
+  describe('without a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const html = '<h1>abc</h1>';
+      const response = {
+        html,
+      };
+
+      const result = handleHtmlResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: html.length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+    });
+  });
+});
+
+/**
+ * handleJsonResponse()
+ */
+
+describe('handleJsonResponse()', () => {
+  describe('with a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const json = { abc: 123 };
+      const response = {
+        status: HTTP_STATUS_OK,
+        json,
+      };
+
+      const result = handleJsonResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(json).length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+    });
+  });
+
+  describe('without a status property', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const json = { abc: 123 };
+      const response = {
+        json,
+      };
+
+      const result = handleJsonResponse(
+        response,
         //@ts-ignore
         mockStream,
         {},
@@ -810,27 +809,35 @@ describe('handleBodyResponse()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
-        [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(body).length,
+        [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(json).length,
       };
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalledWith(JSON.stringify(body));
     });
   });
 
-  describe('when passed a `body` argument of type symbol with `type` argument undefined', () => {
-    test('throws an error', () => {
-      const body = Symbol();
+  describe('when passed a value that is already serialized', () => {
+    test('stream.respond() is called with the expected arguments', () => {
+      const json = JSON.stringify({ abc: 123 });
+      const response = {
+        json,
+      };
 
-      const fn = () => handleBodyResponse(
-        { body },
+      const result = handleJsonResponse(
+        response,
         //@ts-ignore
         mockStream,
         {},
       );
 
-      expect(fn).toThrow(`'${typeof body}' is not a supported response body type.`);
+      const expectedHeaders = {
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_LENGTH]: json.length,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
     });
   });
 });
@@ -840,19 +847,39 @@ describe('handleBodyResponse()', () => {
  */
 
 describe('handleFileResponse()', () => {
-  test('stream.respondWithFile() is called', () => {
-    const response = {
-      file: __filename,
-    };
-    const result = handleFileResponse(
-      response,
-      //@ts-ignore
-      mockStream,
-      {},
-    );
+  describe('with a status property', () => {
+    test('stream.respondWithFile() is called', () => {
+      const response = {
+        status: HTTP_STATUS_OK,
+        file: __filename,
+      };
+      const result = handleFileResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
 
-    expect(result).toBeUndefined();
-    expect(mockStream.respondWithFile).toHaveBeenCalled();
+      expect(result).toBeUndefined();
+      expect(mockStream.respondWithFile).toHaveBeenCalled();
+    });
+  });
+
+  describe('without a status property', () => {
+    test('stream.respondWithFile() is called', () => {
+      const response = {
+        file: __filename,
+      };
+      const result = handleFileResponse(
+        response,
+        //@ts-ignore
+        mockStream,
+        {},
+      );
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respondWithFile).toHaveBeenCalled();
+    });
   });
 });
 
