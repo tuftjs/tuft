@@ -1,11 +1,11 @@
 import {
-  createTuft,
+  createRouteMap,
   cookieParserPlugin,
   bodyParserPlugin,
   streamResponder,
 } from '../src';
 
-const app = createTuft({
+const app = createRouteMap({
   plugins: [
     cookieParserPlugin(),
     bodyParserPlugin(),
@@ -18,59 +18,71 @@ const app = createTuft({
 app.onError(err => console.error(err));
 
 app.set('GET /status1', {
-  response: { status: 204 },
+  response: {
+    status: 418,
+   },
 });
 
 app.set('GET /status2', {
   response: () => {
-    return { status: 204 };
+    return {
+      status: 418,
+     };
+  },
+});
+
+app.set('GET /raw1', {
+  response: {
+    raw: Buffer.from('Hello, world!'),
+  },
+});
+
+app.set('GET /raw2', {
+  response: () => {
+    return {
+      raw: Buffer.from('Hello, world!'),
+    };
   },
 });
 
 app.set('GET /text1', {
-  response: { body: 'Hello, world!' },
+  response: {
+    text: 'Hello, world!',
+  },
 });
 
 app.set('GET /text2', {
   response: () => {
-    return { body: 'Hello, world!' };
+    return {
+      text: 'Hello, world!',
+    };
+  },
+});
+
+app.set('GET /html1', {
+  response: {
+    html: '<h1>Hello, world!<h1>',
+  },
+});
+
+app.set('GET /html2', {
+  response: () => {
+    return {
+      html: '<h1>Hello, world!<h1>',
+    };
   },
 });
 
 app.set('GET /json1', {
   response: {
-    body: { hello: 'world' },
+    json: { hello: 'world' },
   },
 });
 
 app.set('GET /json2', {
   response: () => {
     return {
-      body: { hello: 'world' },
-    };
-  },
-});
-
-app.set('GET /content_type1', {
-  response: {
-    contentType: 'html',
-    body: '<h1>Hello, world!</h1>',
-  },
-});
-
-app.set('GET /content_type2', {
-  response: () => {
-    return {
-      contentType: 'html',
-      body: '<h1>Hello, world!</h1>',
-    };
-  },
-});
-
-app.set('GET /request_object', {
-  response: (t) => {
-    return {
-      body: t.request,
+      json: { hello: 'world' },
     };
   },
 });
@@ -109,22 +121,30 @@ app.set('GET /stream2', {
   },
 });
 
+app.set('GET /request_object', {
+  response: (t) => {
+    return {
+      json: t.request,
+    };
+  },
+});
+
 app.set('GET /foo/bar/baz', {
   response: {
-    body: '/foo/bar/baz',
+    text: '/foo/bar/baz',
   },
 });
 
 app.set('GET /foo/{**}/baz', {
   response: {
-    body: '/foo/{**}/baz',
+    text: '/foo/{**}/baz',
   },
 });
 
 app.set('GET /xyz/{id}', {
   response: (t) => {
     return {
-      body: t.request.params,
+      json: t.request.params,
     };
   },
 });
