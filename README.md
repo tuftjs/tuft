@@ -23,7 +23,7 @@ async function init() {
 
   app.set('GET /', {
     response: {
-      body: 'Hello, world!'
+      text: 'Hello, world!'
     }
   });
 
@@ -101,23 +101,25 @@ app.set('GET /', {
 
 A `response` object with no properties will respond to client requests with the default `:status` header of `200` and no response body.
 
-You can send a response body by defining the `body` property of the `response` object:
+You can send a response body by defining one of the accepted body properties of the `response` object, such as `text`:
 
 ```js
 app.set('GET /', {
   response: {
-    body: 'Hello, world!'
+    text: 'Hello, world!'
   }
 });
 ```
+
+Other accepted body properties include `html`, `json`, `file`, and `buffer`.
 
 The `response` property can also be set to a function that *returns* a `response` object. So the above example could also be written as:
 
 ```js
 app.set('GET /', {
   response: () => {
-    const body = 'Hello, world!';
-    return { body };
+    const text = 'Hello, world!';
+    return { text };
   }
 });
 ```
