@@ -46,11 +46,11 @@ export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions =
 
     const chunks: Buffer[] = [];
 
-    await createPromise(done => {
-      stream.on('data', (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
+    stream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
 
+    await createPromise(done => {
       stream.on('end', done);
     });
 
