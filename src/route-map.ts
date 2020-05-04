@@ -41,8 +41,10 @@ export type TuftResponse = {
   error?: HttpError;
   status?: number;
   redirect?: string;
-  contentType?: string;
-  body?: any;
+  raw?: Buffer;
+  text?: string | number | boolean;
+  html?: string;
+  json?: string | object;
   file?: string;
 };
 
@@ -61,12 +63,12 @@ export interface TuftRouteSchema {
 }
 
 type RouteMapOptions = {
-  plugins?: TuftPluginHandler[],
-  responders?: TuftResponder[],
-  basePath?: string,
-  method?: RequestMethod | RequestMethod[],
-  path?: string,
-  trailingSlash?: boolean,
+  plugins?: TuftPluginHandler[];
+  responders?: TuftResponder[];
+  basePath?: string;
+  method?: RequestMethod | RequestMethod[];
+  path?: string;
+  trailingSlash?: boolean;
 }
 
 const {
