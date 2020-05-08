@@ -3,6 +3,12 @@ import type { Stats } from 'fs';
 import { constants } from 'http2';
 import { HTTP2_HEADER_LAST_MODIFIED, HTTP2_HEADER_STATUS } from './constants';
 
+if (Array.prototype.flat === undefined) {
+  Array.prototype.flat = function () {
+    return this.reduce((acc, val) => acc.concat(val), []);
+  };
+}
+
 const {
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
