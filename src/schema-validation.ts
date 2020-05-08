@@ -1,4 +1,4 @@
-import { getSupportedRequestMethods } from './utils';
+import { getSupportedRequestMethods, arrayFlat2D } from './utils';
 
 const validPathRegexp = /^\/([0-9A-Za-z-_.~%:[\]@!$&'()*+,;=/{}]+)?$/;
 
@@ -22,7 +22,7 @@ export function findInvalidSchemaEntry(schema: any) {
         return `${formatValue(value)} is not a valid response object.`;
       }
       case 'method': {
-        for (const method of [value].flat()) {
+        for (const method of arrayFlat2D([value])) {
           const methods = getSupportedRequestMethods();
           const isValidMethod = methods.includes(method.toUpperCase?.());
 

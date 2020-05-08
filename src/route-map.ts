@@ -1,7 +1,7 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
-import type { HttpError } from './utils';
+import { HttpError, arrayFlat2D } from './utils';
 
 import { constants } from 'http2';
 import { RouteManager } from './route-manager';
@@ -105,7 +105,7 @@ export class TuftRouteMap extends Map {
     this.#responders = options.responders ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
-    this.#methods = ([options.method ?? supportedRequestMethods]).flat();
+    this.#methods = arrayFlat2D([options.method ?? supportedRequestMethods]);
     this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
     this.#applicationErrorHandler = null;
   }
@@ -176,7 +176,7 @@ export class TuftRouteMap extends Map {
 
     const path = this.#basePath + (schema.path ?? this.#path);
 
-    const methods = schema.method ? [schema.method].flat() : this.#methods;
+    const methods = schema.method ? arrayFlat2D([schema.method]) : this.#methods;
 
     const routeProps: TuftRoute = {
       response: schema.response,

@@ -3,12 +3,6 @@ import type { Stats } from 'fs';
 import { constants } from 'http2';
 import { HTTP2_HEADER_LAST_MODIFIED, HTTP2_HEADER_STATUS } from './constants';
 
-if (Array.prototype.flat === undefined) {
-  Array.prototype.flat = function () {
-    return this.reduce((acc, val) => acc.concat(val), []);
-  };
-}
-
 const {
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
@@ -206,4 +200,13 @@ export function onError(stream: ServerHttp2Stream, err: NodeJS.ErrnoException) {
 
   stream.end();
   stream.emit('error', err);
+}
+
+/**
+ * Flattens two-dimensional arrays. Required to support Node v10.x, which does not implement
+ * Array.prototype.flat().
+ */
+
+export function arrayFlat2D(arr: any[]): any[] {
+  return arr.reduce((acc, val) => acc.concat(val), []);
 }
