@@ -1,7 +1,7 @@
 import type { TuftContext } from '../context';
 import { HTTP2_HEADER_COOKIE } from '../constants';
 
-export function cookieParserPlugin() {
+export function createCookieParser() {
   return function cookieParser(t: TuftContext) {
     const cookiesStr = t.request.headers[HTTP2_HEADER_COOKIE];
     const result: { [name: string]: string } = {};

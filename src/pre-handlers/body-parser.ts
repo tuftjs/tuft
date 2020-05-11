@@ -12,7 +12,7 @@ type BodyParserOptions = {
   urlEncoded?: boolean | number,
 }
 
-export function bodyParserPlugin({ text, json, urlEncoded }: BodyParserOptions = {}) {
+export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions = {}) {
   let maxTextSize: number;
   let maxJsonSize: number;
   let maxUrlEncodedSize: number;
