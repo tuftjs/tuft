@@ -4,7 +4,7 @@ import type {
   TuftRoute,
   TuftResponse,
   TuftHandler,
-  TuftPluginHandler,
+  TuftPreHandler,
   TuftResponder,
 } from './route-map';
 
@@ -42,24 +42,23 @@ const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
 export function createResponseHandler(route: TuftRoute) {
   const { response, params } = route;
 
-  const pluginHandlers = route.plugins ?? EMPTY_ARRAY;
+  const preHandlers = route.preHandlers ?? EMPTY_ARRAY;
   const responders = route.responders ?? EMPTY_ARRAY;
-
   const options = { params };
 
   if (typeof response === 'function') {
-    return handleResponseHandler.bind(null, response, pluginHandlers, responders, options);
+    return handleResponseHandler.bind(null, response, preHandlers, responders, options);
   }
 
   if (typeof response.json === 'object') {
     response.json = JSON.stringify(response.json);
   }
 
-  if (pluginHandlers.length > 0) {
+  if (preHandlers.length > 0) {
     return handleResponseHandler.bind(
       null,
       returnResponse.bind(null, response),
-      pluginHandlers,
+      preHandlers,
       responders,
       options,
     );
@@ -91,7 +90,7 @@ export async function handleResponseObject(
 
 export async function handleResponseHandler(
   handler: TuftHandler,
-  pluginHandlers: TuftPluginHandler[],
+  preHandlers: TuftPreHandler[],
   responders: TuftResponder[],
   contextOptions: TuftContextOptions,
   stream: ServerHttp2Stream,
@@ -99,9 +98,9 @@ export async function handleResponseHandler(
 ) {
   const t = createTuftContext(stream, headers, contextOptions);
 
-  for (let i = 0; i < pluginHandlers.length; i++) {
-    const handler = pluginHandlers[i];
-    const response = await handler(t) as TuftResponse;
+  for (let i = 0; i < preHandlers.length; i++) {
+    const preHandler = preHandlers[i];
+    const response = await preHandler(t) as TuftResponse;
 
     if (response?.error) {
       handleHttpErrorResponse(response, stream, t.outgoingHeaders);

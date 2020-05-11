@@ -1,17 +1,15 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
-import { HttpError, arrayFlat2D } from './utils';
+import { HttpError } from './utils';
 
 import { constants } from 'http2';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
-import { findInvalidSchemaEntry } from './schema-validation';
 import { getSupportedRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
-  ROUTE_MAP_DEFAULT_PATH,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
@@ -23,7 +21,7 @@ export interface TuftHandler {
   (t: TuftContext): TuftResponse | Error | void | Promise<TuftResponse | Error | void>;
 }
 
-export interface TuftPluginHandler {
+export interface TuftPreHandler {
   (t: TuftContext): TuftResponse | Error | void | Promise<TuftResponse | Error | void>;
 }
 
@@ -50,20 +48,14 @@ export type TuftResponse = {
 
 export interface TuftRoute {
   response: TuftHandler | TuftResponse;
-  plugins?: TuftPluginHandler[];
+  preHandlers?: TuftPreHandler[];
   responders?: TuftResponder[],
   params?: { [key: string]: string };
   trailingSlash?: boolean;
 }
 
-export interface TuftRouteSchema {
-  response: TuftHandler | TuftResponse;
-  method?: RequestMethod | RequestMethod[];
-  path?: string;
-}
-
 type RouteMapOptions = {
-  plugins?: TuftPluginHandler[];
+  preHandlers?: TuftPreHandler[];
   responders?: TuftResponder[];
   basePath?: string;
   method?: RequestMethod | RequestMethod[];
@@ -86,27 +78,20 @@ const supportedRequestMethods = getSupportedRequestMethods();
  */
 
 export class TuftRouteMap extends Map {
-  readonly #plugins: TuftPluginHandler[];
+  readonly #preHandlers: TuftPreHandler[];
   readonly #responders: TuftResponder[];
-
-  // If 'trailingSlash' is true, all paths with a trailing slash will be matched.
-  readonly #trailingSlash: boolean | null;
-
-  readonly #basePath: string;     // Prepended to any path added to the route map.
-  readonly #methods: string[];    // Default methods.
-  readonly #path: string;         // Default path.
+  readonly #trailingSlash: boolean | null;  // Match paths with a trailing slash.
+  readonly #basePath: string;               // Prepend to route path.
 
   #applicationErrorHandler: ((err: Error) => void | Promise<void>) | null;
 
   constructor(options: RouteMapOptions = {}) {
     super();
 
-    this.#plugins = options.plugins ?? [];
+    this.#preHandlers = options.preHandlers ?? [];
     this.#responders = options.responders ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
-    this.#methods = arrayFlat2D([options.method ?? supportedRequestMethods]);
-    this.#path = options.path ?? ROUTE_MAP_DEFAULT_PATH;
     this.#applicationErrorHandler = null;
   }
 
@@ -114,7 +99,7 @@ export class TuftRouteMap extends Map {
    * Merges the provided instance of RouteMap with the current instance.
    */
 
-  private _merge(routes: TuftRouteMap) {
+  merge(routes: TuftRouteMap) {
     for (const [key, route] of routes) {
       const [method, path] = key.split(' ');
 
@@ -128,8 +113,8 @@ export class TuftRouteMap extends Map {
         response: route.response,
       };
 
-      if (this.#plugins.length > 0 || route.plugins?.length > 0) {
-        mergedRoute.plugins = this.#plugins.concat(route.plugins ?? []);
+      if (this.#preHandlers.length > 0 || route.preHandlers?.length > 0) {
+        mergedRoute.preHandlers = this.#preHandlers.concat(route.preHandlers ?? []);
       }
 
       if (this.#responders.length > 0 || route.responders?.length > 0) {
@@ -151,39 +136,24 @@ export class TuftRouteMap extends Map {
       // Add the merged route to the route map.
       super.set(mergedKey, mergedRoute);
     }
+
+    return this;
   }
 
   /**
-   * If a route schema is provided, then a new route entry is created and added based on its
-   * properties. If another instance of RouteMap is provided, its route entries are merged with the
-   * current instance.
+   * Adds the provided response to the route map, indexed by request method and path.
    */
 
-  add(schema: TuftRouteSchema | TuftRouteMap) {
-    if (schema instanceof TuftRouteMap) {
-      this._merge(schema);
-      return this;
-    }
+  set(key: string, response: TuftResponse | (() => TuftResponse)) {
+    const [routeMethods, routePath] = key.split(/[ ]+/);
 
-    const errorMessage = findInvalidSchemaEntry(schema);
+    const methods = routeMethods === '*' ? supportedRequestMethods : routeMethods.split('|');
+    const path = this.#basePath + routePath;
 
-    if (errorMessage) {
-      // An invalid schema entry was detected, so pipe the relevent error to stderr and exit.
-      const err = TypeError(errorMessage);
-      console.error(err);
-      return process.exit(1);
-    }
+    const routeProps: TuftRoute = { response };
 
-    const path = this.#basePath + (schema.path ?? this.#path);
-
-    const methods = schema.method ? arrayFlat2D([schema.method]) : this.#methods;
-
-    const routeProps: TuftRoute = {
-      response: schema.response,
-    };
-
-    if (this.#plugins.length > 0) {
-      routeProps.plugins = this.#plugins;
+    if (this.#preHandlers.length > 0) {
+      routeProps.preHandlers = this.#preHandlers;
     }
 
     if (this.#responders.length > 0) {
@@ -203,24 +173,6 @@ export class TuftRouteMap extends Map {
 
       super.set(key, route);
     }
-
-    return this;
-  }
-
-  /**
-   * An alternative to .add(), where the provided route schema is added to the route map
-   * based on the provided string, which should be in the format of '{request method} {path}'.
-   */
-
-  set(key: string, route: TuftRouteSchema) {
-    const [method, path] = key.split(/[ ]+/);
-
-    const schema = Object.assign(route, {
-      method: method === '*' ? supportedRequestMethods : method.split('|'),
-      path,
-    });
-
-    this.add(schema);
 
     return this;
   }
