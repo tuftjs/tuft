@@ -1,4 +1,3 @@
-import type { TuftContext } from '../src/context';
 import type { HttpError } from '../src/utils';
 
 import { constants } from 'http2';
@@ -35,10 +34,6 @@ const {
 } = constants;
 
 const CONTENT_LENGTH = 42;
-
-function mockPlugin(t: TuftContext) {
-  t.request.foo = 42;
-}
 
 const mockIncomingHeaders = {
   [HTTP2_HEADER_METHOD]: 'GET',
@@ -129,8 +124,8 @@ describe('createResponseHandler()', () => {
     test('returns bound handleResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
-        plugins: [mockPlugin],
-        responders: [mockPlugin]
+        preHandlers: [() => {}],
+        responders: [() => {}]
       });
 
       expect(result.name).toBe('bound handleResponseHandler');

@@ -1,4 +1,4 @@
-import { cookieParserPlugin } from '../../src/plugins/cookie-parser';
+import { createCookieParser } from '../../src/pre-handlers/cookie-parser';
 
 type MockTuftContext = {
   request: {
@@ -24,14 +24,14 @@ const mockContextWithCookie: MockTuftContext = {
 };
 
 /**
- * cookieParserPlugin()
+ * createCookieParser()
  */
 
-describe('cookieParserPlugin()', () => {
+describe('createCookieParser()', () => {
   let cookieParser: (t: MockTuftContext) => void;
 
   test('returns a function named `cookieParser`', () => {
-    cookieParser = cookieParserPlugin();
+    cookieParser = createCookieParser();
     expect(typeof cookieParser).toBe('function');
     expect(cookieParser.name).toBe('cookieParser');
   });

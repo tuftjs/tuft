@@ -1,5 +1,5 @@
 import { constants } from 'http2';
-import { getSupportedRequestMethods, createPromise, statCheck, onError, arrayFlat2D } from '../src/utils';
+import { getSupportedRequestMethods, createPromise, statCheck, onError } from '../src/utils';
 import {
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
@@ -133,16 +133,5 @@ describe('onError()', () => {
       expect(mockStream.end).toHaveBeenCalled();
       expect(mockStream.emit).toHaveBeenCalledWith('error', err);
     });
-  });
-});
-
-/**
- * arrayFlat2D()
- */
-
-describe('arrayFlat2D()', () => {
-  test('returns a flattened array', () => {
-    const result = arrayFlat2D([1, [2]]);
-    expect(result).toEqual([1, 2]);
   });
 });

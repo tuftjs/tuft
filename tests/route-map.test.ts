@@ -59,157 +59,70 @@ describe('TuftRouteMap', () => {
     });
   });
 
-  describe('TuftRouteMap.prototype.add()', () => {
-    describe('when the `method` property is set to [\'GET\', \'HEAD\', \'POST\']', () => {
-      test('adds `GET /`, `HEAD /`, and `POST /` entries to the map', () => {
-        const map = new TuftRouteMap();
-
-        map.add({
-          method: ['GET', 'HEAD', 'POST'],
-          response: {},
-        });
-
-        expect(map.has('GET /')).toBe(true);
-        expect(map.has('HEAD /')).toBe(true);
-        expect(map.has('POST /')).toBe(true);
-      });
-    });
-
-    describe('when the `method` property is not set', () => {
-      test('adds entries for all valid request methods to the map', () => {
-        const map = new TuftRouteMap();
-
-        map.add({
-          response: {},
-        });
-
-        expect(map.has('DELETE /')).toBe(true);
-        expect(map.has('GET /')).toBe(true);
-        expect(map.has('HEAD /')).toBe(true);
-        expect(map.has('OPTIONS /')).toBe(true);
-        expect(map.has('PATCH /')).toBe(true);
-        expect(map.has('POST /')).toBe(true);
-        expect(map.has('PUT /')).toBe(true);
-        expect(map.has('TRACE /')).toBe(true);
-      });
-    });
-
-    describe('when the `path` property is set to `/foo`', () => {
-      test('adds a `GET /foo` entry to the map', () => {
-        const map = new TuftRouteMap();
-
-        map.add({
-          path: '/foo',
-          method: 'GET',
-          response: {},
-        });
-
-        expect(map.has('GET /foo')).toBe(true);
-      });
-    });
-
-    describe('when the `path` property is not set', () => {
-      test('adds a `GET /` entry to the map', () => {
-        const map = new TuftRouteMap();
-
-        map.add({
-          method: 'GET',
-          response: {},
-        });
-
-        expect(map.has('GET /')).toBe(true);
-      });
-    });
-
-    describe('when passed an options object with all supported properties set', () => {
-      test('adds a `POST /foo/bar` entry to the map', () => {
-        const map = new TuftRouteMap({
-          method: 'POST',
-          basePath: '/foo',
-          path: '/bar',
-          trailingSlash: true,
-          plugins: [() => { }],
-          responders: [() => { }],
-        });
-
-        map.add({
-          response: {},
-        });
-
-        expect(map.has('POST /foo/bar')).toBe(true);
-      });
-    });
-
+  describe('TuftRouteMap.prototype.merge()', () => {
     describe('when passed another instance of TuftRouteMap with its own custom options', () => {
-      test('adds a `POST /foo/bar` entry to the map', () => {
+      test('adds a `GET /foo/bar` entry to the map', () => {
         const map1 = new TuftRouteMap({
-          method: 'POST',
           basePath: '/foo',
-          path: '/bar',
           trailingSlash: true,
-          plugins: [() => { }],
-          responders: [() => { }],
+          preHandlers: [() => {}],
+          responders: [() => {}],
         });
 
-        map1.add({
-          response: {},
-        });
+        map1.set('GET /bar', {});
 
         const map2 = new TuftRouteMap();
-        map2.add(map1);
+        map2.merge(map1);
 
-        expect(map2.has('POST /foo/bar')).toBe(true);
+        expect(map2.has('GET /foo/bar')).toBe(true);
       });
     });
 
     describe('when passed an options object with all supported properties set and when passed another instance of TuftRouteMap', () => {
-      test('adds a `POST /foo` entry to the map', () => {
+      test('adds a `GET /foo/bar` entry to the map', () => {
         const map1 = new TuftRouteMap();
 
-        map1.add({
-          response: {},
-        });
+        map1.set('GET /bar', {});
 
         const map2 = new TuftRouteMap({
-          method: 'POST',
           basePath: '/foo',
-          path: '/bar',
           trailingSlash: true,
-          plugins: [() => { }],
-          responders: [() => { }],
+          preHandlers: [() => {}],
+          responders: [() => {}],
         });
 
-        map2.add(map1);
+        map2.merge(map1);
 
-        expect(map2.has('POST /foo')).toBe(true);
+        expect(map2.has('GET /foo/bar')).toBe(true);
       });
     });
 
     describe('when passed another instance of TuftRouteMap with no custom options', () => {
-      test('adds a `GET /` entry to the map', () => {
+      test('adds a `GET /foo` entry to the map', () => {
         const map1 = new TuftRouteMap();
 
-        map1.add({
-          response: {},
-        });
+        map1.set('GET /foo', {});
 
         const map2 = new TuftRouteMap();
-        map2.add(map1);
+        map2.merge(map1);
 
-        expect(map2.has('GET /')).toBe(true);
+        expect(map2.has('GET /foo')).toBe(true);
       });
     });
 
-    describe('when passed a non-object', () => {
-      test('calls console.error() and exits with error code 1', () => {
-        const map = new TuftRouteMap();
+    describe('when adding a route with a lone slash that gets merged with a base path', () => {
+      test('adds a `GET /` entry to the map', () => {
+        const map1 = new TuftRouteMap();
 
-        //@ts-ignore
-        map.add(42);
+        map1.set('GET /', {});
 
-        const expectedError = TypeError('42 is not a valid route schema object.');
-        expect(mockConsoleError).toHaveBeenCalledWith(expectedError);
-        expect(mockExit).toHaveBeenCalledWith(1);
+        const map2 = new TuftRouteMap({
+          basePath: '/foo',
+        });
+
+        map2.merge(map1);
+
+        expect(map2.has('GET /foo')).toBe(true);
       });
     });
   });
@@ -219,7 +132,7 @@ describe('TuftRouteMap', () => {
       test('adds `GET /`, `HEAD /`, and `POST /` entries to the map', () => {
         const map = new TuftRouteMap();
 
-        map.set('GET|HEAD|POST /', { response: {} });
+        map.set('GET|HEAD|POST /', {});
 
         expect(map.has('GET /')).toBe(true);
         expect(map.has('HEAD /')).toBe(true);
@@ -231,7 +144,7 @@ describe('TuftRouteMap', () => {
       test('adds entries for all valid request methods to the map', () => {
         const map = new TuftRouteMap();
 
-        map.set('* /', { response: {} });
+        map.set('* /', {});
 
         expect(map.has('DELETE /')).toBe(true);
         expect(map.has('GET /')).toBe(true);
@@ -291,9 +204,7 @@ describe('TuftRouteMap', () => {
 describe('primaryHandler()', () => {
   const map = new TuftRouteMap();
 
-  map.set('GET /foo', {
-    response: {},
-  });
+  map.set('GET /foo', {});
 
   const routes = new RouteManager(map);
 
@@ -360,9 +271,7 @@ describe('primaryHandler()', () => {
   const err = Error('mock error');
   const map = new TuftRouteMap();
 
-  map.set('GET /foo', {
-    response: () => { throw err; },
-  });
+  map.set('GET /foo', () => { throw err; });
 
   const routes = new RouteManager(map);
 

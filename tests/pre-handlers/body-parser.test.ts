@@ -1,6 +1,6 @@
 import { cloneDeep } from 'lodash';
 import { sym_stream } from '../../src/context';
-import { bodyParserPlugin } from '../../src/plugins/body-parser';
+import { createBodyParser } from '../../src/pre-handlers/body-parser';
 
 type Callback = (...args: any[]) => void;
 
@@ -44,15 +44,15 @@ const mockContext: MockTuftContext = {
 };
 
 /**
- * bodyParserPlugin() without an options argument
+ * createBodyParser() without an options argument
  */
 
-describe('bodyParserPlugin() without an options argument', () => {
+describe('createBodyParser() without an options argument', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin();
+    bodyParser = createBodyParser();
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -146,15 +146,15 @@ describe('bodyParserPlugin() without an options argument', () => {
 });
 
 /**
- * bodyParserPlugin() with option `text` set to true
+ * createBodyParser() with option `text` set to true
  */
 
-describe('bodyParserPlugin() with option `text` set to true', () => {
+describe('createBodyParser() with option `text` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ text: true });
+    bodyParser = createBodyParser({ text: true });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -195,15 +195,15 @@ describe('bodyParserPlugin() with option `text` set to true', () => {
 });
 
 /**
- * bodyParserPlugin() with option `text` set to 0
+ * createBodyParser() with option `text` set to 0
  */
 
-describe('bodyParserPlugin() with option `text` set to 0', () => {
+describe('createBodyParser() with option `text` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ text: 0 });
+    bodyParser = createBodyParser({ text: 0 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -225,15 +225,15 @@ describe('bodyParserPlugin() with option `text` set to 0', () => {
 });
 
 /**
- * bodyParserPlugin() with option `text` set to 1
+ * createBodyParser() with option `text` set to 1
  */
 
-describe('bodyParserPlugin() with option `text` set to 1', () => {
+describe('createBodyParser() with option `text` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ text: 1 });
+    bodyParser = createBodyParser({ text: 1 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -274,15 +274,15 @@ describe('bodyParserPlugin() with option `text` set to 1', () => {
 });
 
 /**
- * bodyParserPlugin() with option `json` set to true
+ * createBodyParser() with option `json` set to true
  */
 
-describe('bodyParserPlugin() with option `json` set to true', () => {
+describe('createBodyParser() with option `json` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ json: true });
+    bodyParser = createBodyParser({ json: true });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -322,15 +322,15 @@ describe('bodyParserPlugin() with option `json` set to true', () => {
 });
 
 /**
- * bodyParserPlugin() with option `json` set to 0
+ * createBodyParser() with option `json` set to 0
  */
 
-describe('bodyParserPlugin() with option `json` set to 0', () => {
+describe('createBodyParser() with option `json` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ json: 0 });
+    bodyParser = createBodyParser({ json: 0 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -352,15 +352,15 @@ describe('bodyParserPlugin() with option `json` set to 0', () => {
 });
 
 /**
- * bodyParserPlugin() with option `json` set to 1
+ * createBodyParser() with option `json` set to 1
  */
 
-describe('bodyParserPlugin() with option `json` set to 1', () => {
+describe('createBodyParser() with option `json` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ json: 1 });
+    bodyParser = createBodyParser({ json: 1 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -400,15 +400,15 @@ describe('bodyParserPlugin() with option `json` set to 1', () => {
 });
 
 /**
- * bodyParserPlugin() with option `urlEncoded` set to true
+ * createBodyParser() with option `urlEncoded` set to true
  */
 
-describe('bodyParserPlugin() with option `urlEncoded` set to true', () => {
+describe('createBodyParser() with option `urlEncoded` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ urlEncoded: true });
+    bodyParser = createBodyParser({ urlEncoded: true });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -469,15 +469,15 @@ describe('bodyParserPlugin() with option `urlEncoded` set to true', () => {
 });
 
 /**
- * bodyParserPlugin() with option `urlEncoded` set to 0
+ * createBodyParser() with option `urlEncoded` set to 0
  */
 
-describe('bodyParserPlugin() with option `urlEncoded` set to 0', () => {
+describe('createBodyParser() with option `urlEncoded` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ urlEncoded: 0 });
+    bodyParser = createBodyParser({ urlEncoded: 0 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -499,15 +499,15 @@ describe('bodyParserPlugin() with option `urlEncoded` set to 0', () => {
 });
 
 /**
- * bodyParserPlugin() with option `urlEncoded` set to 1
+ * createBodyParser() with option `urlEncoded` set to 1
  */
 
-describe('bodyParserPlugin() with option `urlEncoded` set to 1', () => {
+describe('createBodyParser() with option `urlEncoded` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-ignore
-    bodyParser = bodyParserPlugin({ urlEncoded: 1 });
+    bodyParser = createBodyParser({ urlEncoded: 1 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
