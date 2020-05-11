@@ -188,9 +188,7 @@ export class TuftRouteMap extends Map {
 
   redirect(key: string, url: string) {
     this.set(key, {
-      response: {
-        redirect: url,
-      },
+      redirect: url,
     });
 
     return this;
