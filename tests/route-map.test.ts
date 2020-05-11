@@ -140,11 +140,11 @@ describe('TuftRouteMap', () => {
       });
     });
 
-    describe('when passed `* /`', () => {
+    describe('when passed `/`', () => {
       test('adds entries for all valid request methods to the map', () => {
         const map = new TuftRouteMap();
 
-        map.set('* /', {});
+        map.set('/', {});
 
         expect(map.has('DELETE /')).toBe(true);
         expect(map.has('GET /')).toBe(true);
