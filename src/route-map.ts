@@ -145,10 +145,19 @@ export class TuftRouteMap extends Map {
    */
 
   set(key: string, response: TuftResponse | (() => TuftResponse)) {
-    const [routeMethods, routePath] = key.split(/[ ]+/);
+    const keyArr = key.split(/[ ]+/);
 
-    const methods = routeMethods === '*' ? supportedRequestMethods : routeMethods.split('|');
-    const path = this.#basePath + routePath;
+    let methods, path;
+
+    if (keyArr.length === 1) {
+      methods = supportedRequestMethods;
+      path = this.#basePath + keyArr[0];
+    }
+
+    else {
+      methods = keyArr[0].split('|');
+      path = this.#basePath + keyArr[1];
+    }
 
     const routeProps: TuftRoute = { response };
 
