@@ -1,10 +1,10 @@
 {
   "name": "tuft",
-  "version": "1.0.0-alpha.4",
-  "description": "A fast, lightweight HTTP/2 web framework for Node.js, with no dependencies.",
+  "version": "1.0.0-alpha.5",
+  "description": "An HTTP/2 web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
-  "homepage": "https://github.com/tuftjs/tuft",
+  "homepage": "https://tuft.dev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tuftjs/tuft.git"
@@ -39,7 +39,7 @@
     "eslint": "^7.0.0",
     "jest": "^26.0.1",
     "lodash": "^4.17.15",
-    "ts-jest": "^25.5.0",
+    "ts-jest": "^25.5.1",
     "ts-node": "^8.10.1",
     "typescript": "^3.8.3"
   }
