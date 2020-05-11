@@ -201,12 +201,3 @@ export function onError(stream: ServerHttp2Stream, err: NodeJS.ErrnoException) {
   stream.end();
   stream.emit('error', err);
 }
-
-/**
- * Flattens two-dimensional arrays. Required to support Node v10.x, which does not implement
- * Array.prototype.flat().
- */
-
-export function arrayFlat2D(arr: any[]): any[] {
-  return arr.reduce((acc, val) => acc.concat(val), []);
-}
