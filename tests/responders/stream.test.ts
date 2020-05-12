@@ -1,4 +1,4 @@
-import { streamResponder } from '../../src/responders/stream';
+import { createStreamResponder } from '../../src/responders/stream';
 
 const mockStream = {
   respond: jest.fn(),
@@ -11,6 +11,8 @@ beforeEach(() => {
   mockStream.write.mockClear();
   mockStream.end.mockClear();
 });
+
+const streamResponder = createStreamResponder();
 
 /**
  * streamResponder()
