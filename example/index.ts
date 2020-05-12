@@ -2,7 +2,7 @@ import {
   createRouteMap,
   createCookieParser,
   createBodyParser,
-  streamResponder,
+  createStreamResponder,
 } from '../src';
 
 const app = createRouteMap({
@@ -11,7 +11,7 @@ const app = createRouteMap({
     createBodyParser(),
   ],
   responders: [
-    streamResponder,
+    createStreamResponder(),
   ],
 });
 
