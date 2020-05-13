@@ -1,6 +1,6 @@
 {
   "name": "tuft",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0-alpha.7",
   "description": "An HTTP/2 web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
