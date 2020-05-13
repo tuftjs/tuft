@@ -20,7 +20,7 @@ mockRouteMap.set('GET /bar', {
 describe('RouteManager', () => {
   describe('new RouteManager()', () => {
     test('returns an instance of RouteManager with the expected properties', () => {
-      //@ts-ignore
+      //@ts-expect-error
       const routes = new RouteManager(mockRouteMap);
 
       expect(routes).toBeInstanceOf(RouteManager);
@@ -41,7 +41,7 @@ describe('RouteManager', () => {
 
   describe('RouteManager.prototype.find(\'GET\', \'/foo\')', () => {
     test('returns a function', () => {
-      //@ts-ignore
+      //@ts-expect-error
       const routes = new RouteManager(mockRouteMap);
       const route = routes.find('GET', '/foo');
 

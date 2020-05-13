@@ -79,7 +79,7 @@ describe('statCheck()', () => {
           }),
         },
       };
-      //@ts-ignore
+      //@ts-expect-error
       const result = statCheck(mockStat, {});
 
       expect(result).toBeUndefined();
@@ -99,7 +99,7 @@ describe('onError()', () => {
       err.code = 'ENOENT';
 
       const result = onError(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         err,
       );
@@ -119,7 +119,7 @@ describe('onError()', () => {
     test('stream.respond() is called with the expected argument', () => {
       const err = Error('mock error') as NodeJS.ErrnoException;
       const result = onError(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         err,
       );

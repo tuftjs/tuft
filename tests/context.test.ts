@@ -40,7 +40,7 @@ describe('TuftContext', () => {
   describe('new TuftContext()', () => {
     test('returns an instance of TuftContext with the expected properties', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
@@ -54,7 +54,7 @@ describe('TuftContext', () => {
   describe('TuftContext.prototype.setHeader()', () => {
     test('returns undefined', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
@@ -66,7 +66,7 @@ describe('TuftContext', () => {
   describe('TuftContext.prototype.getHeader()', () => {
     test('returns the expected value', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
@@ -79,7 +79,7 @@ describe('TuftContext', () => {
 
   describe('TuftContext.prototype.setCookie()', () => {
     const t = new TuftContext(
-      //@ts-ignore
+      //@ts-expect-error
       mockStream,
       request,
     );
@@ -100,7 +100,7 @@ describe('TuftContext', () => {
   describe('TuftContext.prototype.setCookie()', () => {
     describe('when passed an options object', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
@@ -125,7 +125,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with an invalid property', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
@@ -138,7 +138,7 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with `secure` and `httpOnly` set to false', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
@@ -155,51 +155,52 @@ describe('TuftContext', () => {
 
     describe('when passed an options object with `sameSite` set to `strict`', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
 
       test('adds the expected cookie entry', () => {
-        t.setCookie('a', 'foo', { sameSite: 'strict' });
+        t.setCookie('a', 'foo', { sameSite: 'Strict' });
         expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Strict; Path=/']);
       });
     });
 
     describe('when passed an options object with `sameSite` set to `lax`', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
 
       test('adds the expected cookie entry', () => {
-        t.setCookie('a', 'foo', { sameSite: 'lax' });
+        t.setCookie('a', 'foo', { sameSite: 'Lax' });
         expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=Lax; Path=/']);
       });
     });
 
     describe('when passed an options object with `sameSite` set to `none`', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
 
       test('adds the expected cookie entry', () => {
-        t.setCookie('a', 'foo', { sameSite: 'none' });
+        t.setCookie('a', 'foo', { sameSite: 'None' });
         expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; SameSite=None; Path=/']);
       });
     });
 
     describe('when passed an options object with `sameSite` set to an invalid value', () => {
       const t = new TuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         request,
       );
 
       test('adds the expected cookie entry', () => {
+        //@ts-expect-error
         t.setCookie('a', 'foo', { sameSite: 'foo' });
         expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/']);
       });
@@ -220,7 +221,7 @@ describe('createTuftContext()', () => {
       };
 
       const result = createTuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         headers,
       );
@@ -237,7 +238,7 @@ describe('createTuftContext()', () => {
       };
 
       const result = createTuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         headers,
       );
@@ -261,7 +262,7 @@ describe('createTuftContext()', () => {
       };
 
       const result = createTuftContext(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         headers,
         options,

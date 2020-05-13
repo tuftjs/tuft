@@ -168,7 +168,7 @@ describe('handleResponseObject()', () => {
         response,
         [responder],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
       );
 
@@ -185,7 +185,7 @@ describe('handleResponseObject()', () => {
         response,
         [responder],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
       );
 
@@ -209,7 +209,7 @@ describe('handleResponseHandler()', () => {
         [],
         [],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
@@ -253,7 +253,7 @@ describe('handleResponseHandler()', () => {
         [preHandler],
         [],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
@@ -273,7 +273,7 @@ describe('handleResponseHandler()', () => {
         [preHandler],
         [],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
@@ -294,7 +294,7 @@ describe('handleResponseHandler()', () => {
         [],
         [responder],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
@@ -315,7 +315,7 @@ describe('handleResponseHandler()', () => {
         [],
         [responder],
         {},
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
@@ -338,7 +338,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -355,7 +355,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -372,7 +372,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -389,7 +389,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -406,7 +406,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -423,7 +423,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -440,7 +440,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -457,7 +457,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -472,7 +472,7 @@ describe('handleUnknownResponse()', () => {
 
       const result = handleUnknownResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -500,7 +500,7 @@ describe('handleHttpErrorResponse', () => {
 
       const result = handleHttpErrorResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -522,7 +522,7 @@ describe('handleHttpErrorResponse', () => {
 
       const result = handleHttpErrorResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -549,7 +549,7 @@ describe('handleRedirectResponse()', () => {
       };
       const result = handleRedirectResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -580,7 +580,7 @@ describe('handleBufferResponse()', () => {
 
       const result = handleBufferResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -605,7 +605,7 @@ describe('handleBufferResponse()', () => {
 
       const result = handleBufferResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -636,7 +636,7 @@ describe('handleTextResponse()', () => {
 
       const result = handleTextResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -661,7 +661,7 @@ describe('handleTextResponse()', () => {
 
       const result = handleTextResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -685,7 +685,7 @@ describe('handleTextResponse()', () => {
 
       const result = handleTextResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -716,7 +716,7 @@ describe('handleHtmlResponse()', () => {
 
       const result = handleHtmlResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -741,7 +741,7 @@ describe('handleHtmlResponse()', () => {
 
       const result = handleHtmlResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -772,7 +772,7 @@ describe('handleJsonResponse()', () => {
 
       const result = handleJsonResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -797,7 +797,7 @@ describe('handleJsonResponse()', () => {
 
       const result = handleJsonResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -821,7 +821,7 @@ describe('handleJsonResponse()', () => {
 
       const result = handleJsonResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -850,7 +850,7 @@ describe('handleFileResponse()', () => {
       };
       const result = handleFileResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -867,7 +867,7 @@ describe('handleFileResponse()', () => {
       };
       const result = handleFileResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -890,7 +890,7 @@ describe('handleStatusResponse()', () => {
       };
       const result = handleStatusResponse(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );

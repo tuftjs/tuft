@@ -28,7 +28,7 @@ describe('streamResponder()', () => {
       };
       const result = streamResponder(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -50,7 +50,7 @@ describe('streamResponder()', () => {
       };
       const result = streamResponder(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );
@@ -67,7 +67,7 @@ describe('streamResponder()', () => {
       const response = {};
       const result = streamResponder(
         response,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {},
       );

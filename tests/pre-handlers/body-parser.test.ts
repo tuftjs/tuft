@@ -51,7 +51,7 @@ describe('createBodyParser() without an options argument', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser();
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -153,7 +153,7 @@ describe('createBodyParser() with option `text` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ text: true });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -202,7 +202,7 @@ describe('createBodyParser() with option `text` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ text: 0 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -232,7 +232,7 @@ describe('createBodyParser() with option `text` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ text: 1 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -281,7 +281,7 @@ describe('createBodyParser() with option `json` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ json: true });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -329,7 +329,7 @@ describe('createBodyParser() with option `json` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ json: 0 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -359,7 +359,7 @@ describe('createBodyParser() with option `json` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ json: 1 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -407,7 +407,7 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ urlEncoded: true });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -476,7 +476,7 @@ describe('createBodyParser() with option `urlEncoded` set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ urlEncoded: 0 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
@@ -506,7 +506,7 @@ describe('createBodyParser() with option `urlEncoded` set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
-    //@ts-ignore
+    //@ts-expect-error
     bodyParser = createBodyParser({ urlEncoded: 1 });
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');

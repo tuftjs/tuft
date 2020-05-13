@@ -213,7 +213,7 @@ describe('primaryHandler()', () => {
       const result = primaryHandler(
         routes,
         mockErrorHandler,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {
           ':method': 'GET',
@@ -233,7 +233,7 @@ describe('primaryHandler()', () => {
       const result = primaryHandler(
         routes,
         mockErrorHandler,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {
           ':method': 'LINK',
@@ -254,7 +254,7 @@ describe('primaryHandler()', () => {
       const result = primaryHandler(
         routes,
         mockErrorHandler,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {
           ':method': 'GET',
@@ -280,7 +280,7 @@ describe('primaryHandler()', () => {
       const result = primaryHandler(
         routes,
         mockErrorHandler,
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         {
           ':method': 'GET',
@@ -305,7 +305,7 @@ describe('primaryErrorHandler()', () => {
       mockStream.destroyed = false;
 
       const result = primaryErrorHandler(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockErrorHandler,
         err,
@@ -328,7 +328,7 @@ describe('primaryErrorHandler()', () => {
       mockStream.destroyed = true;
 
       const result = primaryErrorHandler(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockErrorHandler,
         err,
@@ -348,7 +348,7 @@ describe('primaryErrorHandler()', () => {
       mockStream.headersSent = true;
 
       const result = primaryErrorHandler(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         mockErrorHandler,
         err,
@@ -366,7 +366,7 @@ describe('primaryErrorHandler()', () => {
       const err = Error('mock error');
 
       const result = primaryErrorHandler(
-        //@ts-ignore
+        //@ts-expect-error
         mockStream,
         null,
         err,
