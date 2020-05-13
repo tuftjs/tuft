@@ -98,17 +98,16 @@ export async function handleResponseHandler(
 ) {
   const t = createTuftContext(stream, headers, contextOptions);
 
-  for (let i = 0; i < preHandlers.length; i++) {
-    const preHandler = preHandlers[i];
-    const response = await preHandler(t) as TuftResponse;
+  let response: TuftResponse | void;
 
-    if (response?.error) {
-      handleHttpErrorResponse(response, stream, t.outgoingHeaders);
-      return;
-    }
+  for (let i = 0; i < preHandlers.length && response === undefined; i++) {
+    const preHandler = preHandlers[i];
+    response = await preHandler(t);
   }
 
-  const response = await handler(t);
+  if (response === undefined) {
+    response = await handler(t);
+  }
 
   if (typeof response !== 'object' || response === null) {
     throw TypeError('\'' + response + '\' is not a valid Tuft response object.');
