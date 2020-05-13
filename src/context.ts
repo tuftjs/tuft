@@ -1,6 +1,6 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 
-import { URLSearchParams } from 'url';
+
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
@@ -28,7 +28,7 @@ export interface TuftRequest {
   readonly method: string;
   readonly pathname: string;
   readonly secure: boolean;
-  readonly searchParams: URLSearchParams;
+  readonly search: string;
   readonly params: { [key: string]: string };
   cookies?: { [key: string]: string };
   body?: string | Buffer | { [key: string]: any } | null;
@@ -139,20 +139,18 @@ export function createTuftContext(
   const method = headers[HTTP2_HEADER_METHOD] as string;
   const path = headers[HTTP2_HEADER_PATH] as string;
 
-  let pathname: string = path;
-  let queryString: string | undefined = undefined;
+  let pathname = path;
+  let search = '';
 
   let separatorIndex = path.indexOf('?');
 
   if (separatorIndex > 0) {
     // The path has a query string
     pathname = path.slice(0, separatorIndex);
-    queryString = path.slice(separatorIndex + 1);
+    search = path.slice(separatorIndex);
   }
 
   const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
-
-  const searchParams = new URLSearchParams(queryString);
 
   const paramKeys = options.params;
   const params: { [key: string]: string } = {};
@@ -177,8 +175,8 @@ export function createTuftContext(
     headers,
     method,
     pathname,
+    search,
     secure,
-    searchParams,
     params,
   };
 
