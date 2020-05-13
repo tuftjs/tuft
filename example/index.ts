@@ -1,5 +1,6 @@
 import {
   createRouteMap,
+  createSearchParams,
   createCookieParser,
   createBodyParser,
   createStreamResponder,
@@ -7,6 +8,7 @@ import {
 
 const app = createRouteMap({
   preHandlers: [
+    createSearchParams(),
     createCookieParser(),
     createBodyParser(),
   ],
