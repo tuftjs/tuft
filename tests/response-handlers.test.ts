@@ -238,19 +238,19 @@ describe('handleResponseHandler()', () => {
     });
   });
 
-  describe('when passed a plugin handler that returns an error response', () => {
+  describe('when passed a pre-handler that returns a response', () => {
     test('resolves to be undefined', async () => {
       const handler = () => {
         return {};
       };
-      const pluginHandler = () => {
+      const preHandler = () => {
         return {
-          error: 'TEAPOT' as HttpError,
+          status: HTTP_STATUS_TEAPOT,
         };
       };
       const result = handleResponseHandler(
         handler,
-        [pluginHandler],
+        [preHandler],
         [],
         {},
         //@ts-ignore
@@ -262,15 +262,15 @@ describe('handleResponseHandler()', () => {
     });
   });
 
-  describe('when passed a plugin handler that returns undefined', () => {
+  describe('when passed a pre-handler that returns undefined', () => {
     test('resolves to be undefined', async () => {
       const handler = () => {
         return {};
       };
-      const pluginHandler = () => {};
+      const preHandler = () => {};
       const result = handleResponseHandler(
         handler,
-        [pluginHandler],
+        [preHandler],
         [],
         {},
         //@ts-ignore
