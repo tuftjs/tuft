@@ -5,8 +5,8 @@ import { createResponseHandler } from './response-handlers';
 import { getSupportedRequestMethods } from './utils';
 
 /**
- * Creates an instance of RouteStore for each valid HTTP request method, and adds the routes in the
- * provided route map to one of the stores based on its method.
+ * Creates an instance of RouteStore for each supported HTTP request method, and adds each route in
+ * the provided route map to its corresponding store.
  */
 
 export class RouteManager {
@@ -22,14 +22,15 @@ export class RouteManager {
 
       this._routes[method].set(path, route);
 
-      if (route.trailingSlash) {
+      if (route.trailingSlash && !path.endsWith('/')) {
+        // Add the same route, but with a trailing slash.
         this._routes[method].set(path + '/', route);
       }
     }
   }
 
   /**
-   * Searches for and returns a route handler based on the provided method and path. Returns
+   * Searches for and returns a response handler based on the provided method and path. Returns
    * undefined if no route exists.
    */
 
@@ -38,14 +39,14 @@ export class RouteManager {
   }
 }
 
-const sym_handler         = Symbol('handler');
-const sym_next            = Symbol('next');
-const sym_wildcard        = Symbol('wildcard');
-const sym_doubleWildcard  = Symbol('doubleWildcard');
+const symHandler         = Symbol('handler');
+const symNext            = Symbol('next');
+const symWildcard        = Symbol('wildcard');
+const symDoubleWildcard  = Symbol('doubleWildcard');
 
 type RouteTreeBranch = {
-  [sym_handler]?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
-  [sym_next]: RouteTreeNode,
+  [symHandler]?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
+  [symNext]: RouteTreeNode,
 };
 
 type RouteTreeNode = Map<string | symbol, RouteTreeBranch>;
@@ -61,7 +62,7 @@ export class RouteStore {
   private readonly _routeTree: RouteTreeNode = new Map();
 
   /**
-   * Adds a route handler to the store, indexed by the given path.
+   * Adds a response handler to the store, indexed by the given path.
    */
 
   set(path: string, route: TuftRoute) {
@@ -88,12 +89,12 @@ export class RouteStore {
       if (str.startsWith('{') && str.endsWith('}')) {
         // This is a wildcard segment.
         if (!wildcardRegexp.test(str)) {
-          // This is a named wildcard segment, extract the param name.
+          // This is a named wildcard segment, extract the parameter name.
           params[i] = str.slice(1, str.length - 1);
         }
 
         // Index the wildcard path segment using the corresponding symbol.
-        segment = str === '{**}' ? sym_doubleWildcard : sym_wildcard;
+        segment = str === '{**}' ? symDoubleWildcard : symWildcard;
       }
 
       else {
@@ -101,7 +102,7 @@ export class RouteStore {
         segment = str;
       }
 
-      const branch: RouteTreeBranch = node.get(segment) ?? { [sym_next]: new Map() };
+      const branch: RouteTreeBranch = node.get(segment) ?? { [symNext]: new Map() };
 
       if (!node.has(segment)) {
         // Add the newly created branch to the current node.
@@ -111,22 +112,22 @@ export class RouteStore {
       if (i === pathSegments.length - 1) {
         // This is the last path segment.
         if (Object.keys(params).length > 0) {
-          // Update the route handler object to include the params.
+          // Update the response handler object to include the params.
           routeHandlerParams.params = params;
         }
 
         // Create a handler and add it to the current branch.
-        branch[sym_handler] = createResponseHandler(routeHandlerParams);
+        branch[symHandler] = createResponseHandler(routeHandlerParams);
         break;
       }
 
       // Update the pointer so that it points to the next node.
-      node = branch[sym_next];
+      node = branch[symNext];
     }
   }
 
   /**
-   * Retrieve the route handler for the given path from the store. Returns undefined if no such
+   * Retrieves the response handler for the given path from the store. Returns undefined if no such
    * route exists.
    */
 
@@ -134,7 +135,7 @@ export class RouteStore {
     let begin = 1;
     let end = path.indexOf('/', begin);
     let node = this._routeTree;
-    let doubleWildcard: RouteTreeBranch = { [sym_next]: new Map() };
+    let doubleWildcard: RouteTreeBranch = { [symNext]: new Map() };
     let branch: RouteTreeBranch;
     let pathSegment: string;
 
@@ -142,30 +143,30 @@ export class RouteStore {
     while (end >= 0) {
       pathSegment = path.slice(begin, end);
 
-      doubleWildcard = node.get(sym_doubleWildcard) ?? doubleWildcard;
-      branch = node.get(pathSegment) ?? node.get(sym_wildcard) ?? doubleWildcard;
+      doubleWildcard = node.get(symDoubleWildcard) ?? doubleWildcard;
+      branch = node.get(pathSegment) ?? node.get(symWildcard) ?? doubleWildcard;
 
       if (branch === doubleWildcard) {
         // The current branch points to a double wildcard handler only, so return it.
-        return doubleWildcard[sym_handler];
+        return doubleWildcard[symHandler];
       }
 
       // Update the node pointer to point to the next node.
-      node = branch[sym_next];
+      node = branch[symNext];
       begin = end + 1;
       end = path.indexOf('/', begin);
     }
 
     pathSegment = path.slice(begin);
 
-    doubleWildcard = node.get(sym_doubleWildcard) ?? doubleWildcard;
+    doubleWildcard = node.get(symDoubleWildcard) ?? doubleWildcard;
 
     // This is the final path segment, so retrieve the route handler from the current node that
-    // best matches the path segment. A specific match is preferred over a wildcard match. A single
-    // wildcard match is preferred over a double wildcard match.
-    const routeHandler = node.get(pathSegment)?.[sym_handler]
-      ?? node.get(sym_wildcard)?.[sym_handler]
-      ?? doubleWildcard[sym_handler];
+    // best matches the path segment. A specific match takes precedence over a wildcard match. A
+    // single wildcard match takes precedence over over a double wildcard match.
+    const routeHandler = node.get(pathSegment)?.[symHandler]
+      ?? node.get(symWildcard)?.[symHandler]
+      ?? doubleWildcard[symHandler];
 
     return routeHandler;
   }

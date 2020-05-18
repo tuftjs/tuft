@@ -72,9 +72,8 @@ const {
 const supportedRequestMethods = getSupportedRequestMethods();
 
 /**
- * Stores route data indexed by method and path. Instances of TuftRouteMap can be added to other
- * route maps, which results in entries being merged and traits from the parent route map being
- * inherited.
+ * Stores route data indexed by method and path. Instances of TuftRouteMap can be merged with other
+ * route maps, which results in traits from the parent route map being inherited.
  */
 
 export class TuftRouteMap extends Map {
@@ -200,7 +199,7 @@ export class TuftRouteMap extends Map {
   }
 
   /**
-   * Creates and returns an instance of TuftServer that utilizes the current route map.
+   * Returns an instance of TuftServer that utilizes the current route map.
    */
 
   createServer(options?: ServerOptions) {
@@ -209,7 +208,7 @@ export class TuftRouteMap extends Map {
   }
 
   /**
-   * Creates and returns an instance of TuftSecureServer that utilizes the current route map.
+   * Returns an instance of TuftSecureServer that utilizes the current route map.
    */
 
   createSecureServer(options?: SecureServerOptions) {
@@ -219,7 +218,7 @@ export class TuftRouteMap extends Map {
 }
 
 /**
- * Creates and returns a main handler function that has access to an instance of RouteManager.
+ * Returns a main handler function that has access to an instance of RouteManager.
  */
 
 function createPrimaryHandler(
@@ -232,8 +231,8 @@ function createPrimaryHandler(
 
 /**
  * Determines if there is a matching route for the given request. If there is no matching route, or
- * if the request method is not supported, a response is sent with the appropriate error. If there
- * is a matching route, control of the stream is passed on to the corresponding response handler.
+ * if the request method is not supported, a response is sent with the appropriate HTTP error. If
+ * there is a matching route, control of the stream is passed to the corresponding response handler.
  */
 
 export async function primaryHandler(
@@ -276,7 +275,7 @@ export async function primaryHandler(
       return;
     }
 
-    // Pass control of the stream on to the response handler.
+    // Pass control of the stream to the response handler.
     await handleResponse(stream, headers);
   }
 
@@ -286,9 +285,8 @@ export async function primaryHandler(
 }
 
 /**
- * To be called when an error has been thrown that was not caught by a route-level error handler, or
- * when an `error` event is emitted on the HTTP/2 stream. Accepts a user-defined error handler which
- * is passed the error object.
+ * Called when an error is thrown or when an 'error' event is emitted on the HTTP/2 stream. Accepts
+ * a user-defined error handler which is passed the error object.
  */
 
 export async function primaryErrorHandler(
@@ -307,7 +305,7 @@ export async function primaryErrorHandler(
     stream.end();
   }
 
-  // Pass the error object on to the user-defined error handler.
+  // Pass the error object to the user-defined error handler.
   await handleError?.(err);
 }
 

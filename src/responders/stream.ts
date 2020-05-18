@@ -3,6 +3,11 @@ import type { TuftResponse } from '../route-map';
 import { createPromise } from '../utils';
 import { HTTP2_HEADER_STATUS } from '../constants';
 
+/**
+ * Returns the 'streamResponder' responder function, which allows writing multiple chunks of data to
+ * the outgoing response body.
+ */
+
 export function createStreamResponder() {
   return async function streamResponder(
     response: TuftResponse,
@@ -12,22 +17,27 @@ export function createStreamResponder() {
     const { writeStream, status } = response;
 
     if (typeof writeStream === 'function') {
+      // A callback has been provided.
       if (status) {
+        // Add the provided status to the outgoing headers.
         outgoingHeaders[HTTP2_HEADER_STATUS] = status;
       }
 
       stream.respond(outgoingHeaders);
 
-      await response.writeStream((chunk: any, encoding?: string) => {
+      // Wait for all 'chunks' to be written to the stream.
+      await response.writeStream((chunk: any, encoding?: BufferEncoding) => {
         return createPromise(done => {
           stream.write(chunk, encoding, done);
         });
       });
 
+      // Writing is complete, so end the stream.
       stream.end();
       return;
     }
 
+    // A 'writeStream' callback was not provided, so return the passed response object.
     return response;
   };
 }

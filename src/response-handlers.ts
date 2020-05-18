@@ -32,11 +32,8 @@ const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
 
 /**
  * Accepts an object containing route properties and returns a function that is capable of handling
- * that route. Passing a boolean as an optional second argument indicates whether or not a
- * TuftContext that parses the request body should be created.
- *
- * The returned function is a bound version of one of the route handlers, with the specific
- * properties of the provided route passed as arguments.
+ * that route. The returned function is a bound version of one of the response handlers, with the
+ * specific properties of the provided route passed as arguments.
  */
 
 export function createResponseHandler(route: TuftRoute) {
@@ -51,10 +48,12 @@ export function createResponseHandler(route: TuftRoute) {
   }
 
   if (typeof response.json === 'object') {
+    // Serialize the provided value in advance so that it doesn't get serialized for every request.
     response.json = JSON.stringify(response.json);
   }
 
   if (preHandlers.length > 0) {
+    // There are pre-handlers, so a bound handleResponseHandler must be returned.
     return handleResponseHandler.bind(
       null,
       returnResponse.bind(null, response),
@@ -64,12 +63,22 @@ export function createResponseHandler(route: TuftRoute) {
     );
   }
 
+  // There are no pre-handlers, so the response object can be handled directly.
   return handleResponseObject.bind(null, response, responders, {});
 }
+
+/**
+ * Returns the passed response object.
+ */
 
 export function returnResponse(response: TuftResponse) {
   return response;
 }
+
+/**
+ * Passes the provided response object to the provided responder functions. If all the responder
+ * functions return the same response object, it is then passed to 'handleUnknownResponse'.
+ */
 
 export async function handleResponseObject(
   response: TuftResponse,
@@ -87,6 +96,18 @@ export async function handleResponseObject(
 
   handleUnknownResponse(response, stream, outgoingHeaders);
 }
+
+/**
+ * Handles the following four functions:
+ *
+ * 1. Create an instance of TuftContext using the provided options.
+ * 2. Call each of the provided pre-handlers. If a pre-handler returns a response object, then stop
+ *    further execution of any remaining pre-handlers.
+ * 3. If a response object was not returned by a pre-handler, then call the provided response
+ *    handler.
+ * 4. Pass the returned response object to the provided responder functions. If all the responder
+ *    functions return the same response object, it is then passed to 'handleUnknownResponse'.
+ */
 
 export async function handleResponseHandler(
   handler: TuftHandler,
@@ -123,6 +144,11 @@ export async function handleResponseHandler(
 
   handleUnknownResponse(response, stream, t.outgoingHeaders);
 }
+
+/**
+ * Determines which of the built-in responder functions to call based on the properties present
+ * in the provided response object.
+ */
 
 export function handleUnknownResponse(
   response: TuftResponse,
@@ -171,10 +197,15 @@ export function handleUnknownResponse(
     return;
   }
 
+  // No valid properties were found, so respond with a '200 OK' status code and end the stream.
   stream.respond({
     [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
   }, { endStream: true });
 }
+
+/**
+ * Responds with an HTTP error status code based on the provided string.
+ */
 
 export function handleHttpErrorResponse(
   { error }: TuftResponse,
@@ -187,6 +218,10 @@ export function handleHttpErrorResponse(
   stream.respond(outgoingHeaders, { endStream: true });
 }
 
+/**
+ * Responds by redirecting the client to the provided path or URI.
+ */
+
 export function handleRedirectResponse(
   { redirect }: TuftResponse,
   stream: ServerHttp2Stream,
@@ -196,6 +231,11 @@ export function handleRedirectResponse(
   outgoingHeaders[HTTP2_HEADER_LOCATION] = redirect;
   stream.respond(outgoingHeaders, { endStream: true });
 }
+
+/**
+ * Responds with the provided value as a buffer and 'content-type' set to
+ * 'application/octet-stream'.
+ */
 
 export function handleBufferResponse(
   { raw, status }: TuftResponse,
@@ -215,6 +255,10 @@ export function handleBufferResponse(
   stream.end(body);
 }
 
+/**
+ * Responds with the provided value as a string and 'content-type' set to 'text/plain'.
+ */
+
 export function handleTextResponse(
   { text, status }: TuftResponse,
   stream: ServerHttp2Stream,
@@ -232,6 +276,10 @@ export function handleTextResponse(
   stream.respond(outgoingHeaders);
   stream.end(body);
 }
+
+/**
+ * Responds with the provided value as a string and 'content-type' set to 'text/html'.
+ */
 
 export function handleHtmlResponse(
   { html, status }: TuftResponse,
@@ -251,6 +299,10 @@ export function handleHtmlResponse(
   stream.end(body);
 }
 
+/**
+ * Responds with the provided value as a JSON string and 'content-type' set to 'application/json'.
+ */
+
 export function handleJsonResponse(
   { json, status }: TuftResponse,
   stream: ServerHttp2Stream,
@@ -268,6 +320,10 @@ export function handleJsonResponse(
   stream.respond(outgoingHeaders);
   stream.end(body);
 }
+
+/**
+ * Responds with a file, where the provided value is a file pathname.
+ */
 
 export function handleFileResponse(
   { file, status }: TuftResponse,
@@ -289,8 +345,7 @@ export function handleFileResponse(
 }
 
 /**
- * Accepts a number, which represents an HTTP status code, and adds it to the outgoing HTTP headers
- * object before responding to the client.
+ * Responds with the provided number as an HTTP status code.
  */
 
 export function handleStatusResponse(

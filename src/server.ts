@@ -77,10 +77,20 @@ export class TuftServer extends EventEmitter {
     });
   }
 
+  /**
+   * Sets the timeout value in milliseconds for requests to the server. The provided callback is
+   * invoked whenever the timeout value is reached.
+   */
+
   setTimeout(msec?: number, callback?: () => void) {
     this.#http2Server.setTimeout(msec, callback);
     return this;
   }
+
+  /**
+   * If called while the server is running, returns an object containing data about the current
+   * server.
+   */
 
   address() {
     return this.#http2Server.address();
@@ -145,10 +155,20 @@ export class TuftSecureServer extends EventEmitter {
     });
   }
 
+  /**
+   * Sets the timeout value in milliseconds for requests to the server. The provided callback is
+   * invoked whenever the timeout value is reached.
+   */
+
   setTimeout(msec?: number, callback?: () => void) {
     this.#http2SecureServer.setTimeout(msec, callback);
     return this;
   }
+
+  /**
+   * If called while the server is running, returns an object containing data about the current
+   * server.
+   */
 
   address() {
     return this.#http2SecureServer.address();

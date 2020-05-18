@@ -1,6 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 
-
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
@@ -35,21 +34,21 @@ export interface TuftRequest {
   [key: string]: any;
 }
 
-export const sym_stream = Symbol('Http2Stream');
+export const symStream = Symbol('Http2Stream');
 
 /**
  * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
- * and only argument to a route handler.
+ * and only argument to each response handler.
  */
 
 export class TuftContext {
   private readonly _outgoingHeaders: OutgoingHttpHeaders;
-  readonly [sym_stream]: ServerHttp2Stream;
+  readonly [symStream]: ServerHttp2Stream;
   readonly request: TuftRequest;
 
   constructor(stream: ServerHttp2Stream, request: TuftRequest) {
     this._outgoingHeaders = Object.create(null);
-    this[sym_stream] = stream;
+    this[symStream] = stream;
     this.request = request;
   }
 
@@ -57,13 +56,26 @@ export class TuftContext {
     return this._outgoingHeaders;
   }
 
+  /**
+   * Sets the provided outgoing header 'name' to 'value'.
+   */
+
   setHeader(name: string, value: number | string | string[] | undefined) {
     this._outgoingHeaders[name] = value;
   }
 
+  /**
+   * Gets the value of the provided outgoing header 'name'.
+   */
+
   getHeader(name: string) {
     return this._outgoingHeaders[name];
   }
+
+  /**
+   * Adds the provided 'name' and 'value' to the outgoing 'set-cookie' header, adding any of the
+   * defined options if present.
+   */
 
   setCookie(name: string, value: string, options: SetCookieOptions = {}) {
     if (this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] === undefined) {
@@ -89,8 +101,11 @@ export class TuftContext {
   }
 }
 
-// An array of functions that each represent a cookie option. Each function accept a value that
-// corresponds to a cookie option, and returns a string to be appended to the final cookie string.
+/**
+ * An array of functions that each represent a cookie option. Each function accepts a value that
+ * corresponds to a cookie option, and returns a string to be appended to the final cookie string.
+ */
+
 const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | undefined } = {
   expires: (value: Date) => {
     return '; Expires=' + value.toUTCString();
@@ -128,7 +143,7 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
 };
 
 /**
- * Creates an instance of TuftContext using the provided parameters.
+ * Returns an instance of TuftContext created using the provided parameters.
  */
 
 export function createTuftContext(
@@ -145,7 +160,7 @@ export function createTuftContext(
   let separatorIndex = path.indexOf('?');
 
   if (separatorIndex > 0) {
-    // The path has a query string
+    // Separate the query string from the path.
     pathname = path.slice(0, separatorIndex);
     search = path.slice(separatorIndex);
   }
@@ -156,14 +171,16 @@ export function createTuftContext(
   const params: { [key: string]: string } = {};
 
   if (paramKeys) {
+    // There are named parameters that need to be extracted.
     let i, begin, end, key;
 
-    // Iterate over each path segment, adding that segment as a param if it exists for the current
-    // route.
+    // Iterate over each path segment, adding that segment to its corresponding named parameter if
+    // it exists for the current route.
     for (i = 0, begin = 1; end !== -1; i++, begin = end + 1) {
       end = pathname.indexOf('/', begin);
 
       if (paramKeys[i]) {
+        // A named parameter exists for this path segment.
         key = paramKeys[i];
         const value = pathname.slice(begin, end < 0 ? undefined : end);
         params[key] = encodeURIComponent(value);
