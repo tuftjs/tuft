@@ -6,5 +6,5 @@ export { createRouteMap } from './route-map';
 export { createSearchParams } from './pre-handlers/search-params';
 export { createCookieParser } from './pre-handlers/cookie-parser';
 export { createBodyParser } from './pre-handlers/body-parser';
-export { createStreamResponder } from './responders/stream';
+export { createWriteStreamResponder } from './responders/write-stream';
 export { createPromise } from './utils';

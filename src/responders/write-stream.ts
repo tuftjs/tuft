@@ -8,8 +8,8 @@ import { HTTP2_HEADER_STATUS } from '../constants';
  * the outgoing response body.
  */
 
-export function createStreamResponder() {
-  return async function streamResponder(
+export function createWriteStreamResponder() {
+  return async function writeStreamResponder(
     response: TuftResponse,
     stream: ServerHttp2Stream,
     outgoingHeaders: OutgoingHttpHeaders,
