@@ -3,6 +3,8 @@ import type { Stats } from 'fs';
 import { constants } from 'http2';
 import { HTTP2_HEADER_LAST_MODIFIED, HTTP2_HEADER_STATUS } from './constants';
 
+type DoneCallback = (err?: Error | null, ...args: any[]) => void;
+
 const {
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
@@ -152,8 +154,6 @@ export function getHttpErrorMap() {
     'NETWORK_AUTHENTICATION_REQUIRED':    HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED,
   };
 }
-
-type DoneCallback = (err?: Error | null, ...args: any[]) => void;
 
 /**
  * A convenience function for converting a callback-based function to a promise-based function.
