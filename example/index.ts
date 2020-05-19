@@ -3,7 +3,7 @@ import {
   createSearchParams,
   createCookieParser,
   createBodyParser,
-  createStreamResponder,
+  createWriteStreamResponder,
 } from '../src';
 
 const app = createRouteMap({
@@ -13,7 +13,7 @@ const app = createRouteMap({
     createBodyParser(),
   ],
   responders: [
-    createStreamResponder(),
+    createWriteStreamResponder(),
   ],
 });
 
@@ -80,7 +80,7 @@ app.set('GET /file2', () => {
 });
 
 app.set('GET /stream1', {
-  writeStream: (write: (chunk: any, enc?: string) => void) => {
+  writeStream: (write) => {
     write('Hello, ');
     write('world!');
   },
@@ -88,14 +88,14 @@ app.set('GET /stream1', {
 
 app.set('GET /stream2', () => {
   return {
-    writeStream: (write: (chunk: any, enc?: string) => void) => {
+    writeStream: (write) => {
       write('Hello, ');
       write('world!');
     },
   };
 });
 
-app.set('GET /request_object', (t: { request: any; }) => {
+app.set('GET /request_object', (t) => {
   return {
     json: t.request,
   };
@@ -105,13 +105,17 @@ app.set('GET /foo/bar/baz', {
   text: '/foo/bar/baz',
 });
 
+app.set('GET /foo/{*}/baz', {
+  text: '/foo/{*}/baz',
+});
+
 app.set('GET /foo/{**}/baz', {
   text: '/foo/{**}/baz',
 });
 
-app.set('GET /xyz/{id}', (t: { request: { params: any; }; }) => {
+app.set('GET /foo/{bar}', (t) => {
   return {
-    json: t.request.params,
+    text: t.request.params.bar,
   };
 });
 
