@@ -1,4 +1,4 @@
-import { createStreamResponder } from '../../src/responders/stream';
+import { createWriteStreamResponder } from '../../src/responders/write-stream';
 
 const mockStream = {
   respond: jest.fn(),
@@ -12,13 +12,13 @@ beforeEach(() => {
   mockStream.end.mockClear();
 });
 
-const streamResponder = createStreamResponder();
+const writeStreamResponder = createWriteStreamResponder();
 
 /**
- * streamResponder()
+ * writeStreamResponder()
  */
 
-describe('streamResponder()', () => {
+describe('writeStreamResponder()', () => {
   describe('when passed an object with a `writeStream` property set to a function', () => {
     test('stream.respond(), stream.write(), and stream.end() are called', async () => {
       const response = {
@@ -26,7 +26,7 @@ describe('streamResponder()', () => {
           write('abc');
         },
       };
-      const result = streamResponder(
+      const result = writeStreamResponder(
         response,
         //@ts-expect-error
         mockStream,
@@ -48,7 +48,7 @@ describe('streamResponder()', () => {
           write('abc');
         },
       };
-      const result = streamResponder(
+      const result = writeStreamResponder(
         response,
         //@ts-expect-error
         mockStream,
@@ -65,7 +65,7 @@ describe('streamResponder()', () => {
   describe('when passed an empty object', () => {
     test('returns the same object', async () => {
       const response = {};
-      const result = streamResponder(
+      const result = writeStreamResponder(
         response,
         //@ts-expect-error
         mockStream,
