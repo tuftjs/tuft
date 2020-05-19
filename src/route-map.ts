@@ -33,9 +33,7 @@ export interface TuftResponder {
   ): TuftResponse | null | void | Promise<TuftResponse | null | void>;
 }
 
-export type TuftResponse = {
-  [key in string | number]: any;
-} & {
+export interface TuftResponse {
   error?: HttpError;
   status?: number;
   redirect?: string;
@@ -44,12 +42,13 @@ export type TuftResponse = {
   html?: string;
   json?: string | object;
   file?: string;
-};
+  [key: string]: any;
+}
 
 export interface TuftRoute {
   response: TuftHandler | TuftResponse;
   preHandlers?: TuftPreHandler[];
-  responders?: TuftResponder[],
+  responders?: TuftResponder[];
   params?: { [key: string]: string };
   trailingSlash?: boolean;
 }
@@ -143,7 +142,7 @@ export class TuftRouteMap extends Map {
    * Adds the provided response to the route map, indexed by request method and path.
    */
 
-  set(key: string, response: TuftResponse | (() => TuftResponse)) {
+  set(key: string, response: TuftResponse | TuftHandler) {
     const keyArr = key.split(/[ ]+/);
 
     let methods, path;

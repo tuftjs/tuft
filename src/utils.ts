@@ -164,7 +164,7 @@ type DoneCallback = (err?: Error | null, ...args: any[]) => void;
  */
 
 export function createPromise(fn: (callback: DoneCallback) => void) {
-  return new Promise((resolve, reject) => {
+  return new Promise<Error | any[]>((resolve, reject) => {
     const callback: DoneCallback = (err, ...args) => {
       err ? reject(err) : resolve(args);
     };
