@@ -330,7 +330,7 @@ export function handleFileResponse(
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'text/plain; charset=utf-8';
+  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'application/octet-stream';
 
   if (status) {
     outgoingHeaders[HTTP2_HEADER_STATUS] = status;
