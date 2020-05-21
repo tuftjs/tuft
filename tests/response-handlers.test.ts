@@ -1,5 +1,4 @@
 import type { HttpError } from '../src/utils';
-
 import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
 import {
@@ -16,6 +15,8 @@ import {
   handleTextResponse,
   handleHtmlResponse,
   handleJsonResponse,
+  statCheck,
+  onError
 } from '../src/response-handlers';
 import {
   HTTP2_HEADER_STATUS,
@@ -28,9 +29,11 @@ import {
 
 const {
   HTTP_STATUS_OK,
-  HTTP_STATUS_TEAPOT,
-  HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_FOUND,
+  HTTP_STATUS_BAD_REQUEST,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_TEAPOT,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } = constants;
 
 const CONTENT_LENGTH = 42;
@@ -54,6 +57,7 @@ const mockStream = {
   respond: jest.fn(),
   respondWithFile: jest.fn(),
   end: jest.fn(),
+  emit: jest.fn(),
 };
 
 const mockContext: any = {
@@ -82,6 +86,7 @@ beforeEach(() => {
   mockStream.respond.mockClear();
   mockStream.respondWithFile.mockClear();
   mockStream.end.mockClear();
+  mockStream.emit.mockClear();
   mockErrorHandler.mockClear();
   invalidMockErrorHandler1.mockClear();
   invalidMockErrorHandler2.mockClear();
@@ -877,6 +882,80 @@ describe('handleFileResponse()', () => {
     });
   });
 });
+
+
+/**
+ * statCheck()
+ */
+
+describe('statCheck()', () => {
+  describe('when passed a mock stat argument', () => {
+    test('calls stat.mtime.toUTCString()', () => {
+      const date = new Date();
+      const mockStat = {
+        mtime: {
+          toUTCString: jest.fn(() => {
+            return date.toUTCString();
+          }),
+        },
+      };
+      //@ts-expect-error
+      const result = statCheck(mockStat, {});
+
+      expect(result).toBeUndefined();
+      expect(mockStat.mtime.toUTCString).toHaveBeenCalled();
+    });
+  });
+});
+
+/**
+ * onError()
+ */
+
+describe('onError()', () => {
+  describe('when passed a stream and a `ENOENT` error', () => {
+    test('stream.respond() is called with the expected argument', () => {
+      const err = Error('mock error') as NodeJS.ErrnoException;
+      err.code = 'ENOENT';
+
+      const result = onError(
+        //@ts-expect-error
+        mockStream,
+        err,
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalled();
+      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
+    });
+  });
+
+  describe('when passed a stream and a generic error', () => {
+    test('stream.respond() is called with the expected argument', () => {
+      const err = Error('mock error') as NodeJS.ErrnoException;
+      const result = onError(
+        //@ts-expect-error
+        mockStream,
+        err,
+      );
+
+      const expectedHeaders = {
+        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+      };
+
+      expect(result).toBeUndefined();
+      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalled();
+      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
+    });
+  });
+});
+
 
 /**
  * handleStatusResponse()
