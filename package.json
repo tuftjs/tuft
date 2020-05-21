@@ -1,6 +1,6 @@
 {
   "name": "tuft",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "description": "An HTTP/2 web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
@@ -24,11 +24,11 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
+    "start:example": "ts-node ./example/index.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "start:example": "ts-node ./example/index.ts",
-    "prebuild": "npm run test",
-    "build": "rm -rf ./lib && tsc -b"
+    "build": "rm -rf ./lib && tsc -b",
+    "prepublish": "npm run test && npm run build"
   },
   "devDependencies": {
     "@types/jest": "^25.2.3",
