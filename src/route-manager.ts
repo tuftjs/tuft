@@ -1,6 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { TuftRouteMap, TuftRoute } from './route-map';
-
 import { createResponseHandler } from './response-handlers';
 import { getSupportedRequestMethods } from './utils';
 
