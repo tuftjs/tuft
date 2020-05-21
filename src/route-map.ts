@@ -2,11 +2,10 @@ import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
 import { HttpError } from './utils';
-
 import { constants } from 'http2';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
-import { getSupportedRequestMethods } from './utils';
+import { supportedRequestMethods } from './utils';
 import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
@@ -67,8 +66,6 @@ const {
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_NOT_IMPLEMENTED,
 } = constants;
-
-const supportedRequestMethods = getSupportedRequestMethods();
 
 /**
  * Stores route data indexed by method and path. Instances of TuftRouteMap can be merged with other

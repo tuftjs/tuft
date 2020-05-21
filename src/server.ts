@@ -1,11 +1,9 @@
 import type { Http2Server, Http2SecureServer, ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
 import type { KeyObject } from 'tls';
-
 import { createServer, createSecureServer } from 'http2';
 import { EventEmitter } from 'events';
 import { createPromise } from './utils';
 import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants';
-
 
 export type ServerOptions = {
   host?: string,

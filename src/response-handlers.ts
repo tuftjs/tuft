@@ -1,4 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
+import type { Stats } from 'fs';
 import type { TuftContextOptions } from './context';
 import type {
   TuftRoute,
@@ -7,28 +8,28 @@ import type {
   TuftPreHandler,
   TuftResponder,
 } from './route-map';
-
 import { constants } from 'http2';
 import { createTuftContext } from './context';
-import { getHttpErrorMap, HttpError, statCheck, onError } from './utils';
+import { httpErrorCodes, HttpError } from './utils';
 import {
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_LOCATION,
+  HTTP2_HEADER_LAST_MODIFIED,
 } from './constants';
 
 const {
   HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR
 } = constants;
 
 const EMPTY_ARRAY: [] = [];
 
 Object.freeze(EMPTY_ARRAY);
-
-const httpErrorMap: { [key: string]: number } = getHttpErrorMap();
 
 /**
  * Accepts an object containing route properties and returns a function that is capable of handling
@@ -212,7 +213,7 @@ export function handleHttpErrorResponse(
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  const status = httpErrorMap[error as HttpError] ?? HTTP_STATUS_BAD_REQUEST;
+  const status = httpErrorCodes[error as HttpError] ?? HTTP_STATUS_BAD_REQUEST;
   outgoingHeaders[HTTP2_HEADER_STATUS] = status;
 
   stream.respond(outgoingHeaders, { endStream: true });
@@ -342,6 +343,35 @@ export function handleFileResponse(
   };
 
   stream.respondWithFile(file as string, outgoingHeaders, options);
+}
+
+/**
+ * Passed as an option to stream.respondWithFile() to add a 'last-modified' header to the response.
+ */
+
+export function statCheck(stat: Stats, headers: OutgoingHttpHeaders) {
+  headers[HTTP2_HEADER_LAST_MODIFIED] = stat.mtime.toUTCString();
+}
+
+/**
+ * Error handler to be passed as an option to stream.respondWithFile().
+ */
+
+export function onError(stream: ServerHttp2Stream, err: NodeJS.ErrnoException) {
+  if (err.code === 'ENOENT') {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
+    });
+  }
+
+  else {
+    stream.respond({
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    });
+  }
+
+  stream.end();
+  stream.emit('error', err);
 }
 
 /**

@@ -1,5 +1,4 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
-
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
