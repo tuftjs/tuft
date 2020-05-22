@@ -65,7 +65,7 @@ export class RouteStore {
    */
 
   set(path: string, route: TuftRoute) {
-    const routeHandlerParams = Object.assign({}, route);
+    const handlerParams = Object.assign({}, route);
 
     const params: { [key: string]: string } = {};
     const pathSegments = path.split('/').slice(1);
@@ -112,11 +112,11 @@ export class RouteStore {
         // This is the last path segment.
         if (Object.keys(params).length > 0) {
           // Update the response handler object to include the params.
-          routeHandlerParams.params = params;
+          handlerParams.params = params;
         }
 
         // Create a handler and add it to the current branch.
-        branch[symHandler] = createResponseHandler(routeHandlerParams);
+        branch[symHandler] = createResponseHandler(handlerParams);
         break;
       }
 
