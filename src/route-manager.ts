@@ -53,8 +53,8 @@ type RouteTreeNode = Map<string | symbol, RouteTreeBranch>;
 const wildcardRegexp = /{\*\*?}/;
 
 /**
- * Stores route handlers in a tree data structure, where each node in the tree represents a path
- * segment.
+ * Stores response handlers in a tree data structure, where each branch of the tree represents a
+ * path segment.
  */
 
 export class RouteStore {
@@ -65,7 +65,7 @@ export class RouteStore {
    */
 
   set(path: string, route: TuftRoute) {
-    const handlerParams = Object.assign({}, route);
+    const handlerParams = Object.create(route);
 
     const params: { [key: string]: string } = {};
     const pathSegments = path.split('/').slice(1);
@@ -73,13 +73,13 @@ export class RouteStore {
     const doubleWildcardIndex = pathSegments.indexOf('{**}');
 
     if (doubleWildcardIndex >= 0) {
-      // A double wildcard was found, so ignore any successive path segments.
+      // A double wildcard is present, so ignore any successive path segments.
       pathSegments.splice(doubleWildcardIndex + 1);
     }
 
     let i, node;
 
-    // Iterate over each path segment, adding them as nodes in the route tree.
+    // Iterate over the path segments, adding them as branches to the route tree.
     for (i = 0, node = this._routeTree; i < pathSegments.length; i++) {
       const str = pathSegments[i];
 
@@ -88,16 +88,16 @@ export class RouteStore {
       if (str.startsWith('{') && str.endsWith('}')) {
         // This is a wildcard segment.
         if (!wildcardRegexp.test(str)) {
-          // This is a named wildcard segment, extract the parameter name.
+          // This wildcard segment contains a named parameter.
           params[i] = str.slice(1, str.length - 1);
         }
 
-        // Index the wildcard path segment using the corresponding symbol.
+        // Index the wildcard segment using its corresponding symbol.
         segment = str === '{**}' ? symDoubleWildcard : symWildcard;
       }
 
       else {
-        // This is not a wildcard, so index by the given path segment directly.
+        // This is not a wildcard segment, so index by the given path segment directly.
         segment = str;
       }
 
@@ -111,11 +111,11 @@ export class RouteStore {
       if (i === pathSegments.length - 1) {
         // This is the last path segment.
         if (Object.keys(params).length > 0) {
-          // Update the response handler object to include the params.
+          // Update the response handler params to include the route params.
           handlerParams.params = params;
         }
 
-        // Create a handler and add it to the current branch.
+        // Create a response handler and add it to the current branch.
         branch[symHandler] = createResponseHandler(handlerParams);
         break;
       }
@@ -126,19 +126,19 @@ export class RouteStore {
   }
 
   /**
-   * Retrieves the response handler for the given path from the store. Returns undefined if no such
-   * route exists.
+   * Retrieves the response handler for the given path from the store and returns it. Returns
+   * undefined if there is no handler for the given path.
    */
 
   get(path: string) {
     let begin = 1;
     let end = path.indexOf('/', begin);
-    let node = this._routeTree;
+    let pathSegment: string;
     let doubleWildcard: RouteTreeBranch = { [symNext]: new Map() };
     let branch: RouteTreeBranch;
-    let pathSegment: string;
+    let node: RouteTreeNode = this._routeTree;
 
-    // Traverse the route tree, checking to see if a node for each path segment exists.
+    // Traverse the route tree, checking to see if a branch exists for each path segment.
     while (end >= 0) {
       pathSegment = path.slice(begin, end);
 
@@ -146,11 +146,12 @@ export class RouteStore {
       branch = node.get(pathSegment) ?? node.get(symWildcard) ?? doubleWildcard;
 
       if (branch === doubleWildcard) {
-        // The current branch points to a double wildcard handler only, so return it.
+        // The current node only contains a double wildcard branch, so return its handler. If no
+        // handler is present, then undefined will be returned, which is the expected behavior.
         return doubleWildcard[symHandler];
       }
 
-      // Update the node pointer to point to the next node.
+      // Update the pointer to point to the next node.
       node = branch[symNext];
       begin = end + 1;
       end = path.indexOf('/', begin);
@@ -158,15 +159,17 @@ export class RouteStore {
 
     pathSegment = path.slice(begin);
 
-    doubleWildcard = node.get(symDoubleWildcard) ?? doubleWildcard;
-
-    // This is the final path segment, so retrieve the route handler from the current node that
-    // best matches the path segment. A specific match takes precedence over a wildcard match. A
-    // single wildcard match takes precedence over over a double wildcard match.
-    const routeHandler = node.get(pathSegment)?.[symHandler]
+    // This is the final path segment, so retrieve the response handler from the current node that
+    // best matches the path segment according to the following rules:
+    //   1. A specific match takes precedence over a single wildcard match.
+    //   2. A single wildcard match takes precedence over a double wildcard match.
+    //   3. If there is no double wildcard match for the current segment, use the value of
+    //      the 'doubleWildcard' variable.
+    const responseHandler = node.get(pathSegment)?.[symHandler]
       ?? node.get(symWildcard)?.[symHandler]
+      ?? node.get(symDoubleWildcard)?.[symHandler]
       ?? doubleWildcard[symHandler];
 
-    return routeHandler;
+    return responseHandler;
   }
 }
