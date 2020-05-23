@@ -34,7 +34,7 @@ abstract class TuftServerBase extends EventEmitter {
     createServer: any,
     createServerOptions: any,
     handler: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void,
-    options: ServerOptions = {},
+    options: ServerOptions,
   ) {
     super();
 
