@@ -38,7 +38,7 @@ init()
 ```
 This would ordinarily be the part where we might say that if you visit `http://localhost:3000` in your web browser, you'll see the text "Hello, world!" displayed. Except... you wouldn't! As there are no browsers known to support *unencrypted* HTTP/2 connections, you would have to use something like the command line client `curl` to access the server in the example above.
 
-```sh
+```
 $ curl --http2-prior-knowledge http://localhost:3000
 Hello, world!
 ```
