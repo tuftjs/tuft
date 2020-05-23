@@ -38,17 +38,15 @@ export class RouteManager {
   }
 }
 
-const symHandler         = Symbol('handler');
-const symNext            = Symbol('next');
-const symWildcard        = Symbol('wildcard');
-const symDoubleWildcard  = Symbol('doubleWildcard');
-
 type RouteTreeBranch = {
-  [symHandler]?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
-  [symNext]: RouteTreeNode,
+  handler?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
+  next: RouteTreeNode,
 };
 
 type RouteTreeNode = Map<string | symbol, RouteTreeBranch>;
+
+const symbolWildcard = Symbol('wildcard');
+const symbolDoubleWildcard = Symbol('doubleWildcard');
 
 const wildcardRegexp = /{\*\*?}/;
 
@@ -93,7 +91,7 @@ export class RouteStore {
         }
 
         // Index the wildcard segment using its corresponding symbol.
-        segment = str === '{**}' ? symDoubleWildcard : symWildcard;
+        segment = str === '{**}' ? symbolDoubleWildcard : symbolWildcard;
       }
 
       else {
@@ -101,7 +99,7 @@ export class RouteStore {
         segment = str;
       }
 
-      const branch: RouteTreeBranch = node.get(segment) ?? { [symNext]: new Map() };
+      const branch: RouteTreeBranch = node.get(segment) ?? { next: new Map() };
 
       if (!node.has(segment)) {
         // Add the newly created branch to the current node.
@@ -116,12 +114,12 @@ export class RouteStore {
         }
 
         // Create a response handler and add it to the current branch.
-        branch[symHandler] = createResponseHandler(handlerParams);
+        branch.handler = createResponseHandler(handlerParams);
         break;
       }
 
       // Update the pointer so that it points to the next node.
-      node = branch[symNext];
+      node = branch.next;
     }
   }
 
@@ -134,7 +132,7 @@ export class RouteStore {
     let begin = 1;
     let end = path.indexOf('/', begin);
     let pathSegment: string;
-    let doubleWildcard: RouteTreeBranch = { [symNext]: new Map() };
+    let doubleWildcard: RouteTreeBranch = { next: new Map() };
     let branch: RouteTreeBranch;
     let node: RouteTreeNode = this._routeTree;
 
@@ -142,17 +140,17 @@ export class RouteStore {
     while (end >= 0) {
       pathSegment = path.slice(begin, end);
 
-      doubleWildcard = node.get(symDoubleWildcard) ?? doubleWildcard;
-      branch = node.get(pathSegment) ?? node.get(symWildcard) ?? doubleWildcard;
+      doubleWildcard = node.get(symbolDoubleWildcard) ?? doubleWildcard;
+      branch = node.get(pathSegment) ?? node.get(symbolWildcard) ?? doubleWildcard;
 
       if (branch === doubleWildcard) {
         // The current node only contains a double wildcard branch, so return its handler. If no
         // handler is present, then undefined will be returned, which is the expected behavior.
-        return doubleWildcard[symHandler];
+        return doubleWildcard.handler;
       }
 
       // Update the pointer to point to the next node.
-      node = branch[symNext];
+      node = branch.next;
       begin = end + 1;
       end = path.indexOf('/', begin);
     }
@@ -161,14 +159,13 @@ export class RouteStore {
 
     // This is the final path segment, so retrieve the response handler from the current node that
     // best matches the path segment according to the following rules:
-    //   1. A specific match takes precedence over a single wildcard match.
+    //   1. A specific match takes precedence over a wildcard match.
     //   2. A single wildcard match takes precedence over a double wildcard match.
-    //   3. If there is no double wildcard match for the current segment, use the value of
-    //      the 'doubleWildcard' variable.
-    const responseHandler = node.get(pathSegment)?.[symHandler]
-      ?? node.get(symWildcard)?.[symHandler]
-      ?? node.get(symDoubleWildcard)?.[symHandler]
-      ?? doubleWildcard[symHandler];
+    //   3. If there is no match, use the value of the 'doubleWildcard' variable.
+    const responseHandler = node.get(pathSegment)?.handler
+      ?? node.get(symbolWildcard)?.handler
+      ?? node.get(symbolDoubleWildcard)?.handler
+      ?? doubleWildcard.handler;
 
     return responseHandler;
   }
