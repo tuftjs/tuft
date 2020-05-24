@@ -61,6 +61,7 @@ export class TuftContext {
 
   setHeader(name: string, value: number | string | string[] | undefined) {
     this._outgoingHeaders[name] = value;
+    return this;
   }
 
   /**
@@ -97,6 +98,8 @@ export class TuftContext {
     }
 
     cookieHeader.push(cookie);
+
+    return this;
   }
 }
 
