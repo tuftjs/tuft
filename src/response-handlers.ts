@@ -17,14 +17,13 @@ import {
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_LOCATION,
   HTTP2_HEADER_LAST_MODIFIED,
+  HTTP2_HEADER_ACCEPT_RANGES,
 } from './constants';
 
 const {
   HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_NOT_FOUND,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR
 } = constants;
 
 const EMPTY_ARRAY: [] = [];
@@ -99,15 +98,14 @@ export async function handleResponseObject(
 }
 
 /**
- * Handles the following four functions:
- *
- * 1. Create an instance of TuftContext using the provided options.
- * 2. Call each of the provided pre-handlers. If a pre-handler returns a response object, then stop
- *    further execution of any remaining pre-handlers.
- * 3. If a response object was not returned by a pre-handler, then call the provided response
- *    handler.
- * 4. Pass the returned response object to the provided responder functions. If all the responder
- *    functions return the same response object, it is then passed to 'handleUnknownResponse'.
+ * Handles the following four operations:
+ *   1. Create an instance of TuftContext using the provided options.
+ *   2. Call each of the provided pre-handlers. If a pre-handler returns a response object, then
+ *      stop further execution of any remaining pre-handlers.
+ *   3. If a response object was not returned by a pre-handler, then call the provided response
+ *      handler.
+ *   4. Pass the returned response object to the provided responder functions. If all the responder
+ *      functions return the same response object, it is then passed to 'handleUnknownResponse'.
  */
 
 export async function handleResponseHandler(
@@ -327,17 +325,17 @@ export function handleJsonResponse(
  */
 
 export function handleFileResponse(
-  { file, status }: TuftResponse,
+  { file, status, offset, length }: TuftResponse,
   stream: ServerHttp2Stream,
   outgoingHeaders: OutgoingHttpHeaders,
 ) {
-  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'application/octet-stream';
-
   if (status) {
     outgoingHeaders[HTTP2_HEADER_STATUS] = status;
   }
 
   const options = {
+    offset,
+    length,
     statCheck,
     onError: onError.bind(null, stream),
   };
@@ -350,7 +348,17 @@ export function handleFileResponse(
  */
 
 export function statCheck(stat: Stats, headers: OutgoingHttpHeaders) {
-  headers[HTTP2_HEADER_LAST_MODIFIED] = stat.mtime.toUTCString();
+  if (!headers[HTTP2_HEADER_CONTENT_TYPE]) {
+    headers[HTTP2_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+  }
+
+  if (!headers[HTTP2_HEADER_ACCEPT_RANGES]) {
+    headers[HTTP2_HEADER_ACCEPT_RANGES] = 'none';
+  }
+
+  if (!headers[HTTP2_HEADER_LAST_MODIFIED]) {
+    headers[HTTP2_HEADER_LAST_MODIFIED] = stat.mtime.toUTCString();
+  }
 }
 
 /**
@@ -358,19 +366,6 @@ export function statCheck(stat: Stats, headers: OutgoingHttpHeaders) {
  */
 
 export function onError(stream: ServerHttp2Stream, err: NodeJS.ErrnoException) {
-  if (err.code === 'ENOENT') {
-    stream.respond({
-      [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
-    });
-  }
-
-  else {
-    stream.respond({
-      [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-    });
-  }
-
-  stream.end();
   stream.emit('error', err);
 }
 
