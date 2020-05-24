@@ -19,6 +19,8 @@ export const HTTP2_HEADER_COOKIE            = 'cookie';
 export const HTTP2_HEADER_SET_COOKIE        = 'set-cookie';
 export const HTTP2_HEADER_LOCATION          = 'location';
 export const HTTP2_HEADER_LAST_MODIFIED     = 'last-modified';
+export const HTTP2_HEADER_ACCEPT_RANGES     = 'accept-ranges';
+export const HTTP2_HEADER_CONTENT_RANGE     = 'content-range';
 
 // Default options for instances of RouteMap.
 export const ROUTE_MAP_DEFAULT_BASE_PATH        = '';
