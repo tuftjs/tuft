@@ -1,8 +1,10 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
-import { HttpError } from './utils';
+import type { HttpError } from './utils';
 import { constants } from 'http2';
+import { promises as fsPromises } from 'fs';
+import { extname, basename } from 'path';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { supportedRequestMethods } from './utils';
@@ -12,7 +14,13 @@ import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
+  HTTP2_HEADER_ACCEPT_RANGES,
+  HTTP2_HEADER_CONTENT_RANGE,
+  HTTP2_HEADER_CONTENT_LENGTH,
+  HTTP2_HEADER_LAST_MODIFIED,
+  HTTP2_HEADER_CONTENT_TYPE,
 } from './constants';
+import importedMimeTypes from './data/mime-types.json';
 
 type RequestMethod = 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
 
@@ -61,10 +69,14 @@ type RouteMapOptions = {
   trailingSlash?: boolean;
 }
 
+const mimeTypes: { [key: string]: string } = importedMimeTypes;
+
 const {
+  HTTP_STATUS_OK,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_NOT_IMPLEMENTED,
+  HTTP_STATUS_PARTIAL_CONTENT,
 } = constants;
 
 /**
@@ -181,13 +193,46 @@ export class TuftRouteMap extends Map {
     return this;
   }
 
+  /**
+   * Adds a route that redirects requests for route 'key' to 'url', where 'url' is a relative path
+   * or absolute URI.
+   */
+
   redirect(key: string, url: string) {
-    this.set(key, {
-      redirect: url,
-    });
+    this.set(key, { redirect: url });
+    return this;
+  }
+
+  /**
+   * Adds a route that serves static files. If the 'path' parameter is set to a directory, then all
+   * files in that directory plus all subdirectories will be served. If set to a file, only that
+   * will be served.
+   */
+
+  async static(key: string, path: string) {
+    if (!key.startsWith('/')) {
+      const err = TypeError('The first argument of .static() must be a plain route path.');
+      console.error(err);
+      return process.exit(1);
+    }
+
+    if (!key.endsWith('/')) {
+      key += '/';
+    }
+
+    const paths = await getFilePaths(path);
+
+    for (const path of paths) {
+      this.set(`GET ${key + basename(path)}`, handleStaticFileGetRequest.bind(path));
+      this.set(`HEAD ${key + basename(path)}`, handleStaticFileHeadRequest.bind(path));
+    }
 
     return this;
   }
+
+  /**
+   * Adds an error listener to handle errors that are thrown in the application.
+   */
 
   onError(callback: (err: Error) => void | Promise<void>) {
     this.#applicationErrorHandler = callback;
@@ -210,6 +255,112 @@ export class TuftRouteMap extends Map {
   createSecureServer(options?: SecureServerOptions) {
     const handler = createPrimaryHandler(this, this.#applicationErrorHandler);
     return new TuftSecureServer(handler, options);
+  }
+}
+
+/**
+ * Returns a file response object created based on the provided path.
+ */
+
+export async function handleStaticFileGetRequest(path: string, t: TuftContext) {
+  return await createStaticFileResponseObject(t, path);
+}
+
+/**
+ * Returns a file response object, with a status property only, created based on the provided path.
+ */
+
+export async function handleStaticFileHeadRequest(path: string, t: TuftContext) {
+  const { status } = await createStaticFileResponseObject(t, path);
+  return { status };
+}
+
+/**
+ * If passed an absolute directory path, returns an array containing the absolute paths of all files
+ * in that directory, plus all subdirectories. If passed an absolute file path, returns an array
+ * containing that path.
+ */
+
+export async function getFilePaths(path: string) {
+  const result: string[] = [];
+
+  const stat = await fsPromises.stat(path);
+
+  if (stat.isFile()) {
+    result.push(path);
+  }
+
+  else if (stat.isDirectory()) {
+    const dir = await fsPromises.opendir(path);
+
+    for await (const dirent of dir) {
+      const paths = await getFilePaths(path + '/' + dirent.name);
+      result.push(...paths);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Returns a response object for the provided file.
+ */
+
+export async function createStaticFileResponseObject(
+  t: TuftContext,
+  file: string,
+): Promise<TuftResponse> {
+  const { range } = t.request.headers;
+  const { size, mtime } = await fsPromises.stat(file);
+
+  const contentType = mimeTypes[extname(file)] ?? 'application/octet-stream';
+
+  t
+    .setHeader(HTTP2_HEADER_ACCEPT_RANGES, 'bytes')
+    .setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType)
+    .setHeader(HTTP2_HEADER_LAST_MODIFIED, mtime.toUTCString());
+
+  if (range) {
+    const status = HTTP_STATUS_PARTIAL_CONTENT;
+
+    const i = range.indexOf('=') + 1;
+    const i2 = range.indexOf('-');
+    const j = i2 + 1;
+
+    const offset = parseInt(range.slice(i, i2), 10);
+    const end = range.slice(j) ? parseInt(range.slice(j), 10) : size - 1;
+
+    if (end >= size) {
+      t.setHeader(HTTP2_HEADER_CONTENT_RANGE, 'bytes */' + size);
+
+      return {
+        error: 'RANGE_NOT_SATISFIABLE',
+      };
+    }
+
+    const length = end - offset + 1;
+
+    t
+      .setHeader(HTTP2_HEADER_CONTENT_RANGE, 'bytes ' + offset + '-' + end + '/' + size)
+      .setHeader(HTTP2_HEADER_CONTENT_LENGTH, length);
+
+    return {
+      status,
+      file,
+      offset,
+      length,
+    };
+  }
+
+  else {
+    const status = HTTP_STATUS_OK;
+
+    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, size);
+
+    return {
+      status,
+      file,
+    };
   }
 }
 
