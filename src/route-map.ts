@@ -223,8 +223,8 @@ export class TuftRouteMap extends Map {
     const paths = await getFilePaths(path);
 
     for (const path of paths) {
-      this.set(`GET ${key + basename(path)}`, handleStaticFileGetRequest.bind(path));
-      this.set(`HEAD ${key + basename(path)}`, handleStaticFileHeadRequest.bind(path));
+      this.set(`GET ${key + basename(path)}`, handleStaticFileGetRequest.bind(null, path));
+      this.set(`HEAD ${key + basename(path)}`, handleStaticFileHeadRequest.bind(null, path));
     }
 
     return this;
