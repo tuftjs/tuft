@@ -59,7 +59,7 @@ describe('TuftContext', () => {
         request,
       );
 
-      expect(t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK)).toBeUndefined();
+      expect(t.setHeader(HTTP2_HEADER_STATUS, HTTP_STATUS_OK)).toBe(t);
     });
   });
 
@@ -86,13 +86,13 @@ describe('TuftContext', () => {
 
     test('adds `set-cookie` to the `outgoingHeaders` property', () => {
       expect(t.outgoingHeaders).not.toHaveProperty('set-cookie');
-      expect(t.setCookie('a', 'foo')).toBeUndefined();
+      expect(t.setCookie('a', 'foo')).toBe(t);
       expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/']);
     });
 
     test('updates the `set-cookie` entry of the `outgoingHeaders` property', () => {
       expect(t.outgoingHeaders).toHaveProperty('set-cookie');
-      expect(t.setCookie('b', 'foo')).toBeUndefined();
+      expect(t.setCookie('b', 'foo')).toBe(t);
       expect(t.outgoingHeaders).toHaveProperty('set-cookie', ['a=foo; Path=/', 'b=foo; Path=/']);
     });
   });

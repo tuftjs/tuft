@@ -1,3 +1,4 @@
+import type { TuftPreHandler, TuftResponder } from '../src/route-map';
 import type { HttpError } from '../src/utils';
 import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
@@ -25,15 +26,15 @@ import {
   HTTP2_HEADER_CONTENT_LENGTH,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
+  HTTP2_HEADER_ACCEPT_RANGES,
+  HTTP2_HEADER_LAST_MODIFIED,
 } from '../src/constants';
 
 const {
   HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_TEAPOT,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } = constants;
 
 const CONTENT_LENGTH = 42;
@@ -50,7 +51,7 @@ const mockFileHandle = {
 } as fsPromises.FileHandle;
 
 const mockFsOpen = jest.spyOn(fsPromises, 'open').mockImplementation(async () => mockFileHandle);
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => { });
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 const mockStream = {
@@ -68,28 +69,21 @@ const mockContext: any = {
   }),
 };
 
-const mockErrorHandler = jest.fn(() => {
-  return {
-    error: 'TEAPOT' as HttpError,
-  };
-});
+const mockDate = new Date();
 
-const invalidMockErrorHandler1 = jest.fn(() => {
-  return {};
-});
-
-const invalidMockErrorHandler2 = jest.fn(() => {
-  return;
-});
+const mockStat = {
+  mtime: {
+    toUTCString: jest.fn(() => {
+      return mockDate.toUTCString();
+    }),
+  },
+};
 
 beforeEach(() => {
   mockStream.respond.mockClear();
   mockStream.respondWithFile.mockClear();
   mockStream.end.mockClear();
   mockStream.emit.mockClear();
-  mockErrorHandler.mockClear();
-  invalidMockErrorHandler1.mockClear();
-  invalidMockErrorHandler2.mockClear();
 });
 
 afterAll(() => {
@@ -106,7 +100,7 @@ describe('createResponseHandler()', () => {
   describe('when passed a response handler', () => {
     test('returns bound handleResponseHandler()', () => {
       const result = createResponseHandler({
-        response: () => {},
+        response: () => { },
       });
 
       expect(result.name).toBe('bound handleResponseHandler');
@@ -129,8 +123,8 @@ describe('createResponseHandler()', () => {
     test('returns bound handleResponseHandler()', () => {
       const result = createResponseHandler({
         response: {},
-        preHandlers: [() => {}],
-        responders: [() => {}]
+        preHandlers: [() => { }],
+        responders: [() => { }],
       });
 
       expect(result.name).toBe('bound handleResponseHandler');
@@ -167,34 +161,41 @@ describe('handleResponseObject()', () => {
   describe('when passed a responder that returns the passed response object', () => {
     test('resolves to be undefined', async () => {
       const response = {};
-      const responder = (response: {}) => response;
+      const responders = [jest.fn((response: {}) => response)];
+      const outgoingHeaders = {};
 
       const result = handleResponseObject(
         response,
-        [responder],
-        {},
+        responders,
+        outgoingHeaders,
         //@ts-expect-error
         mockStream,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
+      expect(responders[0]).toHaveReturnedWith({});
     });
   });
 
   describe('when passed a responder that does not return the passed response object', () => {
     test('resolves to be undefined', async () => {
       const response = {};
-      const responder = () => {};
+      const responders = [jest.fn(() => { })];
+      const outgoingHeaders = {};
 
       const result = handleResponseObject(
         response,
-        [responder],
-        {},
+        responders,
+        outgoingHeaders,
         //@ts-expect-error
         mockStream,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
+      expect(responders[0]).toHaveReturned();
+      expect(responders[0]).not.toHaveReturnedWith({});
     });
   });
 });
@@ -205,41 +206,52 @@ describe('handleResponseObject()', () => {
 
 describe('handleResponseHandler()', () => {
   describe('when passed a handler that returns an object', () => {
-    test('resolves to be undefined', async () => {
-      const handler = () => {
+    test('calls that handler', async () => {
+      const handler = jest.fn(() => {
         return {};
-      };
+      });
+      const preHandlers: TuftPreHandler[] = [];
+      const responders: TuftResponder[] = [];
+      const contextOptions = {};
+
       const result = handleResponseHandler(
         handler,
-        [],
-        [],
-        {},
+        preHandlers,
+        responders,
+        contextOptions,
         //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(handler).toHaveBeenCalled();
+      expect(handler).toHaveReturnedWith({});
     });
   });
 
   describe('when passed a handler that returns null', () => {
     test('rejects with an error', async () => {
-      const handler = () => {
+      const handler = jest.fn(() => {
         return null;
-      };
+      });
+      const preHandlers: TuftPreHandler[] = [];
+      const responders: TuftResponder[] = [];
+      const contextOptions = {};
+
       const result = handleResponseHandler(
         //@ts-ignore
         handler,
-        [],
-        [],
-        {},
+        preHandlers,
+        responders,
+        contextOptions,
         //@ts-ignore
         mockStream,
         mockIncomingHeaders,
       );
 
       await expect(result).rejects.toThrow('\'null\' is not a valid Tuft response object.');
+      expect(handler).toHaveBeenCalled();
     });
   });
 
@@ -248,22 +260,29 @@ describe('handleResponseHandler()', () => {
       const handler = () => {
         return {};
       };
-      const preHandler = () => {
-        return {
-          status: HTTP_STATUS_TEAPOT,
-        };
-      };
+      const preHandlers = [
+        jest.fn(() => {
+          return {
+            status: HTTP_STATUS_TEAPOT,
+          };
+        }),
+      ];
+      const responders: TuftResponder[] = [];
+      const contextOptions = {};
+
       const result = handleResponseHandler(
         handler,
-        [preHandler],
-        [],
-        {},
+        preHandlers,
+        responders,
+        contextOptions,
         //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(preHandlers[0]).toHaveBeenCalled();
+      expect(preHandlers[0]).toHaveReturnedWith({ status: HTTP_STATUS_TEAPOT });
     });
   });
 
@@ -272,39 +291,48 @@ describe('handleResponseHandler()', () => {
       const handler = () => {
         return {};
       };
-      const preHandler = () => {};
+      const preHandlers = [jest.fn()];
+      const responders: TuftResponder[] = [];
+      const contextOptions = {};
+
       const result = handleResponseHandler(
         handler,
-        [preHandler],
-        [],
-        {},
+        preHandlers,
+        responders,
+        contextOptions,
         //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(preHandlers[0]).toHaveBeenCalled();
+      expect(preHandlers[0]).toHaveReturned();
     });
   });
 
   describe('when passed a responder that returns the passed response object', () => {
     test('resolves to be undefined', async () => {
-      const response = {};
       const handler = () => {
-        return response;
+        return {};
       };
-      const responder = (response: {}) => response;
+      const preHandlers: TuftPreHandler[] = [];
+      const responders: TuftResponder[] = [jest.fn((response: {}) => response)];
+      const contextOptions = {};
+
       const result = handleResponseHandler(
         handler,
-        [],
-        [responder],
-        {},
+        preHandlers,
+        responders,
+        contextOptions,
         //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
+      expect(responders[0]).toHaveReturnedWith({});
     });
   });
 
@@ -314,18 +342,24 @@ describe('handleResponseHandler()', () => {
       const handler = () => {
         return response;
       };
-      const responder = () => {};
+      const preHandlers: TuftPreHandler[] = [];
+      const responders: TuftResponder[] = [jest.fn(() => { })];
+      const contextOptions = {};
+
       const result = handleResponseHandler(
         handler,
-        [],
-        [responder],
-        {},
+        preHandlers,
+        responders,
+        contextOptions,
         //@ts-expect-error
         mockStream,
         mockIncomingHeaders,
       );
 
       await expect(result).resolves.toBeUndefined();
+      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
+      expect(responders[0]).toHaveReturned();
+      expect(responders[0]).not.toHaveReturnedWith({});
     });
   });
 });
@@ -340,12 +374,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         error: 'TEAPOT' as HttpError,
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -357,12 +392,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         redirect: '/foo',
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -374,12 +410,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         raw: Buffer.from('abc'),
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -391,12 +428,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         text: 'abc',
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -408,12 +446,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         html: '<h1>abc</h1>',
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -425,12 +464,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         json: JSON.stringify('abc'),
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -442,12 +482,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         file: __filename,
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -459,12 +500,13 @@ describe('handleUnknownResponse()', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
       };
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
@@ -472,14 +514,15 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed an empty response', () => {
-    test('returns undefined and stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() is called with the expected arguments', () => {
       const response = {};
+      const outgoingHeaders = {};
 
       const result = handleUnknownResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -502,12 +545,13 @@ describe('handleHttpErrorResponse', () => {
       const response = {
         error: 'TEAPOT' as HttpError,
       };
+      const outgoingHeaders = {};
 
       const result = handleHttpErrorResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -524,12 +568,13 @@ describe('handleHttpErrorResponse', () => {
       const response = {
         error: 'FOO' as HttpError,
       };
+      const outgoingHeaders = {};
 
       const result = handleHttpErrorResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -552,11 +597,13 @@ describe('handleRedirectResponse()', () => {
       const response = {
         redirect: '/foo',
       };
+      const outgoingHeaders = {};
+
       const result = handleRedirectResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -576,18 +623,19 @@ describe('handleRedirectResponse()', () => {
 
 describe('handleBufferResponse()', () => {
   describe('with a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const raw = Buffer.from('abc');
       const response = {
         status: HTTP_STATUS_OK,
         raw,
       };
+      const outgoingHeaders = {};
 
       const result = handleBufferResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -598,21 +646,23 @@ describe('handleBufferResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(raw);
     });
   });
 
   describe('without a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const raw = Buffer.from('abc');
       const response = {
         raw,
       };
+      const outgoingHeaders = {};
 
       const result = handleBufferResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -622,6 +672,7 @@ describe('handleBufferResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(raw);
     });
   });
 });
@@ -632,18 +683,19 @@ describe('handleBufferResponse()', () => {
 
 describe('handleTextResponse()', () => {
   describe('with a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const text = 'abc';
       const response = {
         status: HTTP_STATUS_OK,
         text,
       };
+      const outgoingHeaders = {};
 
       const result = handleTextResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -654,21 +706,24 @@ describe('handleTextResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(text);
+
     });
   });
 
   describe('without a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const text = 'abc';
       const response = {
         text,
       };
+      const outgoingHeaders = {};
 
       const result = handleTextResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -678,21 +733,23 @@ describe('handleTextResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(text);
     });
   });
 
   describe('when passed a boolean value', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const text = true;
       const response = {
         text,
       };
+      const outgoingHeaders = {};
 
       const result = handleTextResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -702,6 +759,7 @@ describe('handleTextResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(text.toString());
     });
   });
 });
@@ -712,18 +770,19 @@ describe('handleTextResponse()', () => {
 
 describe('handleHtmlResponse()', () => {
   describe('with a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const html = '<h1>abc</h1>';
       const response = {
         status: HTTP_STATUS_OK,
         html,
       };
+      const outgoingHeaders = {};
 
       const result = handleHtmlResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -734,21 +793,23 @@ describe('handleHtmlResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(html);
     });
   });
 
   describe('without a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const html = '<h1>abc</h1>';
       const response = {
         html,
       };
+      const outgoingHeaders = {};
 
       const result = handleHtmlResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -758,6 +819,7 @@ describe('handleHtmlResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(html);
     });
   });
 });
@@ -768,18 +830,19 @@ describe('handleHtmlResponse()', () => {
 
 describe('handleJsonResponse()', () => {
   describe('with a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const json = { abc: 123 };
       const response = {
         status: HTTP_STATUS_OK,
         json,
       };
+      const outgoingHeaders = {};
 
       const result = handleJsonResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -790,21 +853,23 @@ describe('handleJsonResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(JSON.stringify(json));
     });
   });
 
   describe('without a status property', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const json = { abc: 123 };
       const response = {
         json,
       };
+      const outgoingHeaders = {};
 
       const result = handleJsonResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -814,21 +879,23 @@ describe('handleJsonResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(JSON.stringify(json));
     });
   });
 
   describe('when passed a value that is already serialized', () => {
-    test('stream.respond() is called with the expected arguments', () => {
+    test('stream.respond() and stream.end() are called with the expected arguments', () => {
       const json = JSON.stringify({ abc: 123 });
       const response = {
         json,
       };
+      const outgoingHeaders = {};
 
       const result = handleJsonResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
@@ -838,6 +905,7 @@ describe('handleJsonResponse()', () => {
 
       expect(result).toBeUndefined();
       expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
+      expect(mockStream.end).toHaveBeenCalledWith(json);
     });
   });
 });
@@ -853,14 +921,17 @@ describe('handleFileResponse()', () => {
         status: HTTP_STATUS_OK,
         file: __filename,
       };
+      const outgoingHeaders = {};
+
       const result = handleFileResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
+      expect(outgoingHeaders).toHaveProperty(HTTP2_HEADER_STATUS, HTTP_STATUS_OK);
       expect(mockStream.respondWithFile).toHaveBeenCalled();
     });
   });
@@ -870,14 +941,17 @@ describe('handleFileResponse()', () => {
       const response = {
         file: __filename,
       };
+      const outgoingHeaders = {};
+
       const result = handleFileResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       expect(result).toBeUndefined();
+      expect(outgoingHeaders).not.toHaveProperty(HTTP2_HEADER_STATUS);
       expect(mockStream.respondWithFile).toHaveBeenCalled();
     });
   });
@@ -889,20 +963,35 @@ describe('handleFileResponse()', () => {
  */
 
 describe('statCheck()', () => {
-  describe('when passed a mock stat argument', () => {
-    test('calls stat.mtime.toUTCString()', () => {
-      const date = new Date();
-      const mockStat = {
-        mtime: {
-          toUTCString: jest.fn(() => {
-            return date.toUTCString();
-          }),
-        },
-      };
+  describe('adds the expected headers to the headers object', () => {
+    test('when passed an empty headers object', () => {
+      const headers = {};
+
       //@ts-expect-error
-      const result = statCheck(mockStat, {});
+      const result = statCheck(mockStat, headers);
 
       expect(result).toBeUndefined();
+      expect(headers).toHaveProperty(HTTP2_HEADER_CONTENT_TYPE, 'application/octet-stream');
+      expect(headers).toHaveProperty(HTTP2_HEADER_ACCEPT_RANGES, 'none');
+      expect(headers).toHaveProperty(HTTP2_HEADER_LAST_MODIFIED, mockDate.toUTCString());
+      expect(mockStat.mtime.toUTCString).toHaveBeenCalled();
+    });
+
+    test('when passed a headers object with properties already set', () => {
+      const dateStr = new Date().toUTCString();
+      const headers = {
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain',
+        [HTTP2_HEADER_ACCEPT_RANGES]: 'bytes',
+        [HTTP2_HEADER_LAST_MODIFIED]: dateStr,
+      };
+
+      //@ts-expect-error
+      const result = statCheck(mockStat, headers);
+
+      expect(result).toBeUndefined();
+      expect(headers).toHaveProperty(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
+      expect(headers).toHaveProperty(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
+      expect(headers).toHaveProperty(HTTP2_HEADER_LAST_MODIFIED, dateStr);
       expect(mockStat.mtime.toUTCString).toHaveBeenCalled();
     });
   });
@@ -913,30 +1002,8 @@ describe('statCheck()', () => {
  */
 
 describe('onError()', () => {
-  describe('when passed a stream and a `ENOENT` error', () => {
-    test('stream.respond() is called with the expected argument', () => {
-      const err = Error('mock error') as NodeJS.ErrnoException;
-      err.code = 'ENOENT';
-
-      const result = onError(
-        //@ts-expect-error
-        mockStream,
-        err,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
-      };
-
-      expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockStream.emit).toHaveBeenCalledWith('error', err);
-    });
-  });
-
-  describe('when passed a stream and a generic error', () => {
-    test('stream.respond() is called with the expected argument', () => {
+  describe('when passed a stream and an error', () => {
+    test('stream.emit() is called with the expected argument', () => {
       const err = Error('mock error') as NodeJS.ErrnoException;
       const result = onError(
         //@ts-expect-error
@@ -944,18 +1011,11 @@ describe('onError()', () => {
         err,
       );
 
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-      };
-
       expect(result).toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalled();
       expect(mockStream.emit).toHaveBeenCalledWith('error', err);
     });
   });
 });
-
 
 /**
  * handleStatusResponse()
@@ -967,11 +1027,12 @@ describe('handleStatusResponse()', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
       };
+      const outgoingHeaders = {};
       const result = handleStatusResponse(
         response,
         //@ts-expect-error
         mockStream,
-        {},
+        outgoingHeaders,
       );
 
       const expectedHeaders = {
