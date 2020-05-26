@@ -1,4 +1,5 @@
 import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
+import { escape } from 'querystring';
 import {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
@@ -83,7 +84,7 @@ export class TuftContext {
     }
 
     const cookieHeader = this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] as string[];
-    let cookie = name + '=' + value;
+    let cookie = escape(name) + '=' + escape(value);
 
     if (!options.path) {
       options.path = '/';
