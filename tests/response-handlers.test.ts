@@ -173,8 +173,8 @@ describe('handleResponseObject()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
-      expect(responders[0]).toHaveReturnedWith({});
+      expect(responders[0]).toHaveBeenCalledWith(response, mockStream, outgoingHeaders);
+      expect(responders[0]).toHaveReturnedWith(response);
     });
   });
 
@@ -193,9 +193,9 @@ describe('handleResponseObject()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
+      expect(responders[0]).toHaveBeenCalledWith(response, mockStream, outgoingHeaders);
       expect(responders[0]).toHaveReturned();
-      expect(responders[0]).not.toHaveReturnedWith({});
+      expect(responders[0]).not.toHaveReturnedWith(response);
     });
   });
 });
@@ -313,8 +313,9 @@ describe('handleResponseHandler()', () => {
 
   describe('when passed a responder that returns the passed response object', () => {
     test('resolves to be undefined', async () => {
+      const response = {};
       const handler = () => {
-        return {};
+        return response;
       };
       const preHandlers: TuftPreHandler[] = [];
       const responders: TuftResponder[] = [jest.fn((response: {}) => response)];
@@ -330,9 +331,11 @@ describe('handleResponseHandler()', () => {
         mockIncomingHeaders,
       );
 
+      const expectedHeaders = { [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK };
+
       await expect(result).resolves.toBeUndefined();
-      expect(responders[0]).toHaveBeenCalledWith({}, mockStream, {});
-      expect(responders[0]).toHaveReturnedWith({});
+      expect(responders[0]).toHaveBeenCalledWith(response, mockStream, expectedHeaders);
+      expect(responders[0]).toHaveReturnedWith(response);
     });
   });
 
