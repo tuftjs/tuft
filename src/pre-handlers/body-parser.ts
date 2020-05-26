@@ -1,4 +1,4 @@
-import { parse } from 'querystring';
+import { unescape } from 'querystring';
 import { TuftContext, symStream } from '../context';
 import { createPromise } from '../utils';
 import {
@@ -123,7 +123,7 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
             };
           }
 
-          body = parse(body.toString());
+          body = parseUrlEncodedStr(body.toString());
         }
       }
     }
@@ -131,4 +131,32 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
     // Attach the parsed request body to the request object.
     t.request.body = body;
   };
+}
+
+/**
+ * Accepts a string that represents an 'application/x-www-form-urlencoded' request body, and returns
+ * the key/value pairs in that string in the form of an object.
+ */
+
+function parseUrlEncodedStr(urlEncodedStr: string): { [key: string]: string } {
+  const unescapedStr = unescape(urlEncodedStr);
+  const result: { [key: string]: string } = {};
+
+  let begin, end, str, i, key, value;
+
+  for (begin = 0, end; end !== -1; begin = end + 1) {
+    // Determine the end index of the current key/value pair.
+    end = unescapedStr.indexOf('&', begin);
+
+    // Extract the current key/value pair from the passed string.
+    str = unescapedStr.slice(begin, end < 0 ? undefined : end);
+
+    i = str.indexOf('=');
+    key = str.slice(0, i);
+    value = str.slice(i + 1);
+
+    result[key] = value;
+  }
+
+  return result;
 }

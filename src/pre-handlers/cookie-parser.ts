@@ -1,4 +1,5 @@
 import type { TuftContext } from '../context';
+import { unescape } from 'querystring';
 import { HTTP2_HEADER_COOKIE } from '../constants';
 
 /**
@@ -13,14 +14,16 @@ export function createCookieParser() {
 
     if (cookiesStr) {
       // There is a 'cookies' header.
+      const unescapedStr = unescape(cookiesStr);
+
       let begin, end, str, i, key, value;
 
       for (begin = 0; end !== -1; begin = end + 1) {
         // Determine the end index of the current key/value pair.
-        end = cookiesStr.indexOf(';', begin);
+        end = unescapedStr.indexOf(';', begin);
 
         // Extract the current key/value pair from the passed string.
-        str = cookiesStr.slice(begin, end < 0 ? undefined : end);
+        str = unescapedStr.slice(begin, end < 0 ? undefined : end);
 
         i = str.indexOf('=');
         key = str.slice(0, i);
