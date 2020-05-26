@@ -197,9 +197,8 @@ export function handleUnknownResponse(
   }
 
   // No valid properties were found, so respond with a '200 OK' status code and end the stream.
-  stream.respond({
-    [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-  }, { endStream: true });
+  outgoingHeaders[HTTP2_HEADER_STATUS] = HTTP_STATUS_OK;
+  stream.respond(outgoingHeaders, { endStream: true });
 }
 
 /**
