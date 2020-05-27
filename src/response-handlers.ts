@@ -264,7 +264,7 @@ export function handleTextResponse(
 ) {
   const body = typeof text === 'string' ? text : (text as number | boolean).toString();
 
-  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'text/plain; charset=utf-8';
+  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'text/plain; charset=UTF-8';
   outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = body.length;
 
   if (status) {
@@ -286,7 +286,7 @@ export function handleHtmlResponse(
 ) {
   const body = html as string;
 
-  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'text/html; charset=utf-8';
+  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'text/html; charset=UTF-8';
   outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = body.length;
 
   if (status) {
@@ -308,7 +308,7 @@ export function handleJsonResponse(
 ) {
   const body = typeof json === 'string' ? json : JSON.stringify(json);
 
-  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'application/json; charset=utf-8';
+  outgoingHeaders[HTTP2_HEADER_CONTENT_TYPE] = 'application/json; charset=UTF-8';
   outgoingHeaders[HTTP2_HEADER_CONTENT_LENGTH] = body.length;
 
   if (status) {
