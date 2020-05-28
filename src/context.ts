@@ -34,7 +34,7 @@ export interface TuftRequest {
   [key: string]: any;
 }
 
-export const symStream = Symbol('Http2Stream');
+export const streamSymbol = Symbol.for('tuft.http2Stream');
 
 /**
  * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
@@ -43,12 +43,12 @@ export const symStream = Symbol('Http2Stream');
 
 export class TuftContext {
   private readonly _outgoingHeaders: OutgoingHttpHeaders;
-  readonly [symStream]: ServerHttp2Stream;
+  readonly [streamSymbol]: ServerHttp2Stream;
   readonly request: TuftRequest;
 
   constructor(stream: ServerHttp2Stream, request: TuftRequest) {
     this._outgoingHeaders = Object.create(null);
-    this[symStream] = stream;
+    this[streamSymbol] = stream;
     this.request = request;
   }
 
