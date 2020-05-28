@@ -703,7 +703,7 @@ describe('handleTextResponse()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: text.length,
       };
 
@@ -730,7 +730,7 @@ describe('handleTextResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: text.length,
       };
 
@@ -756,7 +756,7 @@ describe('handleTextResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: text.toString().length,
       };
 
@@ -790,7 +790,7 @@ describe('handleHtmlResponse()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: html.length,
       };
 
@@ -816,7 +816,7 @@ describe('handleHtmlResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'text/html; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: html.length,
       };
 
@@ -850,7 +850,7 @@ describe('handleJsonResponse()', () => {
 
       const expectedHeaders = {
         [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(json).length,
       };
 
@@ -876,7 +876,7 @@ describe('handleJsonResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: JSON.stringify(json).length,
       };
 
@@ -902,7 +902,7 @@ describe('handleJsonResponse()', () => {
       );
 
       const expectedHeaders = {
-        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=utf-8',
+        [HTTP2_HEADER_CONTENT_TYPE]: 'application/json; charset=UTF-8',
         [HTTP2_HEADER_CONTENT_LENGTH]: json.length,
       };
 

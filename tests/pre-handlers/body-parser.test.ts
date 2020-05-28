@@ -1,5 +1,5 @@
 import { cloneDeep } from 'lodash';
-import { symStream } from '../../src/context';
+import { streamSymbol } from '../../src/context';
 import { createBodyParser } from '../../src/pre-handlers/body-parser';
 
 type Callback = (...args: any[]) => void;
@@ -11,7 +11,7 @@ type MockTuftContext = {
     },
     [key: string]: any;
   },
-  [symStream]: {
+  [streamSymbol]: {
     _callbacks: {
       data: Callback[],
       end: Callback[],
@@ -26,7 +26,7 @@ const mockContext: MockTuftContext = {
   request: {
     headers: {},
   },
-  [symStream]: {
+  [streamSymbol]: {
     _callbacks: {
       data: [],
       end: [],
@@ -64,7 +64,7 @@ describe('createBodyParser() without an options argument', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -80,8 +80,8 @@ describe('createBodyParser() without an options argument', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', Buffer.from('foo'));
@@ -97,10 +97,10 @@ describe('createBodyParser() without an options argument', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo '));
-        context[symStream].emitData(Buffer.from('bar '));
-        context[symStream].emitData(Buffer.from('baz'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo '));
+        context[streamSymbol].emitData(Buffer.from('bar '));
+        context[streamSymbol].emitData(Buffer.from('baz'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', Buffer.from('foo bar baz'));
@@ -115,10 +115,10 @@ describe('createBodyParser() without an options argument', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo '));
-        context[symStream].emitData(Buffer.from('bar '));
-        context[symStream].emitData(Buffer.from('baz'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo '));
+        context[streamSymbol].emitData(Buffer.from('bar '));
+        context[streamSymbol].emitData(Buffer.from('baz'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', Buffer.from('foo bar baz'));
@@ -133,10 +133,10 @@ describe('createBodyParser() without an options argument', () => {
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo '));
-        context[symStream].emitData(Buffer.from('bar '));
-        context[symStream].emitData(Buffer.from('baz'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo '));
+        context[streamSymbol].emitData(Buffer.from('bar '));
+        context[streamSymbol].emitData(Buffer.from('baz'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toEqual({ error: 'LENGTH_REQUIRED' });
         expect(context.request).not.toHaveProperty('body');
@@ -166,7 +166,7 @@ describe('createBodyParser() with option `text` set to true', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -182,10 +182,10 @@ describe('createBodyParser() with option `text` set to true', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo '));
-        context[symStream].emitData(Buffer.from('bar '));
-        context[symStream].emitData(Buffer.from('baz'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo '));
+        context[streamSymbol].emitData(Buffer.from('bar '));
+        context[streamSymbol].emitData(Buffer.from('baz'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', 'foo bar baz');
@@ -215,7 +215,7 @@ describe('createBodyParser() with option `text` set to 0', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -245,7 +245,7 @@ describe('createBodyParser() with option `text` set to 1', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -261,10 +261,10 @@ describe('createBodyParser() with option `text` set to 1', () => {
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo '));
-        context[symStream].emitData(Buffer.from('bar '));
-        context[symStream].emitData(Buffer.from('baz'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo '));
+        context[streamSymbol].emitData(Buffer.from('bar '));
+        context[streamSymbol].emitData(Buffer.from('baz'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -294,7 +294,7 @@ describe('createBodyParser() with option `json` set to true', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -310,9 +310,9 @@ describe('createBodyParser() with option `json` set to true', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('{"foo"'));
-        context[symStream].emitData(Buffer.from(':42}'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('{"foo"'));
+        context[streamSymbol].emitData(Buffer.from(':42}'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', { foo: 42 });
@@ -342,7 +342,7 @@ describe('createBodyParser() with option `json` set to 0', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -372,7 +372,7 @@ describe('createBodyParser() with option `json` set to 1', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -388,9 +388,9 @@ describe('createBodyParser() with option `json` set to 1', () => {
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('{"foo"'));
-        context[symStream].emitData(Buffer.from(':42}'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('{"foo"'));
+        context[streamSymbol].emitData(Buffer.from(':42}'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -420,7 +420,7 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -436,9 +436,9 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo='));
-        context[symStream].emitData(Buffer.from('42'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo='));
+        context[streamSymbol].emitData(Buffer.from('42'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', { foo: '42' });
@@ -455,12 +455,12 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
 
     test('adds a `body` property set to the expected value to the request object', async () => {
       const promise = bodyParser(context);
-      context[symStream].emitData(Buffer.from('foo='));
-      context[symStream].emitData(Buffer.from('42'));
-      context[symStream].emitData(Buffer.from('&'));
-      context[symStream].emitData(Buffer.from('bar='));
-      context[symStream].emitData(Buffer.from('baz'));
-      context[symStream].emitEnd();
+      context[streamSymbol].emitData(Buffer.from('foo='));
+      context[streamSymbol].emitData(Buffer.from('42'));
+      context[streamSymbol].emitData(Buffer.from('&'));
+      context[streamSymbol].emitData(Buffer.from('bar='));
+      context[streamSymbol].emitData(Buffer.from('baz'));
+      context[streamSymbol].emitEnd();
 
       await expect(promise).resolves.toBeUndefined();
       expect(context.request).toHaveProperty('body', { foo: '42', bar: 'baz' });
@@ -489,7 +489,7 @@ describe('createBodyParser() with option `urlEncoded` set to 0', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -519,7 +519,7 @@ describe('createBodyParser() with option `urlEncoded` set to 1', () => {
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitEnd();
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -535,9 +535,9 @@ describe('createBodyParser() with option `urlEncoded` set to 1', () => {
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[symStream].emitData(Buffer.from('foo='));
-        context[symStream].emitData(Buffer.from('42'));
-        context[symStream].emitEnd();
+        context[streamSymbol].emitData(Buffer.from('foo='));
+        context[streamSymbol].emitData(Buffer.from('42'));
+        context[streamSymbol].emitEnd();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
