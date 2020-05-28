@@ -1,5 +1,5 @@
 import { unescape } from 'querystring';
-import { TuftContext, symStream } from '../context';
+import { TuftContext, streamSymbol } from '../context';
 import { createPromise } from '../utils';
 import {
   DEFAULT_MAX_BODY_SIZE,
@@ -56,7 +56,7 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
   }
 
   return async function bodyParser(t: TuftContext) {
-    const stream = t[symStream];
+    const stream = t[streamSymbol];
 
     const chunks: Buffer[] = [];
 
