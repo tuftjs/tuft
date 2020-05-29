@@ -33,7 +33,7 @@ export function createWriteStreamResponder() {
 
       stream.respond(outgoingHeaders);
 
-      // Wait for all 'chunks' to be written to the stream.
+      // Wait for all chunks to be written to the stream.
       await writeStream((chunk, encoding) => {
         return createPromise(done => {
           stream.write(chunk, encoding, done);
