@@ -68,7 +68,7 @@ export function createResponseHandler(route: TuftRoute) {
 }
 
 /**
- * Returns the passed response object.
+ * An identity function for the purpose of turning a response object into a response handler.
  */
 
 export function returnResponse(response: TuftResponse) {
