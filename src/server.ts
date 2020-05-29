@@ -2,7 +2,6 @@ import type { Http2Server, Http2SecureServer, ServerHttp2Stream, IncomingHttpHea
 import type { KeyObject } from 'tls';
 import { createServer, createSecureServer } from 'http2';
 import { EventEmitter } from 'events';
-import { createPromise } from './utils';
 import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants';
 
 export type ServerOptions = {
@@ -55,9 +54,9 @@ abstract class TuftServerBase extends EventEmitter {
    * Returns a promise that resolves once the server has started.
    */
 
-  async start() {
-    await createPromise(done => {
-      this.#server.listen(this.#port, done);
+  start() {
+    return new Promise(resolve => {
+      this.#server.listen(this.#port, resolve);
     });
   }
 
@@ -66,9 +65,11 @@ abstract class TuftServerBase extends EventEmitter {
    * rejects with an error if the server was not running.
    */
 
-  async stop() {
-    await createPromise(done => {
-      this.#server.close(done);
+  stop() {
+    return new Promise((resolve, reject) => {
+      this.#server.close(err => {
+        err ? reject(err) : resolve();
+      });
     });
   }
 
