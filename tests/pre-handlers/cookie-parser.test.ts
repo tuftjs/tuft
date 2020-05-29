@@ -9,19 +9,19 @@ type MockTuftContext = {
   },
 };
 
-const mockContextWithoutCookie: MockTuftContext = {
-  request: {
-    headers: {},
-  },
-};
-
-const mockContextWithCookie: MockTuftContext = {
-  request: {
-    headers: {
-      cookie: 'cookie-name-1=cookie-value-1;cookie-name-2=cookie-value-2',
+function createMockContext(withCookie = false) {
+  const mockContext: MockTuftContext = {
+    request: {
+      headers: {},
     },
-  },
-};
+  };
+
+  if (withCookie) {
+    mockContext.request.headers.cookie = 'name-1=value-1;name-2=value-2';
+  }
+
+  return mockContext;
+}
 
 /**
  * createCookieParser()
@@ -39,18 +39,19 @@ describe('createCookieParser()', () => {
   describe('cookieParser()', () => {
     describe('when passed a request object with no cookie header', () => {
       test('adds a `cookies` property set to null', () => {
-        cookieParser(mockContextWithoutCookie);
-        expect(mockContextWithoutCookie.request).toHaveProperty('cookies', {});
+        const context = createMockContext();
+        cookieParser(context);
+        expect(context.request).toHaveProperty('cookies', {});
       });
     });
 
     describe('when passed a request object with a cookie header', () => {
       test('adds a `cookies` property set to the expected value', () => {
-        cookieParser(mockContextWithCookie);
-        expect(mockContextWithCookie.request).toHaveProperty('cookies', {
-          'cookie-name-1': 'cookie-value-1',
-          'cookie-name-2': 'cookie-value-2',
-        });
+        const context = createMockContext(true);
+        cookieParser(context);
+        expect(context.request).toHaveProperty('cookies');
+        expect(context.request.cookies).toHaveProperty('name-1', 'value-1');
+        expect(context.request.cookies).toHaveProperty('name-2', 'value-2');
       });
     });
   });

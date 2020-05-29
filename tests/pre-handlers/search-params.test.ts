@@ -8,17 +8,19 @@ type MockTuftContext = {
   };
 };
 
-const mockContextWithoutSearch: MockTuftContext = {
-  request: {
-    search: '',
-  },
-};
+function createMockContext(withSearch = false) {
+  const mockContext: MockTuftContext = {
+    request: {
+      search: '',
+    },
+  };
 
-const mockContextWithSearch: MockTuftContext = {
-  request: {
-    search: '?a=1',
-  },
-};
+  if (withSearch) {
+    mockContext.request.search = '?a=1';
+  }
+
+  return mockContext;
+}
 
 /**
  * createSearchParams()
@@ -36,17 +38,17 @@ describe('createSearchParams()', () => {
   describe('searchParams()', () => {
     describe('when passed a request object with the search property set to an empty string', () => {
       test('adds a `searchParams` property set to an empty URLSearchParams object', () => {
-        searchParams(mockContextWithoutSearch);
-        expect(mockContextWithoutSearch.request)
-          .toHaveProperty('searchParams', new URLSearchParams());
+        const context = createMockContext();
+        searchParams(context);
+        expect(context.request).toHaveProperty('searchParams', new URLSearchParams());
       });
     });
 
     describe('when passed a request object with the search property set to a query string', () => {
       test('adds a `searchParams` property set to an empty URLSearchParams object', () => {
-        searchParams(mockContextWithSearch);
-        expect(mockContextWithSearch.request)
-          .toHaveProperty('searchParams', new URLSearchParams('?a=1'));
+        const context = createMockContext(true);
+        searchParams(context);
+        expect(context.request).toHaveProperty('searchParams', new URLSearchParams('?a=1'));
       });
     });
   });

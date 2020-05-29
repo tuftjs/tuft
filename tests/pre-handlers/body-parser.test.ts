@@ -1,47 +1,44 @@
-import { cloneDeep } from 'lodash';
+import { PassThrough } from 'stream';
 import { streamSymbol } from '../../src/context';
 import { createBodyParser } from '../../src/pre-handlers/body-parser';
-
-type Callback = (...args: any[]) => void;
 
 type MockTuftContext = {
   request: {
     headers: {
       [key: string]: string;
-    },
+    };
     [key: string]: any;
-  },
-  [streamSymbol]: {
-    _callbacks: {
-      data: Callback[],
-      end: Callback[],
-    },
-    on: (event: 'data' | 'end', callback: Callback) => void,
-    emitData: (data: any) => void,
-    emitEnd: () => void,
-  },
+  };
+  [streamSymbol]: PassThrough;
 };
 
-const mockContext: MockTuftContext = {
-  request: {
-    headers: {},
-  },
-  [streamSymbol]: {
-    _callbacks: {
-      data: [],
-      end: [],
+function createMockContext(): MockTuftContext {
+  return {
+    request: {
+      headers: {},
     },
-    on(event, callback) {
-      this._callbacks[event].push(callback);
-    },
-    emitData(data) {
-      this._callbacks.data.forEach((callback: Callback) => callback(data));
-    },
-    emitEnd() {
-      this._callbacks.end.forEach((callback: Callback) => callback());
-    }
-  }
-};
+    [streamSymbol]: new PassThrough(),
+  };
+}
+
+const textChunks = [
+  Buffer.from('foo'),
+  Buffer.from('bar'),
+  Buffer.from('baz'),
+];
+
+const jsonChunks = [
+  Buffer.from('{"abc"'),
+  Buffer.from(':123}'),
+];
+
+const urlEncodedChunks = [
+  Buffer.from('abc='),
+  Buffer.from('123'),
+  Buffer.from('&'),
+  Buffer.from('def='),
+  Buffer.from('456'),
+];
 
 /**
  * createBodyParser() without an options argument
@@ -59,12 +56,11 @@ describe('createBodyParser() without an options argument', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -72,71 +68,63 @@ describe('createBodyParser() without an options argument', () => {
     });
 
     describe('when passed a stream with only one chunk of data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'text/plain',
-        'content-length': '3',
-      };
+      const context = createMockContext();
+      const [chunk] = textChunks;
+
+      context.request.headers['content-type'] = 'text/plain';
+      context.request.headers['content-length'] = chunk.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo'));
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end(chunk);
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', Buffer.from('foo'));
+        expect(context.request).toHaveProperty('body', chunk);
       });
     });
 
     describe('when passed a stream with data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'text/plain',
-        'content-length': '11',
-      };
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(textChunks);
+
+      context.request.headers['content-type'] = 'text/plain';
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo '));
-        context[streamSymbol].emitData(Buffer.from('bar '));
-        context[streamSymbol].emitData(Buffer.from('baz'));
-        context[streamSymbol].emitEnd();
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', Buffer.from('foo bar baz'));
+        expect(context.request).toHaveProperty('body', expectedBody);
       });
     });
 
     describe('when passed a stream with data and no `content-type` header', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-length': '11',
-      };
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(textChunks);
+
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo '));
-        context[streamSymbol].emitData(Buffer.from('bar '));
-        context[streamSymbol].emitData(Buffer.from('baz'));
-        context[streamSymbol].emitEnd();
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', Buffer.from('foo bar baz'));
+        expect(context.request).toHaveProperty('body', expectedBody);
       });
     });
 
     describe('when passed a stream with data but no `content-length` header', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'text/plain',
-      };
+      const context = createMockContext();
+
+      context.request.headers['content-type'] = 'text/plain';
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo '));
-        context[streamSymbol].emitData(Buffer.from('bar '));
-        context[streamSymbol].emitData(Buffer.from('baz'));
-        context[streamSymbol].emitEnd();
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'LENGTH_REQUIRED' });
         expect(context.request).not.toHaveProperty('body');
@@ -161,12 +149,11 @@ describe('createBodyParser() with option `text` set to true', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -174,21 +161,19 @@ describe('createBodyParser() with option `text` set to true', () => {
     });
 
     describe('when passed a stream with data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'text/plain',
-        'content-length': '11',
-      };
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(textChunks);
+
+      context.request.headers['content-type'] = 'text/plain';
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo '));
-        context[streamSymbol].emitData(Buffer.from('bar '));
-        context[streamSymbol].emitData(Buffer.from('baz'));
-        context[streamSymbol].emitEnd();
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', 'foo bar baz');
+        expect(context.request).toHaveProperty('body', expectedBody.toString());
       });
     });
   });
@@ -210,12 +195,11 @@ describe('createBodyParser() with option `text` set to 0', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -240,12 +224,11 @@ describe('createBodyParser() with option `text` set to 1', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -253,18 +236,16 @@ describe('createBodyParser() with option `text` set to 1', () => {
     });
 
     describe('when passed a stream with data that exceeds the set body size limit', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'text/plain',
-        'content-length': '11',
-      };
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(textChunks);
+
+      context.request.headers['content-type'] = 'text/plain';
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo '));
-        context[streamSymbol].emitData(Buffer.from('bar '));
-        context[streamSymbol].emitData(Buffer.from('baz'));
-        context[streamSymbol].emitEnd();
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -289,12 +270,11 @@ describe('createBodyParser() with option `json` set to true', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -302,20 +282,19 @@ describe('createBodyParser() with option `json` set to true', () => {
     });
 
     describe('when passed a stream with data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'application/json',
-        'content-length': '10',
-      };
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(jsonChunks);
+
+      context.request.headers['content-type'] = 'application/json';
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('{"foo"'));
-        context[streamSymbol].emitData(Buffer.from(':42}'));
-        context[streamSymbol].emitEnd();
+        jsonChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', { foo: 42 });
+        expect(context.request).toHaveProperty('body', { abc: 123 });
       });
     });
   });
@@ -337,12 +316,11 @@ describe('createBodyParser() with option `json` set to 0', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -367,12 +345,11 @@ describe('createBodyParser() with option `json` set to 1', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -380,17 +357,16 @@ describe('createBodyParser() with option `json` set to 1', () => {
     });
 
     describe('when passed a stream with data that exceeds the set body size limit', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'application/json',
-        'content-length': '10',
-      };
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(jsonChunks);
+
+      context.request.headers['content-type'] = 'application/json';
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('{"foo"'));
-        context[streamSymbol].emitData(Buffer.from(':42}'));
-        context[streamSymbol].emitEnd();
+        jsonChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -415,12 +391,11 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -428,42 +403,38 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
     });
 
     describe('when passed a stream with data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'application/x-www-form-urlencoded',
-        'content-length': '6',
-      };
+      const context = createMockContext();
+      const chunks = urlEncodedChunks.slice(0, 2);
+      const expectedBody = Buffer.concat(chunks);
+
+      context.request.headers['content-type'] = 'application/x-www-form-urlencoded';
+      context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo='));
-        context[streamSymbol].emitData(Buffer.from('42'));
-        context[streamSymbol].emitEnd();
+        chunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', { foo: '42' });
+        expect(context.request).toHaveProperty('body', { abc: '123' });
       });
     });
   });
 
   describe('when passed a stream with data that includes two key/value pairs', () => {
-    const context = cloneDeep(mockContext);
-    context.request.headers = {
-      'content-type': 'application/x-www-form-urlencoded',
-      'content-length': '14',
-    };
+    const context = createMockContext();
+    const expectedBody = Buffer.concat(urlEncodedChunks);
+
+    context.request.headers['content-type'] = 'application/x-www-form-urlencoded';
+    context.request.headers['content-length'] = expectedBody.length.toString();
 
     test('adds a `body` property set to the expected value to the request object', async () => {
       const promise = bodyParser(context);
-      context[streamSymbol].emitData(Buffer.from('foo='));
-      context[streamSymbol].emitData(Buffer.from('42'));
-      context[streamSymbol].emitData(Buffer.from('&'));
-      context[streamSymbol].emitData(Buffer.from('bar='));
-      context[streamSymbol].emitData(Buffer.from('baz'));
-      context[streamSymbol].emitEnd();
+      urlEncodedChunks.forEach(chunk => context[streamSymbol].write(chunk));
+      context[streamSymbol].end();
 
       await expect(promise).resolves.toBeUndefined();
-      expect(context.request).toHaveProperty('body', { foo: '42', bar: 'baz' });
+      expect(context.request).toHaveProperty('body', { abc: '123', def: '456' });
     });
   });
 });
@@ -484,12 +455,11 @@ describe('createBodyParser() with option `urlEncoded` set to 0', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -514,12 +484,11 @@ describe('createBodyParser() with option `urlEncoded` set to 1', () => {
 
   describe('bodyParser()', () => {
     describe('when passed a stream with NO data', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {};
+      const context = createMockContext();
 
       test('adds a `body` property set to null to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitEnd();
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', null);
@@ -527,17 +496,16 @@ describe('createBodyParser() with option `urlEncoded` set to 1', () => {
     });
 
     describe('when passed a stream with data that exceeds the set body size limit', () => {
-      const context = cloneDeep(mockContext);
-      context.request.headers = {
-        'content-type': 'application/x-www-form-urlencoded',
-        'content-length': '6',
-      };
+      const context = createMockContext();
+      const chunks = urlEncodedChunks.slice(0, 2);
+
+      context.request.headers['content-type'] = 'application/x-www-form-urlencoded';
+      context.request.headers['content-length'] = chunks.length.toString();
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].emitData(Buffer.from('foo='));
-        context[streamSymbol].emitData(Buffer.from('42'));
-        context[streamSymbol].emitEnd();
+        chunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
