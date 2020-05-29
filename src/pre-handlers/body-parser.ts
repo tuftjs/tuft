@@ -1,6 +1,7 @@
+import { finished as finishedStream } from 'stream';
+import { promisify } from 'util';
 import { unescape } from 'querystring';
 import { TuftContext, streamSymbol } from '../context';
-import { createPromise } from '../utils';
 import {
   DEFAULT_MAX_BODY_SIZE,
   HTTP2_HEADER_CONTENT_LENGTH,
@@ -12,6 +13,8 @@ type BodyParserOptions = {
   json?: boolean | number,
   urlEncoded?: boolean | number,
 }
+
+const finished = promisify(finishedStream);
 
 /**
  * Returns the 'bodyParser' pre-handler function, customized based on the included options, which
@@ -66,9 +69,7 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
     });
 
     // Wait for the stream to end so that we know all chunks have been added.
-    await createPromise(done => {
-      stream.on('end', done);
-    });
+    await finished(stream);
 
     let body: null | Buffer | string | { [key in string | number]: any };
 
@@ -104,7 +105,7 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
           body = body.toString();
         }
 
-        else if (maxJsonSize && contentType === 'application/json') {
+        else if (maxJsonSize && /^application\/json/.test(contentType)) {
           // The body should be converted to an object.
           if (body.length > maxJsonSize) {
             return {
@@ -115,7 +116,7 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
           body = JSON.parse(body.toString());
         }
 
-        else if (maxUrlEncodedSize && contentType === 'application/x-www-form-urlencoded') {
+        else if (maxUrlEncodedSize && /^application\/x-www-form-urlencoded/.test(contentType)) {
           // The body should be converted to an object.
           if (body.length > maxUrlEncodedSize) {
             return {
