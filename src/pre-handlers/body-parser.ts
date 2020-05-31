@@ -69,7 +69,7 @@ export function createBodyParser({ text, json, urlEncoded }: BodyParserOptions =
     });
 
     // Wait for the stream to end so that we know all chunks have been added.
-    await finished(stream);
+    await finished(stream, { writable: false });
 
     let body: null | Buffer | string | { [key in string | number]: any };
 
