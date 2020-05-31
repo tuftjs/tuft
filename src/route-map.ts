@@ -22,8 +22,6 @@ import {
 } from './constants';
 import importedMimeTypes from './data/mime-types.json';
 
-type RequestMethod = 'DELETE' | 'GET' | 'HEAD' | 'OPTIONS' | 'PATCH' | 'POST' | 'PUT' | 'TRACE';
-
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | Promise<TuftResponse>;
 }
@@ -60,12 +58,10 @@ export interface TuftRoute {
   trailingSlash?: boolean;
 }
 
-type RouteMapOptions = {
+export type RouteMapOptions = {
   preHandlers?: TuftPreHandler[];
   responders?: TuftResponder[];
   basePath?: string;
-  method?: RequestMethod | RequestMethod[];
-  path?: string;
   trailingSlash?: boolean;
 }
 
@@ -454,12 +450,4 @@ export async function primaryErrorHandler(
 
   // Pass the error object to the user-defined error handler.
   await handleError?.(err);
-}
-
-/**
- * Returns a new instance of TuftRouteMap, created using the provided options.
- */
-
-export function createRouteMap(options?: RouteMapOptions) {
-  return new TuftRouteMap(options);
 }
