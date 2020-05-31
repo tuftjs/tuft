@@ -1,12 +1,11 @@
-import {
-  createRouteMap,
+import tuft, {
   createSearchParams,
   createCookieParser,
   createBodyParser,
   createWriteStreamResponder,
 } from '../src';
 
-const app = createRouteMap({
+const app = tuft({
   preHandlers: [
     createSearchParams(),
     createCookieParser(),
