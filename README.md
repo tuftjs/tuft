@@ -18,10 +18,10 @@ npm install tuft
 
 A simple "Hello, world!" example:
 ```js
-const { createRouteMap } = require('tuft')
+const tuft = require('tuft')
 
 async function init() {
-  const app = createRouteMap()
+  const app = tuft()
 
   app.set('GET /', {
     text: 'Hello, world!'
@@ -49,7 +49,7 @@ It is not necessary when using curl to access a secure HTTP/2 server.
 If we want to be able to access our example server from a browser, we'll have to rewrite the above code to use `https` instead of `http`:
 
 ```js
-const { createRouteMap } = require('tuft')
+const tuft = require('tuft')
 const { readFileSync } = require('fs')
 
 ...
