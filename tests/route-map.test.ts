@@ -3,7 +3,6 @@ import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
 import {
   TuftRouteMap,
-  createRouteMap,
   handleStaticFileGetRequest,
   handleStaticFileHeadRequest,
   getFilePaths,
@@ -657,17 +656,5 @@ describe('primaryErrorHandler()', () => {
 
       await expect(result).resolves.toBeUndefined();
     });
-  });
-});
-
-/**
- * createRouteMap()
- */
-
-describe('createRouteMap()', () => {
-  test('returns an instance of TuftRouteMap', () => {
-    const result = createRouteMap();
-
-    expect(result).toBeInstanceOf(TuftRouteMap);
   });
 });
