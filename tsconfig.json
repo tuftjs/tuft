@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
+    "target": "ES2019",
     "module": "CommonJS",
     "outDir": "lib",
     "strict": true,
@@ -15,7 +15,7 @@
     "newLine": "lf",
     "resolveJsonModule": true,
     "lib": [
-      "ES2018"
+      "ES2019"
     ]
   },
   "include": [
