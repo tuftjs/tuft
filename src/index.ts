@@ -7,7 +7,7 @@ export type { TuftContext, TuftRequest } from './context';
 export type { TuftServer, TuftSecureServer } from './server';
 
 // Main export
-export default function tuft(options?: RouteMapOptions) {
+export function tuft(options?: RouteMapOptions) {
   return new TuftRouteMap(options);
 }
 
