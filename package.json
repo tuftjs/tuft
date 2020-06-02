@@ -24,20 +24,27 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "start:example": "ts-node ./example/index.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "prepublishOnly": "npm run test && npm run build",
     "build": "rm -rf ./lib && tsc -b",
-    "prepublishOnly": "npm run test && npm run build"
+    "start:body-parser": "ts-node ./examples/body-parser.ts",
+    "start:cookie-parser": "ts-node ./examples/cookie-parser.ts",
+    "start:file": "ts-node ./examples/file.ts",
+    "start:hello-world": "ts-node ./examples/hello-world.ts",
+    "start:search-params": "ts-node ./examples/search-params.ts",
+    "start:static-files": "ts-node ./examples/static-files.ts",
+    "start:stream-responder": "ts-node ./examples/stream-responder.ts",
+    "start:wildcard-routes": "ts-node ./examples/wildcard-routes.ts"
   },
   "devDependencies": {
     "@types/jest": "^25.2.3",
-    "@types/node": "^14.0.5",
-    "@typescript-eslint/eslint-plugin": "^3.0.2",
-    "@typescript-eslint/parser": "^3.0.2",
+    "@types/node": "^14.0.9",
+    "@typescript-eslint/eslint-plugin": "^3.1.0",
+    "@typescript-eslint/parser": "^3.1.0",
     "eslint": "^7.1.0",
     "jest": "^26.0.1",
-    "ts-jest": "^26.0.0",
+    "ts-jest": "^26.1.0",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.3"
   }
