@@ -4,7 +4,7 @@ import { createCookieParser } from '../src';
 import { createBodyParser } from '../src';
 import { createWriteStreamResponder } from '../src';
 import { createPromise } from '../src';
-import tuft from '../src';
+import { tuft } from '../src';
 
 describe('Named exported functions', () => {
   test('are defined', () => {
