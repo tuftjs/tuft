@@ -1,4 +1,4 @@
-import tuft, { createWriteStreamResponder } from '../src';
+import { tuft, createWriteStreamResponder } from '../src';
 
 const app = tuft({
   responders: [createWriteStreamResponder()],

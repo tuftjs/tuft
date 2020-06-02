@@ -1,4 +1,4 @@
-import tuft, { createCookieParser } from '../src';
+import { tuft, createCookieParser } from '../src';
 
 const app = tuft({
   preHandlers: [createCookieParser()],

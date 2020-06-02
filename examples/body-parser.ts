@@ -1,4 +1,4 @@
-import tuft, { createBodyParser } from '../src';
+import { tuft, createBodyParser } from '../src';
 
 const app = tuft({
   preHandlers: [

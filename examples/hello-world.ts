@@ -1,4 +1,4 @@
-import tuft from '../src';
+import { tuft } from '../src';
 
 const app = tuft().onError(err => console.error(err));
 

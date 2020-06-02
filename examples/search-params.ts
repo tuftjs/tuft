@@ -1,4 +1,4 @@
-import tuft, { createSearchParams } from '../src';
+import { tuft, createSearchParams } from '../src';
 
 const app = tuft({
   preHandlers: [createSearchParams()],
