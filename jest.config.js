@@ -3,12 +3,5 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
   ],
-  preset: 'ts-jest',
-  globals: {
-    'ts-jest': {
-      diagnostics: {
-        ignoreCodes: ['TS2322'],
-      },
-    },
-  },
+  preset: 'ts-jest'
 };
