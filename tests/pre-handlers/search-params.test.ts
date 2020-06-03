@@ -1,3 +1,4 @@
+import type { TuftContext } from '../../src/context';
 import { URLSearchParams } from 'url';
 import { createSearchParams } from '../../src/pre-handlers/search-params';
 
@@ -27,10 +28,8 @@ function createMockContext(withSearch = false) {
  */
 
 describe('createSearchParams()', () => {
-  let searchParams: (t: MockTuftContext) => void;
-
   test('returns a function named `searchParams`', () => {
-    searchParams = createSearchParams();
+    const searchParams = createSearchParams();
     expect(typeof searchParams).toBe('function');
     expect(searchParams.name).toBe('searchParams');
   });
@@ -38,16 +37,18 @@ describe('createSearchParams()', () => {
   describe('searchParams()', () => {
     describe('when passed a request object with the search property set to an empty string', () => {
       test('adds a `searchParams` property set to an empty URLSearchParams object', () => {
+        const searchParams = createSearchParams();
         const context = createMockContext();
-        searchParams(context);
+        searchParams(context as TuftContext);
         expect(context.request).toHaveProperty('searchParams', new URLSearchParams());
       });
     });
 
     describe('when passed a request object with the search property set to a query string', () => {
       test('adds a `searchParams` property set to an empty URLSearchParams object', () => {
+        const searchParams = createSearchParams();
         const context = createMockContext(true);
-        searchParams(context);
+        searchParams(context as TuftContext);
         expect(context.request).toHaveProperty('searchParams', new URLSearchParams('?a=1'));
       });
     });
