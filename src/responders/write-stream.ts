@@ -33,10 +33,19 @@ export function createWriteStreamResponder() {
 
       stream.respond(outgoingHeaders);
 
+      let isDrained = true;
+
       // Wait for all chunks to be written to the stream.
       await writeStream((chunk, encoding) => {
         return createPromise(done => {
-          stream.write(chunk, encoding, done);
+          if (!isDrained) {
+            stream.once('drain', () => {
+              isDrained = stream.write(chunk, encoding, done);
+            });
+            return;
+          }
+
+          isDrained = stream.write(chunk, encoding, done);
         });
       });
 
