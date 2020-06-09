@@ -160,7 +160,7 @@ export function createTuftContext(
   let pathname = path;
   let search = '';
 
-  let separatorIndex = path.indexOf('?');
+  const separatorIndex = path.indexOf('?');
 
   if (separatorIndex > 0) {
     // Separate the query string from the path.
