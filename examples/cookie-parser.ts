@@ -6,7 +6,7 @@ const app = tuft({
 
 app.onError(err => console.error(err));
 
-app.set('GET /search-params', t => {
+app.set('GET /cookie-parser', t => {
   return {
     text: t.request.cookies,
   };

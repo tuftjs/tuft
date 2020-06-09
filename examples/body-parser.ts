@@ -12,7 +12,7 @@ const app = tuft({
 
 app.onError(err => console.error(err));
 
-app.set('GET /search-params', t => {
+app.set('POST /body-parser', t => {
   const { body } = t.request;
 
   if (typeof body === 'string') {
