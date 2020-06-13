@@ -1,4 +1,4 @@
-import { tuft, createWriteStreamResponder } from '../src';
+import { tuft, createWriteStreamResponder } from '../../src';
 
 const app = tuft({
   responders: [createWriteStreamResponder()],
@@ -15,10 +15,10 @@ app.set('GET /write-stream', () => {
   };
 });
 
-const server = app.createServer({ port: 3000 });
+const server = app.createServer({ port: 3000, http1: true });
 
 server
   .start()
   .then(() => {
-    console.log(`Server listening at http://${server.host}:${server.port}`);
+    console.log(`${server.protocol} server listening at http://${server.host}:${server.port}`);
   });

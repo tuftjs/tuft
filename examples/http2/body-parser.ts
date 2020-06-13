@@ -1,4 +1,4 @@
-import { tuft, createBodyParser } from '../src';
+import { tuft, createBodyParser } from '../../src';
 
 const app = tuft({
   preHandlers: [
@@ -39,5 +39,5 @@ const server = app.createServer({ port: 3000 });
 server
   .start()
   .then(() => {
-    console.log(`Server listening at http://${server.host}:${server.port}`);
+    console.log(`${server.protocol} server listening at http://${server.host}:${server.port}`);
   });
