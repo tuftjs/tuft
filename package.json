@@ -28,22 +28,7 @@
     "test:coverage": "jest --coverage",
     "prepublishOnly": "npm run test && npm run build",
     "build": "rm -rf ./lib && tsc -b",
-    "start-http2:body-parser": "ts-node ./examples/http2/body-parser.ts",
-    "start-http2:cookie-parser": "ts-node ./examples/http2/cookie-parser.ts",
-    "start-http2:file": "ts-node ./examples/http2/file.ts",
-    "start-http2:hello-world": "ts-node ./examples/http2/hello-world.ts",
-    "start-http2:search-params": "ts-node ./examples/http2/search-params.ts",
-    "start-http2:static-files": "ts-node ./examples/http2/static-files.ts",
-    "start-http2:stream-responder": "ts-node ./examples/http2/stream-responder.ts",
-    "start-http2:wildcard-routes": "ts-node ./examples/http2/wildcard-routes.ts",
-    "start-http1:body-parser": "ts-node ./examples/http1/body-parser.ts",
-    "start-http1:cookie-parser": "ts-node ./examples/http1/cookie-parser.ts",
-    "start-http1:file": "ts-node ./examples/http1/file.ts",
-    "start-http1:hello-world": "ts-node ./examples/http1/hello-world.ts",
-    "start-http1:search-params": "ts-node ./examples/http1/search-params.ts",
-    "start-http1:static-files": "ts-node ./examples/http1/static-files.ts",
-    "start-http1:stream-responder": "ts-node ./examples/http1/stream-responder.ts",
-    "start-http1:wildcard-routes": "ts-node ./examples/http1/wildcard-routes.ts"
+    "start": "ts-node ./examples"
   },
   "devDependencies": {
     "@types/jest": "^26.0.0",
