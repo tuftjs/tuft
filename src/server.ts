@@ -286,6 +286,11 @@ function sendFile(
   readStream.pipe(this._response);
 }
 
+/**
+ * A wrapper function for the primary HTTP/2 stream handler. Creates an HTTP/2-compatible stream
+ * object from HTTP/1 request and response objects, and then passes it to the HTTP/2 stream handler.
+ */
+
 export function http1CompatibleHandler(
   handler: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void,
   request: IncomingMessage,
