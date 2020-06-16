@@ -24,37 +24,35 @@ export function createWriteStreamResponder() {
   ) {
     const { writeStream, status } = response;
 
-    if (typeof writeStream === 'function') {
-      // A callback has been provided.
-      if (status) {
-        // Add the provided status to the outgoing headers.
-        outgoingHeaders[HTTP2_HEADER_STATUS] = status;
-      }
-
-      stream.respond(outgoingHeaders);
-
-      let isDrained = true;
-
-      // Wait for all chunks to be written to the stream.
-      await writeStream((chunk, encoding) => {
-        return createPromise(done => {
-          if (!isDrained) {
-            stream.once('drain', () => {
-              isDrained = stream.write(chunk, encoding, done);
-            });
-            return;
-          }
-
-          isDrained = stream.write(chunk, encoding, done);
-        });
-      });
-
-      // Writing is complete, so end the stream.
-      stream.end();
-      return;
+    if (typeof writeStream !== 'function') {
+      // A 'writeStream' callback was not provided, so return the passed response object.
+      return response;
     }
 
-    // A 'writeStream' callback was not provided, so return the passed response object.
-    return response;
+    if (status) {
+      // Add the provided status to the outgoing headers.
+      outgoingHeaders[HTTP2_HEADER_STATUS] = status;
+    }
+
+    stream.respond(outgoingHeaders);
+
+    let isDrained = true;
+
+    // Wait for all chunks to be written to the stream.
+    await writeStream((chunk, encoding) => {
+      return createPromise(done => {
+        if (!isDrained) {
+          stream.once('drain', () => {
+            isDrained = stream.write(chunk, encoding, done);
+          });
+          return;
+        }
+
+        isDrained = stream.write(chunk, encoding, done);
+      });
+    });
+
+    // Writing is complete, so end the stream.
+    stream.end();
   };
 }
