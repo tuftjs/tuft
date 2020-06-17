@@ -35,6 +35,10 @@ const mockFileDate = new Date();
 const mockFsStat = jest
   .spyOn(fsPromises, 'stat')
   .mockImplementation(async (path: PathLike) => {
+    if (path === 'THROW_ERROR') {
+      throw Error('mock error');
+    }
+
     return {
       size: MOCK_FILE_SIZE,
       mtime: mockFileDate,
@@ -264,6 +268,22 @@ describe('TuftRouteMap', () => {
       });
     });
 
+    describe('when passed `/foo` and `index.html`', () => {
+      test('adds `GET /foo/index.html`, `GET /foo/`, `HEAD /foo/index.html`, and `HEAD /foo/` to the map', async () => {
+        const map = new TuftRouteMap();
+
+        await map.static('/foo', 'index.html');
+
+        const result1 = map.get('GET /foo/index.html');
+        expect(result1).toBeDefined();
+        expect(typeof result1.response).toBe('function');
+
+        const result2 = map.get('GET /foo/');
+        expect(result2).toBeDefined();
+        expect(typeof result2.response).toBe('function');
+      });
+    });
+
     describe('when passed `/foo/` and `abc.txt`', () => {
       test('adds `GET /foo/abc.txt` and `HEAD /foo/abc.txt` to the map', async () => {
         const map = new TuftRouteMap();
@@ -283,6 +303,17 @@ describe('TuftRouteMap', () => {
         const map = new TuftRouteMap();
 
         await expect(map.static('foo', 'abc.txt')).resolves.toBeUndefined();
+        expect(mockConsoleError).toHaveBeenCalledWith(err);
+        expect(mockExit).toHaveBeenCalledWith(1);
+      });
+    });
+
+    describe('when an error is thrown', () => {
+      test('rejects with an error', async () => {
+        const err = Error('mock error');
+        const map = new TuftRouteMap();
+
+        await expect(map.static('/foo', 'THROW_ERROR')).resolves.toBeUndefined();
         expect(mockConsoleError).toHaveBeenCalledWith(err);
         expect(mockExit).toHaveBeenCalledWith(1);
       });
