@@ -230,6 +230,11 @@ export class TuftRouteMap extends Map {
     for (const path of pathnames) {
       this.set(`GET ${key + basename(path)}`, handleStaticFileGetRequest.bind(null, path));
       this.set(`HEAD ${key + basename(path)}`, handleStaticFileHeadRequest.bind(null, path));
+
+      if (/^index\.html?$/.test(basename(path))) {
+        this.set(`GET ${key}`, handleStaticFileGetRequest.bind(null, path));
+        this.set(`HEAD ${key}`, handleStaticFileHeadRequest.bind(null, path));
+      }
     }
 
     return this;
