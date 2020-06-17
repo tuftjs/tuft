@@ -224,7 +224,7 @@ export class TuftRouteMap extends Map {
 
     catch (err) {
       console.error(err);
-      process.exit(1);
+      return process.exit(1);
     }
 
     for (const path of pathnames) {
