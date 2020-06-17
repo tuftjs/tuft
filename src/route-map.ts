@@ -216,9 +216,18 @@ export class TuftRouteMap extends Map {
       key += '/';
     }
 
-    const paths = await getFilePaths(path);
+    let pathnames: string[];
 
-    for (const path of paths) {
+    try {
+      pathnames = await getFilePaths(path);
+    }
+
+    catch (err) {
+      console.error(err);
+      process.exit(1);
+    }
+
+    for (const path of pathnames) {
       this.set(`GET ${key + basename(path)}`, handleStaticFileGetRequest.bind(null, path));
       this.set(`HEAD ${key + basename(path)}`, handleStaticFileHeadRequest.bind(null, path));
     }
