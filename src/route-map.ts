@@ -242,12 +242,14 @@ export class TuftRouteMap extends Map {
       if (/^index\.html?$/.test(basename(pathname))) {
         urlPath = dirname(urlPath);
 
-        this.set(
-          `GET ${(key[0] !== '/' ? '/' + key : key) + (urlPath === '.' ? '' : '/' + urlPath)}`, handleStaticFileGetRequest.bind(null, pathname),
-        );
-        this.set(
-          `HEAD ${(key[0] !== '/' ? '/' + key : key) + (urlPath === '.' ? '' : '/' + urlPath)}`, handleStaticFileHeadRequest.bind(null, pathname),
-        );
+        let routePath = key + (urlPath === '.' ? '' : '/' + urlPath);
+
+        if (routePath.length === 0) {
+          routePath = '/';
+        }
+
+        this.set(`GET ${routePath}`, handleStaticFileGetRequest.bind(null, pathname));
+        this.set(`HEAD ${routePath}`, handleStaticFileHeadRequest.bind(null, pathname));
       }
     }
 
