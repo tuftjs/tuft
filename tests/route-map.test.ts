@@ -202,6 +202,29 @@ describe('TuftRouteMap', () => {
   });
 
   describe('TuftRouteMap.prototype.static()', () => {
+    describe('when passed `/` and `abc.txt`', () => {
+      test('adds `GET /abc.txt` and `HEAD /abc.txt` to the map', async () => {
+        const map = new TuftRouteMap();
+
+        await map.static('/', './tests/mocks/abc.txt');
+
+        const getResult = map.get('GET /abc.txt');
+        expect(getResult).toBeDefined();
+        expect(typeof getResult.response).toBe('function');
+
+        const headResult = map.get('HEAD /abc.txt');
+        expect(headResult).toBeDefined();
+        expect(typeof headResult.response).toBe('function');
+
+        expect(map.get('DELETE /abc.txt')).toBeUndefined();
+        expect(map.get('OPTIONS /abc.txt')).toBeUndefined();
+        expect(map.get('PATCH /abc.txt')).toBeUndefined();
+        expect(map.get('POST /abc.txt')).toBeUndefined();
+        expect(map.get('PUT /abc.txt')).toBeUndefined();
+        expect(map.get('TRACE /abc.txt')).toBeUndefined();
+      });
+    });
+
     describe('when passed `/foo` and `abc.txt`', () => {
       test('adds `GET /foo/abc.txt` and `HEAD /foo/abc.txt` to the map', async () => {
         const map = new TuftRouteMap();
@@ -222,6 +245,44 @@ describe('TuftRouteMap', () => {
         expect(map.get('POST /foo/abc.txt')).toBeUndefined();
         expect(map.get('PUT /foo/abc.txt')).toBeUndefined();
         expect(map.get('TRACE /foo/abc.txt')).toBeUndefined();
+      });
+    });
+
+    describe('when passed `/` and `index.html`', () => {
+      test('adds `GET /index.html`, `GET /`, `HEAD /index.html`, and `HEAD /` to the map', async () => {
+        const map = new TuftRouteMap();
+
+        await map.static('/', './tests/mocks/index.html');
+
+        const getResult1 = map.get('GET /index.html');
+        expect(getResult1).toBeDefined();
+        expect(typeof getResult1.response).toBe('function');
+
+        const headResult1 = map.get('HEAD /index.html');
+        expect(headResult1).toBeDefined();
+        expect(typeof headResult1.response).toBe('function');
+
+        expect(map.get('DELETE /index.html')).toBeUndefined();
+        expect(map.get('OPTIONS /index.html')).toBeUndefined();
+        expect(map.get('PATCH /index.html')).toBeUndefined();
+        expect(map.get('POST /index.html')).toBeUndefined();
+        expect(map.get('PUT /index.html')).toBeUndefined();
+        expect(map.get('TRACE /index.html')).toBeUndefined();
+
+        const getResult2 = map.get('GET /');
+        expect(getResult2).toBeDefined();
+        expect(typeof getResult2.response).toBe('function');
+
+        const headResult2 = map.get('HEAD /');
+        expect(headResult2).toBeDefined();
+        expect(typeof headResult2.response).toBe('function');
+
+        expect(map.get('DELETE /')).toBeUndefined();
+        expect(map.get('OPTIONS /')).toBeUndefined();
+        expect(map.get('PATCH /')).toBeUndefined();
+        expect(map.get('POST /')).toBeUndefined();
+        expect(map.get('PUT /')).toBeUndefined();
+        expect(map.get('TRACE /')).toBeUndefined();
       });
     });
 
