@@ -4,7 +4,7 @@ import type { TuftContext } from './context';
 import type { HttpError } from './utils';
 import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
-import { extname, basename } from 'path';
+import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { supportedRequestMethods } from './utils';
@@ -212,13 +212,19 @@ export class TuftRouteMap extends Map {
       return process.exit(1);
     }
 
-    if (!key.endsWith('/')) {
-      key += '/';
+    if (key.endsWith('/')) {
+      key = key.slice(0, key.length - 1);
     }
 
-    let pathnames: string[];
+    if (!isAbsolute(path)) {
+      path = resolve(path);
+    }
+
+    let rootDir: string, pathnames: string[];
 
     try {
+      const stat = await fsPromises.stat(path);
+      rootDir = stat.isDirectory() ? path : dirname(path);
       pathnames = await getFilePaths(path);
     }
 
@@ -227,13 +233,17 @@ export class TuftRouteMap extends Map {
       return process.exit(1);
     }
 
-    for (const path of pathnames) {
-      this.set(`GET ${key + basename(path)}`, handleStaticFileGetRequest.bind(null, path));
-      this.set(`HEAD ${key + basename(path)}`, handleStaticFileHeadRequest.bind(null, path));
+    for (const pathname of pathnames) {
+      let urlPath = relative(rootDir, pathname);
 
-      if (/^index\.html?$/.test(basename(path))) {
-        this.set(`GET ${key}`, handleStaticFileGetRequest.bind(null, path));
-        this.set(`HEAD ${key}`, handleStaticFileHeadRequest.bind(null, path));
+      this.set(`GET ${key + '/' + urlPath}`, handleStaticFileGetRequest.bind(null, pathname));
+      this.set(`HEAD ${key + '/' + urlPath}`, handleStaticFileHeadRequest.bind(null, pathname));
+
+      if (/^index\.html?$/.test(basename(pathname))) {
+        urlPath = dirname(urlPath);
+
+        this.set(`GET ${key + (urlPath === '.' ? '' : '/' + urlPath)}`, handleStaticFileGetRequest.bind(null, pathname));
+        this.set(`HEAD ${key + (urlPath === '.' ? '' : '/' + urlPath)}`, handleStaticFileHeadRequest.bind(null, pathname));
       }
     }
 
@@ -300,7 +310,7 @@ export async function getFilePaths(path: string) {
     result.push(path);
   }
 
-  else if (stat.isDirectory()) {
+  else {
     const dir = await fsPromises.opendir(path);
 
     for await (const dirent of dir) {
