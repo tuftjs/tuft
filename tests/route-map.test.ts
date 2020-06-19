@@ -414,8 +414,6 @@ describe('TuftRouteMap', () => {
 
         await map.static('/', './tests/mocks');
 
-        console.log(map);
-
         const getResult1 = map.get('GET /abc.txt');
         expect(getResult1).toBeDefined();
         expect(typeof getResult1.response).toBe('function');
