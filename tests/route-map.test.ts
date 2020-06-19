@@ -1,6 +1,6 @@
-import type { Stats, Dir, PathLike } from 'fs';
 import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
+import { resolve } from 'path';
 import {
   TuftRouteMap,
   handleStaticFileGetRequest,
@@ -28,57 +28,6 @@ const {
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_NOT_IMPLEMENTED,
 } = constants;
-
-const MOCK_FILE_SIZE = 42;
-const mockFileDate = new Date();
-
-const mockFsStat = jest
-  .spyOn(fsPromises, 'stat')
-  .mockImplementation(async (path: PathLike) => {
-    if (path === 'THROW_ERROR') {
-      throw Error('mock error');
-    }
-
-    return {
-      size: MOCK_FILE_SIZE,
-      mtime: mockFileDate,
-      isFile: () => {
-        if ((path as string).length === 0) {
-          return false;
-        }
-
-        return /\./.test(path as string);
-      },
-      isDirectory: () => {
-        if ((path as string).length === 0) {
-          return false;
-        }
-
-        return !/\./.test(path as string);
-      },
-    } as Stats;
-  });
-
-const mockFsOpendir = jest
-  .spyOn(fsPromises, 'opendir')
-  .mockImplementation(async () => {
-    return {
-      [Symbol.iterator]() {
-        return {
-          i: 0,
-          next() {
-            if (this.i < 3) {
-              const n = this.i;
-              this.i++;
-              return { value: { name: `${n}.txt` }, done: false };
-            }
-
-            return { done: true };
-          }
-        };
-      },
-    } as unknown as Dir;
-  });
 
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => { });
 const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -124,8 +73,6 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  mockFsStat.mockRestore();
-  mockFsOpendir.mockRestore();
   mockConsoleError.mockRestore();
   mockExit.mockRestore();
 });
@@ -259,12 +206,22 @@ describe('TuftRouteMap', () => {
       test('adds `GET /foo/abc.txt` and `HEAD /foo/abc.txt` to the map', async () => {
         const map = new TuftRouteMap();
 
-        await map.static('/foo', 'abc.txt');
+        await map.static('/foo', './tests/mocks/abc.txt');
 
-        const result = map.get('GET /foo/abc.txt');
+        const getResult = map.get('GET /foo/abc.txt');
+        expect(getResult).toBeDefined();
+        expect(typeof getResult.response).toBe('function');
 
-        expect(result).toBeDefined();
-        expect(typeof result.response).toBe('function');
+        const headResult = map.get('HEAD /foo/abc.txt');
+        expect(headResult).toBeDefined();
+        expect(typeof headResult.response).toBe('function');
+
+        expect(map.get('DELETE /foo/abc.txt')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PATCH /fooabc.txt')).toBeUndefined();
+        expect(map.get('POST /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PUT /foo/abc.txt')).toBeUndefined();
+        expect(map.get('TRACE /foo/abc.txt')).toBeUndefined();
       });
     });
 
@@ -272,15 +229,75 @@ describe('TuftRouteMap', () => {
       test('adds `GET /foo/index.html`, `GET /foo/`, `HEAD /foo/index.html`, and `HEAD /foo/` to the map', async () => {
         const map = new TuftRouteMap();
 
-        await map.static('/foo', 'index.html');
+        await map.static('/foo', './tests/mocks/index.html');
 
-        const result1 = map.get('GET /foo/index.html');
-        expect(result1).toBeDefined();
-        expect(typeof result1.response).toBe('function');
+        const getResult1 = map.get('GET /foo/index.html');
+        expect(getResult1).toBeDefined();
+        expect(typeof getResult1.response).toBe('function');
 
-        const result2 = map.get('GET /foo/');
-        expect(result2).toBeDefined();
-        expect(typeof result2.response).toBe('function');
+        const headResult1 = map.get('HEAD /foo/index.html');
+        expect(headResult1).toBeDefined();
+        expect(typeof headResult1.response).toBe('function');
+
+        expect(map.get('DELETE /foo/index.html')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/index.html')).toBeUndefined();
+        expect(map.get('PATCH /foo/index.html')).toBeUndefined();
+        expect(map.get('POST /foo/index.html')).toBeUndefined();
+        expect(map.get('PUT /foo/index.html')).toBeUndefined();
+        expect(map.get('TRACE /foo/index.html')).toBeUndefined();
+
+        const getResult2 = map.get('GET /foo');
+        expect(getResult2).toBeDefined();
+        expect(typeof getResult2.response).toBe('function');
+
+        const headResult2 = map.get('HEAD /foo');
+        expect(headResult2).toBeDefined();
+        expect(typeof headResult2.response).toBe('function');
+
+        expect(map.get('DELETE /foo')).toBeUndefined();
+        expect(map.get('OPTIONS /foo')).toBeUndefined();
+        expect(map.get('PATCH /foo')).toBeUndefined();
+        expect(map.get('POST /foo')).toBeUndefined();
+        expect(map.get('PUT /foo')).toBeUndefined();
+        expect(map.get('TRACE /foo')).toBeUndefined();
+      });
+    });
+
+    describe('when passed `/foo` and `index.html`', () => {
+      test('adds `GET /foo/index.html`, `GET /foo/`, `HEAD /foo/index.html`, and `HEAD /foo/` to the map', async () => {
+        const map = new TuftRouteMap();
+
+        await map.static('/foo', './tests/mocks/index.html');
+
+        const getResult1 = map.get('GET /foo/index.html');
+        expect(getResult1).toBeDefined();
+        expect(typeof getResult1.response).toBe('function');
+
+        const headResult1 = map.get('HEAD /foo/index.html');
+        expect(headResult1).toBeDefined();
+        expect(typeof headResult1.response).toBe('function');
+
+        expect(map.get('DELETE /foo/index.html')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/index.html')).toBeUndefined();
+        expect(map.get('PATCH /foo/index.html')).toBeUndefined();
+        expect(map.get('POST /foo/index.html')).toBeUndefined();
+        expect(map.get('PUT /foo/index.html')).toBeUndefined();
+        expect(map.get('TRACE /foo/index.html')).toBeUndefined();
+
+        const getResult2 = map.get('GET /foo');
+        expect(getResult2).toBeDefined();
+        expect(typeof getResult2.response).toBe('function');
+
+        const headResult2 = map.get('HEAD /foo');
+        expect(headResult2).toBeDefined();
+        expect(typeof headResult2.response).toBe('function');
+
+        expect(map.get('DELETE /foo')).toBeUndefined();
+        expect(map.get('OPTIONS /foo')).toBeUndefined();
+        expect(map.get('PATCH /foo')).toBeUndefined();
+        expect(map.get('POST /foo')).toBeUndefined();
+        expect(map.get('PUT /foo')).toBeUndefined();
+        expect(map.get('TRACE /foo')).toBeUndefined();
       });
     });
 
@@ -288,12 +305,83 @@ describe('TuftRouteMap', () => {
       test('adds `GET /foo/abc.txt` and `HEAD /foo/abc.txt` to the map', async () => {
         const map = new TuftRouteMap();
 
-        await map.static('/foo/', 'abc.txt');
+        await map.static('/foo/', './tests/mocks/abc.txt');
 
-        const result = map.get('GET /foo/abc.txt');
+        const getResult = map.get('GET /foo/abc.txt');
+        expect(getResult).toBeDefined();
+        expect(typeof getResult.response).toBe('function');
 
-        expect(result).toBeDefined();
-        expect(typeof result.response).toBe('function');
+        const headResult = map.get('HEAD /foo/abc.txt');
+        expect(headResult).toBeDefined();
+        expect(typeof headResult.response).toBe('function');
+
+        expect(map.get('DELETE /foo/abc.txt')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PATCH /foo/abc.txt')).toBeUndefined();
+        expect(map.get('POST /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PUT /foo/abc.txt')).toBeUndefined();
+        expect(map.get('TRACE /foo/abc.txt')).toBeUndefined();
+      });
+    });
+
+    describe('when passed `/foo` and `resolve(\'abc.txt\')`', () => {
+      test('adds `GET /foo/abc.txt` and `HEAD /foo/abc.txt` to the map', async () => {
+        const map = new TuftRouteMap();
+
+        await map.static('/foo/', resolve('./tests/mocks/abc.txt'));
+
+        const getResult = map.get('GET /foo/abc.txt');
+        expect(getResult).toBeDefined();
+        expect(typeof getResult.response).toBe('function');
+
+        const headResult = map.get('HEAD /foo/abc.txt');
+        expect(headResult).toBeDefined();
+        expect(typeof headResult.response).toBe('function');
+
+        expect(map.get('DELETE /foo/abc.txt')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PATCH /foo/abc.txt')).toBeUndefined();
+        expect(map.get('POST /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PUT /foo/abc.txt')).toBeUndefined();
+        expect(map.get('TRACE /foo/abc.txt')).toBeUndefined();
+      });
+    });
+
+    describe('when passed `/foo` and `./tests/mocks`', () => {
+      test('adds the expected entries to the map', async () => {
+        const map = new TuftRouteMap();
+
+        await map.static('/foo/', './tests/mocks');
+
+        const getResult1 = map.get('GET /foo/abc.txt');
+        expect(getResult1).toBeDefined();
+        expect(typeof getResult1.response).toBe('function');
+
+        const headResult1 = map.get('HEAD /foo/abc.txt');
+        expect(headResult1).toBeDefined();
+        expect(typeof headResult1.response).toBe('function');
+
+        expect(map.get('DELETE /foo/abc.txt')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PATCH /foo/abc.txt')).toBeUndefined();
+        expect(map.get('POST /foo/abc.txt')).toBeUndefined();
+        expect(map.get('PUT /foo/abc.txt')).toBeUndefined();
+        expect(map.get('TRACE /foo/abc.txt')).toBeUndefined();
+
+        const getResult2 = map.get('GET /foo/assets/abc.txt');
+        expect(getResult2).toBeDefined();
+        expect(typeof getResult2.response).toBe('function');
+
+        const headResult2 = map.get('HEAD /foo/assets/abc.txt');
+        expect(headResult2).toBeDefined();
+        expect(typeof headResult2.response).toBe('function');
+
+        expect(map.get('DELETE /foo/assets/abc.txt')).toBeUndefined();
+        expect(map.get('OPTIONS /foo/assets/abc.txt')).toBeUndefined();
+        expect(map.get('PATCH /foo/assets/abc.txt')).toBeUndefined();
+        expect(map.get('POST /foo/assets/abc.txt')).toBeUndefined();
+        expect(map.get('PUT /foo/assets/abc.txt')).toBeUndefined();
+        expect(map.get('TRACE /foo/assets/abc.txt')).toBeUndefined();
       });
     });
 
@@ -302,7 +390,8 @@ describe('TuftRouteMap', () => {
         const err = TypeError('The first argument of .static() must be a plain route path.');
         const map = new TuftRouteMap();
 
-        await expect(map.static('foo', 'abc.txt')).resolves.toBeUndefined();
+        const promise = map.static('foo', 'abc.txt');
+        await expect(promise).resolves.toBeUndefined();
         expect(mockConsoleError).toHaveBeenCalledWith(err);
         expect(mockExit).toHaveBeenCalledWith(1);
       });
@@ -310,11 +399,10 @@ describe('TuftRouteMap', () => {
 
     describe('when an error is thrown', () => {
       test('rejects with an error', async () => {
-        const err = Error('mock error');
         const map = new TuftRouteMap();
 
         await expect(map.static('/foo', 'THROW_ERROR')).resolves.toBeUndefined();
-        expect(mockConsoleError).toHaveBeenCalledWith(err);
+        expect(mockConsoleError).toHaveBeenCalled();
         expect(mockExit).toHaveBeenCalledWith(1);
       });
     });
@@ -353,11 +441,11 @@ describe('TuftRouteMap', () => {
 
 describe('handleStaticFileGetRequest()', () => {
   test('returns the expected object', async () => {
-    const result = handleStaticFileGetRequest('abc.txt', mockContext);
+    const result = handleStaticFileGetRequest('./tests/mocks/abc.txt', mockContext);
 
     await expect(result).resolves.toEqual({
       status: HTTP_STATUS_OK,
-      file: 'abc.txt',
+      file: './tests/mocks/abc.txt',
     });
   });
 });
@@ -369,7 +457,7 @@ describe('handleStaticFileGetRequest()', () => {
 
 describe('handleStaticFileHeadRequest()', () => {
   test('returns the expected object', async () => {
-    const result = handleStaticFileHeadRequest('abc.txt', mockContext);
+    const result = handleStaticFileHeadRequest('./tests/mocks/abc.txt', mockContext);
 
     await expect(result).resolves.toEqual({
       status: HTTP_STATUS_OK,
@@ -384,35 +472,18 @@ describe('handleStaticFileHeadRequest()', () => {
 describe('getFilePaths()', () => {
   describe('when passed a string representing a file path', () => {
     test('returns that file path in an array', async () => {
-      const filename = 'abc.txt';
+      const filename = './tests/mocks/abc.txt';
       const result = getFilePaths(filename);
-
       await expect(result).resolves.toEqual([filename]);
-      expect(mockFsStat).toHaveBeenCalledWith(filename);
-      expect(mockFsOpendir).not.toHaveBeenCalled();
     });
   });
 
   describe('when passed a string representing a directory path', () => {
     test('returns that path concatenated with a filename in an array', async () => {
-      const dirname = 'abc';
-      const result = getFilePaths(dirname);
-
-      await expect(result).resolves.toEqual([
-        dirname + '/0.txt',
-        dirname + '/1.txt',
-        dirname + '/2.txt',
-      ]);
-      expect(mockFsStat).toHaveBeenCalledWith(dirname);
-      expect(mockFsOpendir).toHaveBeenCalledWith(dirname);
-    });
-  });
-
-  describe('when passed an empty string', () => {
-    test('returns an empty array', async () => {
-      const result = getFilePaths('');
-
-      await expect(result).resolves.toEqual([]);
+      const dirname = './tests/mocks/assets';
+      const result = await getFilePaths(dirname);
+      expect(result).toContain(dirname + '/abc.txt');
+      expect(result).toContain(dirname + '/def.txt');
     });
   });
 });
@@ -424,37 +495,38 @@ describe('getFilePaths()', () => {
 describe('createStaticFileResponseObject()', () => {
   describe('when passed a context with a \'range\' header', () => {
     test('returns the expected object', async () => {
+      const stats = await fsPromises.stat('./tests/mocks/abc.txt');
+
       mockContext.request.headers.range = 'bytes=0-';
 
-      const result = createStaticFileResponseObject(mockContext, 'abc.txt');
+      const result = createStaticFileResponseObject(mockContext, './tests/mocks/abc.txt');
 
       const expectedResult = {
         status: HTTP_STATUS_PARTIAL_CONTENT,
-        file: 'abc.txt',
+        file: './tests/mocks/abc.txt',
         offset: 0,
-        length: MOCK_FILE_SIZE,
+        length: 4,
       };
 
       await expect(result).resolves.toEqual(expectedResult);
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, mockFileDate.toUTCString());
+        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(
-          HTTP2_HEADER_CONTENT_RANGE,
-          `bytes 0-${MOCK_FILE_SIZE - 1}/${MOCK_FILE_SIZE}`
-        );
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_RANGE, 'bytes 0-3/4');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, MOCK_FILE_SIZE);
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 4);
     });
   });
 
   describe('when passed a context with a \'range\' header that is not satisfiable', () => {
     test('returns the expected object', async () => {
-      mockContext.request.headers.range = `bytes=0-${MOCK_FILE_SIZE + 1}`;
+      const stats = await fsPromises.stat('./tests/mocks/abc.txt');
 
-      const result = createStaticFileResponseObject(mockContext, 'abc.txt');
+      mockContext.request.headers.range = 'bytes=0-4';
+
+      const result = createStaticFileResponseObject(mockContext, './tests/mocks/abc.txt');
 
       const expectedResult = {
         error: 'RANGE_NOT_SATISFIABLE',
@@ -464,36 +536,37 @@ describe('createStaticFileResponseObject()', () => {
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, mockFileDate.toUTCString());
+        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
     });
   });
 
   describe('when passed a context without a \'range\' header', () => {
     test('returns the expected object', async () => {
-      const result = createStaticFileResponseObject(mockContext, 'abc.txt');
+      const stats = await fsPromises.stat('./tests/mocks/abc.txt');
+      const result = createStaticFileResponseObject(mockContext, './tests/mocks/abc.txt');
 
       const expectedResult = {
         status: HTTP_STATUS_OK,
-        file: 'abc.txt',
+        file: './tests/mocks/abc.txt',
       };
 
       await expect(result).resolves.toEqual(expectedResult);
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
       expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, mockFileDate.toUTCString());
-      expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, MOCK_FILE_SIZE);
+        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 4);
     });
   });
 
   describe('when passed a file with undetermined file type', () => {
     test('returns the expected object', async () => {
-      const result = createStaticFileResponseObject(mockContext, 'abc.foo');
+      const stats = await fsPromises.stat('./tests/mocks/abc.foo');
+      const result = createStaticFileResponseObject(mockContext, './tests/mocks/abc.foo');
 
       const expectedResult = {
         status: HTTP_STATUS_OK,
-        file: 'abc.foo',
+        file: './tests/mocks/abc.foo',
       };
 
       await expect(result).resolves.toEqual(expectedResult);
@@ -503,9 +576,9 @@ describe('createStaticFileResponseObject()', () => {
         'application/octet-stream',
       );
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, mockFileDate.toUTCString());
+        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, MOCK_FILE_SIZE);
+        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 4);
     });
   });
 });

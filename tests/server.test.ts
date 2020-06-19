@@ -443,7 +443,7 @@ describe('Http2CompatibleServerStream', () => {
       const stream = new Http2CompatibleServerStream(mockRequest, mockResponse);
       expect(stream).toBeInstanceOf(Http2CompatibleServerStream);
 
-      stream.respondWithFile(join(__dirname, 'mocks', 'text-file.txt'));
+      stream.respondWithFile(join(__dirname, 'mocks', 'abc.txt'));
       expect(mockResponse.writeHead).toHaveBeenCalled();
 
       mockResponse.on('finish', () => {
@@ -468,7 +468,7 @@ describe('Http2CompatibleServerStream', () => {
       const stream = new Http2CompatibleServerStream(mockRequest, mockResponse);
       expect(stream).toBeInstanceOf(Http2CompatibleServerStream);
 
-      stream.respondWithFile(join(__dirname, 'mocks', 'text-file.txt'), {}, { offset: 0, length: 1 });
+      stream.respondWithFile(join(__dirname, 'mocks', 'abc.txt'), {}, { offset: 0, length: 1 });
       expect(mockResponse.writeHead).toHaveBeenCalled();
 
       mockResponse.on('finish', () => {
@@ -499,7 +499,7 @@ describe('Http2CompatibleServerStream', () => {
 
       const statCheck = jest.fn();
 
-      stream.respondWithFile(join(__dirname, 'mocks', 'text-file.txt'), {}, { statCheck });
+      stream.respondWithFile(join(__dirname, 'mocks', 'abc.txt'), {}, { statCheck });
       expect(mockResponse.writeHead).toHaveBeenCalled();
 
       mockResponse.on('finish', () => {
@@ -564,7 +564,7 @@ describe('Http2CompatibleServerStream', () => {
 
       const onError = jest.fn();
 
-      stream.respondWithFile(join(__dirname, 'mocks', 'text-file.txt'), {}, { onError });
+      stream.respondWithFile(join(__dirname, 'mocks', 'abc.txt'), {}, { onError });
       expect(mockResponse.writeHead).toHaveBeenCalled();
 
       mockResponse.on('finish', () => {
