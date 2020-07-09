@@ -41,15 +41,15 @@ const urlEncodedChunks = [
 ];
 
 /**
- * createBodyParser() without an options argument
+ * createBodyParser('text')
  */
 
-describe('createBodyParser() without an options argument', () => {
+describe('createBodyParser(`raw`)', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser();
+    bodyParser = createBodyParser('raw');
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -58,28 +58,12 @@ describe('createBodyParser() without an options argument', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
-      });
-    });
-
-    describe('when passed a stream with only one chunk of data', () => {
-      const context = createMockContext();
-      const [chunk] = textChunks;
-
-      context.request.headers['content-type'] = 'text/plain';
-      context.request.headers['content-length'] = chunk.length.toString();
-
-      test('adds a `body` property set to the expected value to the request object', async () => {
-        const promise = bodyParser(context);
-        context[streamSymbol].end(chunk);
-
-        await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', chunk);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
@@ -87,7 +71,7 @@ describe('createBodyParser() without an options argument', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(textChunks);
 
-      context.request.headers['content-type'] = 'text/plain';
+      context.request.headers['content-type'] = 'application/octet-stream';
       context.request.headers['content-length'] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
@@ -100,33 +84,63 @@ describe('createBodyParser() without an options argument', () => {
       });
     });
 
-    describe('when passed a stream with data and no `content-type` header', () => {
-      const context = createMockContext();
-      const expectedBody = Buffer.concat(textChunks);
-
-      context.request.headers['content-length'] = expectedBody.length.toString();
-
-      test('adds a `body` property set to the expected value to the request object', async () => {
-        const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
-
-        await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', expectedBody);
-      });
-    });
-
-    describe('when passed a stream with data but no `content-length` header', () => {
+    describe('when passed a stream without a `content-length` header', () => {
       const context = createMockContext();
 
-      context.request.headers['content-type'] = 'text/plain';
+      context.request.headers['content-type'] = 'application/octet-stream';
 
-      test('rejects with an error', async () => {
+      test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
         context[streamSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'LENGTH_REQUIRED' });
+        expect(context.request).not.toHaveProperty('body');
+      });
+    });
+
+    describe('when passed a stream without a valid `content-length` header', () => {
+      const context = createMockContext();
+
+      context.request.headers['content-type'] = 'application/octet-stream';
+      context.request.headers['content-length'] = 'this is not a number';
+
+      test('resolves with an HTTP error response object', async () => {
+        const promise = bodyParser(context);
+        context[streamSymbol].end();
+
+        await expect(promise).resolves.toEqual({ error: 'BAD_REQUEST' });
+        expect(context.request).not.toHaveProperty('body');
+      });
+    });
+
+    describe('when passed a stream with data of size greater than `content-length`', () => {
+      const context = createMockContext();
+
+      context.request.headers['content-type'] = 'application/octet-stream';
+      context.request.headers['content-length'] = '1';
+
+      test('resolves with an HTTP error response object', async () => {
+        const promise = bodyParser(context);
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
+
+        await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
+        expect(context.request).not.toHaveProperty('body');
+      });
+    });
+
+    describe('when passed a stream with data of size less than `content-length`', () => {
+      const context = createMockContext();
+
+      context.request.headers['content-type'] = 'application/octet-stream';
+      context.request.headers['content-length'] = '10';
+
+      test('resolves with an HTTP error response object', async () => {
+        const promise = bodyParser(context);
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
+
+        await expect(promise).resolves.toEqual({ error: 'BAD_REQUEST' });
         expect(context.request).not.toHaveProperty('body');
       });
     });
@@ -134,15 +148,15 @@ describe('createBodyParser() without an options argument', () => {
 });
 
 /**
- * createBodyParser() with option `text` set to true
+ * createBodyParser('raw') with second argument set to 0
  */
 
-describe('createBodyParser() with option `text` set to true', () => {
+describe('createBodyParser(`raw`) with second argument set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ text: true });
+    bodyParser = createBodyParser('raw', 0);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -151,12 +165,87 @@ describe('createBodyParser() with option `text` set to true', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
+      });
+    });
+  });
+});
+
+/**
+ * createBodyParser('raw') with second argument set to 1
+ */
+
+describe('createBodyParser(`raw`) with second argument set to 1', () => {
+  let bodyParser: (t: MockTuftContext) => Promise<void>;
+
+  test('returns a function named `bodyParser`', () => {
+    //@ts-expect-error
+    bodyParser = createBodyParser('raw', 1);
+    expect(typeof bodyParser).toBe('function');
+    expect(bodyParser.name).toBe('bodyParser');
+  });
+
+  describe('bodyParser()', () => {
+    describe('when passed a stream with NO data', () => {
+      const context = createMockContext();
+
+      test('does not add a `body` property to the request object', async () => {
+        const promise = bodyParser(context);
+        context[streamSymbol].end();
+
+        await expect(promise).resolves.toBeUndefined();
+        expect(context.request).not.toHaveProperty('body');
+      });
+    });
+
+    describe('when passed a stream with data that exceeds the set body size limit', () => {
+      const context = createMockContext();
+      const expectedBody = Buffer.concat(textChunks);
+
+      context.request.headers['content-type'] = 'application/octet-stream';
+      context.request.headers['content-length'] = expectedBody.length.toString();
+
+      test('resolves with an HTTP error response object', async () => {
+        const promise = bodyParser(context);
+        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
+        context[streamSymbol].end();
+
+        await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
+        expect(context.request).not.toHaveProperty('body');
+      });
+    });
+  });
+});
+
+/**
+ * createBodyParser('text')
+ */
+
+describe('createBodyParser(`text`)', () => {
+  let bodyParser: (t: MockTuftContext) => Promise<void>;
+
+  test('returns a function named `bodyParser`', () => {
+    //@ts-expect-error
+    bodyParser = createBodyParser('text');
+    expect(typeof bodyParser).toBe('function');
+    expect(bodyParser.name).toBe('bodyParser');
+  });
+
+  describe('bodyParser()', () => {
+    describe('when passed a stream with NO data', () => {
+      const context = createMockContext();
+
+      test('does not add a `body` property to the request object', async () => {
+        const promise = bodyParser(context);
+        context[streamSymbol].end();
+
+        await expect(promise).resolves.toBeUndefined();
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
@@ -180,15 +269,15 @@ describe('createBodyParser() with option `text` set to true', () => {
 });
 
 /**
- * createBodyParser() with option `text` set to 0
+ * createBodyParser('text') with second argument set to 0
  */
 
-describe('createBodyParser() with option `text` set to 0', () => {
+describe('createBodyParser(`text`) with second argument set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ text: 0 });
+    bodyParser = createBodyParser('text', 0);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -197,27 +286,27 @@ describe('createBodyParser() with option `text` set to 0', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
   });
 });
 
 /**
- * createBodyParser() with option `text` set to 1
+ * createBodyParser('text') with second argument set to 1
  */
 
-describe('createBodyParser() with option `text` set to 1', () => {
+describe('createBodyParser(`text`) with second argument set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ text: 1 });
+    bodyParser = createBodyParser('text', 1);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -226,12 +315,12 @@ describe('createBodyParser() with option `text` set to 1', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
@@ -242,7 +331,7 @@ describe('createBodyParser() with option `text` set to 1', () => {
       context.request.headers['content-type'] = 'text/plain';
       context.request.headers['content-length'] = expectedBody.length.toString();
 
-      test('rejects with an error', async () => {
+      test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
         textChunks.forEach(chunk => context[streamSymbol].write(chunk));
         context[streamSymbol].end();
@@ -255,15 +344,15 @@ describe('createBodyParser() with option `text` set to 1', () => {
 });
 
 /**
- * createBodyParser() with option `json` set to true
+ * createBodyParser('json')
  */
 
-describe('createBodyParser() with option `json` set to true', () => {
+describe('createBodyParser(`json`)', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ json: true });
+    bodyParser = createBodyParser('json');
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -272,12 +361,12 @@ describe('createBodyParser() with option `json` set to true', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
@@ -301,15 +390,15 @@ describe('createBodyParser() with option `json` set to true', () => {
 });
 
 /**
- * createBodyParser() with option `json` set to 0
+ * createBodyParser('json') with second argument set to 0
  */
 
-describe('createBodyParser() with option `json` set to 0', () => {
+describe('createBodyParser(`json`) with second argument set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ json: 0 });
+    bodyParser = createBodyParser('json', 0);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -318,27 +407,27 @@ describe('createBodyParser() with option `json` set to 0', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
   });
 });
 
 /**
- * createBodyParser() with option `json` set to 1
+ * createBodyParser('json') with second argument set to 1
  */
 
-describe('createBodyParser() with option `json` set to 1', () => {
+describe('createBodyParser(`json`) with second argument set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ json: 1 });
+    bodyParser = createBodyParser('json', 1);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -347,12 +436,12 @@ describe('createBodyParser() with option `json` set to 1', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
@@ -376,15 +465,15 @@ describe('createBodyParser() with option `json` set to 1', () => {
 });
 
 /**
- * createBodyParser() with option `urlEncoded` set to true
+ * createBodyParser('urlEncoded')
  */
 
-describe('createBodyParser() with option `urlEncoded` set to true', () => {
+describe('createBodyParser(`urlEncoded`)', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ urlEncoded: true });
+    bodyParser = createBodyParser('urlEncoded');
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -393,12 +482,12 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
@@ -440,15 +529,15 @@ describe('createBodyParser() with option `urlEncoded` set to true', () => {
 });
 
 /**
- * createBodyParser() with option `urlEncoded` set to 0
+ * createBodyParser('urlEncoded') with second argument set to 0
  */
 
-describe('createBodyParser() with option `urlEncoded` set to 0', () => {
+describe('createBodyParser(`urlEncoded`) with second argument set to 0', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ urlEncoded: 0 });
+    bodyParser = createBodyParser('urlEncoded', 0);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -457,27 +546,27 @@ describe('createBodyParser() with option `urlEncoded` set to 0', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
   });
 });
 
 /**
- * createBodyParser() with option `urlEncoded` set to 1
+ * createBodyParser('urlEncoded') with second argument set to 1
  */
 
-describe('createBodyParser() with option `urlEncoded` set to 1', () => {
+describe('createBodyParser(`urlEncoded`) with second argument set to 1', () => {
   let bodyParser: (t: MockTuftContext) => Promise<void>;
 
   test('returns a function named `bodyParser`', () => {
     //@ts-expect-error
-    bodyParser = createBodyParser({ urlEncoded: 1 });
+    bodyParser = createBodyParser('urlEncoded', 1);
     expect(typeof bodyParser).toBe('function');
     expect(bodyParser.name).toBe('bodyParser');
   });
@@ -486,12 +575,12 @@ describe('createBodyParser() with option `urlEncoded` set to 1', () => {
     describe('when passed a stream with NO data', () => {
       const context = createMockContext();
 
-      test('adds a `body` property set to null to the request object', async () => {
+      test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
         context[streamSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
-        expect(context.request).toHaveProperty('body', null);
+        expect(context.request).not.toHaveProperty('body');
       });
     });
 
