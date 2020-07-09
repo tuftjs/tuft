@@ -17,7 +17,7 @@ const finished = promisify(finishedStream);
  * the request body type is compatible.
  */
 
-export function createBodyParser(type: string, maxSize?: number) {
+export function createBodyParser(type: string, maxSize: number = DEFAULT_MAX_BODY_SIZE) {
   let regexp: RegExp;
   let convertFn: (buf: Buffer) => Buffer | string | object;
 
@@ -40,11 +40,7 @@ export function createBodyParser(type: string, maxSize?: number) {
       break;
   }
 
-  if (!maxSize) {
-    maxSize = DEFAULT_MAX_BODY_SIZE;
-  }
-
-  else if (maxSize <= 0) {
+  if (maxSize <= 0) {
     maxSize = Infinity;
   }
 
@@ -73,6 +69,12 @@ export function createBodyParser(type: string, maxSize?: number) {
       // The 'content-length' header string does not parse to a valid number.
       return {
         error: 'BAD_REQUEST',
+      };
+    }
+
+    if (expectedContentLength > maxSize) {
+      return {
+        error: 'PAYLOAD_TOO_LARGE',
       };
     }
 
