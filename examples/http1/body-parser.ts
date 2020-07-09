@@ -2,11 +2,10 @@ import { tuft, createBodyParser } from '../../src';
 
 const app = tuft({
   preHandlers: [
-    createBodyParser({
-      text: true,
-      json: true,
-      urlEncoded: true,
-    }),
+    createBodyParser('raw'),
+    createBodyParser('text'),
+    createBodyParser('json'),
+    createBodyParser('urlEncoded'),
   ],
 });
 
