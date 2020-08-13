@@ -38,6 +38,8 @@ export type SecureServerOptions = {
   cert?: string | Buffer | Array<string | Buffer>,
 };
 
+// this is a test comment
+
 abstract class TuftServerBase extends EventEmitter {
   readonly #server: Http2Server | Http2SecureServer | Http1Server | Http1SecureServer;
   readonly #host: string;
