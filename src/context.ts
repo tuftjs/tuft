@@ -1,11 +1,6 @@
-import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
+import type { IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
 import { escape } from 'querystring';
-import {
-  HTTP2_HEADER_METHOD,
-  HTTP2_HEADER_PATH,
-  HTTP2_HEADER_SCHEME,
-  HTTP2_HEADER_SET_COOKIE,
-} from './constants';
+import { HTTP_HEADER_SET_COOKIE } from './constants';
 
 export type TuftContextOptions = {
   params?: { [key: number]: string };
@@ -26,7 +21,6 @@ export interface TuftRequest {
   readonly headers: IncomingHttpHeaders;
   readonly method: string;
   readonly pathname: string;
-  readonly secure: boolean;
   readonly search: string;
   readonly params: { [key: string]: string };
   cookies?: { [key: string]: string };
@@ -34,7 +28,8 @@ export interface TuftRequest {
   [key: string]: any;
 }
 
-export const streamSymbol = Symbol.for('tuft.http2Stream');
+export const requestSymbol = Symbol.for('tuft.incomingMessage');
+export const responseSymbol = Symbol.for('tuft.serverResponse');
 
 /**
  * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
@@ -42,26 +37,22 @@ export const streamSymbol = Symbol.for('tuft.http2Stream');
  */
 
 export class TuftContext {
-  private readonly _outgoingHeaders: OutgoingHttpHeaders;
-  readonly [streamSymbol]: ServerHttp2Stream;
+  readonly [requestSymbol]: IncomingMessage;
+  readonly [responseSymbol]: ServerResponse;
   readonly request: TuftRequest;
 
-  constructor(stream: ServerHttp2Stream, request: TuftRequest) {
-    this._outgoingHeaders = Object.create(null);
-    this[streamSymbol] = stream;
-    this.request = request;
-  }
-
-  get outgoingHeaders() {
-    return this._outgoingHeaders;
+  constructor(request: IncomingMessage, response: ServerResponse, tuftRequest: TuftRequest) {
+    this[requestSymbol] = request;
+    this[responseSymbol] = response;
+    this.request = tuftRequest;
   }
 
   /**
    * Sets the provided outgoing header 'name' to 'value'.
    */
 
-  setHeader(name: string, value: number | string | string[] | undefined) {
-    this._outgoingHeaders[name] = value;
+  setHeader(name: string, value: number | string | string[]) {
+    this[responseSymbol].setHeader(name, value);
     return this;
   }
 
@@ -70,7 +61,7 @@ export class TuftContext {
    */
 
   getHeader(name: string) {
-    return this._outgoingHeaders[name];
+    return this[responseSymbol].getHeader(name);
   }
 
   /**
@@ -79,11 +70,11 @@ export class TuftContext {
    */
 
   setCookie(name: string, value: string, options: SetCookieOptions = {}) {
-    if (this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] === undefined) {
-      this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] = [];
+    if (!this[responseSymbol].hasHeader(HTTP_HEADER_SET_COOKIE)) {
+      this[responseSymbol].setHeader(HTTP_HEADER_SET_COOKIE, []);
     }
 
-    const cookieHeader = this._outgoingHeaders[HTTP2_HEADER_SET_COOKIE] as string[];
+    const cookieHeader = this[responseSymbol].getHeader(HTTP_HEADER_SET_COOKIE) as string[];
     let cookie = escape(name) + '=' + escape(value);
 
     if (!options.path) {
@@ -150,12 +141,12 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
  */
 
 export function createTuftContext(
-  stream: ServerHttp2Stream,
-  headers: IncomingHttpHeaders,
+  request: IncomingMessage,
+  response: ServerResponse,
   options: TuftContextOptions = {},
 ) {
-  const method = headers[HTTP2_HEADER_METHOD] as string;
-  const path = headers[HTTP2_HEADER_PATH] as string;
+  const method = request.method as string;
+  const path = request.url as string;
 
   let pathname = path;
   let search = '';
@@ -167,8 +158,6 @@ export function createTuftContext(
     pathname = path.slice(0, separatorIndex);
     search = path.slice(separatorIndex);
   }
-
-  const secure = headers[HTTP2_HEADER_SCHEME] === 'https';
 
   const paramKeys = options.params;
   const params: { [key: string]: string } = {};
@@ -191,14 +180,15 @@ export function createTuftContext(
     }
   }
 
-  const request = {
+  const headers = request.headers;
+
+  const tuftRequest = {
     headers,
     method,
     pathname,
     search,
-    secure,
     params,
   };
 
-  return new TuftContext(stream, request);
+  return new TuftContext(request, response, tuftRequest);
 }

@@ -1,26 +1,31 @@
-// HTTP/2 request methods.
-export const HTTP2_METHOD_DELETE    = 'DELETE';
-export const HTTP2_METHOD_GET       = 'GET';
-export const HTTP2_METHOD_HEAD      = 'HEAD';
-export const HTTP2_METHOD_OPTIONS   = 'OPTIONS';
-export const HTTP2_METHOD_PATCH     = 'PATCH';
-export const HTTP2_METHOD_POST      = 'POST';
-export const HTTP2_METHOD_PUT       = 'PUT';
-export const HTTP2_METHOD_TRACE     = 'TRACE';
+// HTTP request methods.
+export const HTTP_METHOD_DELETE    = 'DELETE';
+export const HTTP_METHOD_GET       = 'GET';
+export const HTTP_METHOD_HEAD      = 'HEAD';
+export const HTTP_METHOD_OPTIONS   = 'OPTIONS';
+export const HTTP_METHOD_PATCH     = 'PATCH';
+export const HTTP_METHOD_POST      = 'POST';
+export const HTTP_METHOD_PUT       = 'PUT';
+export const HTTP_METHOD_TRACE     = 'TRACE';
 
-// HTTP/2 headers.
-export const HTTP2_HEADER_STATUS            = ':status';
-export const HTTP2_HEADER_METHOD            = ':method';
-export const HTTP2_HEADER_PATH              = ':path';
-export const HTTP2_HEADER_SCHEME            = ':scheme';
-export const HTTP2_HEADER_CONTENT_LENGTH    = 'content-length';
-export const HTTP2_HEADER_CONTENT_TYPE      = 'content-type';
-export const HTTP2_HEADER_COOKIE            = 'cookie';
-export const HTTP2_HEADER_SET_COOKIE        = 'set-cookie';
-export const HTTP2_HEADER_LOCATION          = 'location';
-export const HTTP2_HEADER_LAST_MODIFIED     = 'last-modified';
-export const HTTP2_HEADER_ACCEPT_RANGES     = 'accept-ranges';
-export const HTTP2_HEADER_CONTENT_RANGE     = 'content-range';
+// HTTP headers.
+export const HTTP_HEADER_STATUS            = 'status';
+export const HTTP_HEADER_CONTENT_LENGTH    = 'content-length';
+export const HTTP_HEADER_CONTENT_TYPE      = 'content-type';
+export const HTTP_HEADER_COOKIE            = 'cookie';
+export const HTTP_HEADER_SET_COOKIE        = 'set-cookie';
+export const HTTP_HEADER_LOCATION          = 'location';
+export const HTTP_HEADER_LAST_MODIFIED     = 'last-modified';
+export const HTTP_HEADER_ACCEPT_RANGES     = 'accept-ranges';
+export const HTTP_HEADER_CONTENT_RANGE     = 'content-range';
+
+// HTTP status codes.
+export const HTTP_STATUS_OK                       = 200;
+export const HTTP_STATUS_PARTIAL_CONTENT          = 206;
+export const HTTP_STATUS_NOT_FOUND                = 404;
+export const HTTP_STATUS_TEAPOT                   = 418;
+export const HTTP_STATUS_INTERNAL_SERVER_ERROR    = 500;
+export const HTTP_STATUS_NOT_IMPLEMENTED          = 501;
 
 // Default options for instances of RouteMap.
 export const ROUTE_MAP_DEFAULT_BASE_PATH        = '';

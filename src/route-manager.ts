@@ -1,4 +1,4 @@
-import type { ServerHttp2Stream, IncomingHttpHeaders } from 'http2';
+import type { IncomingMessage, ServerResponse } from 'http';
 import type { TuftRouteMap, TuftRoute } from './route-map';
 import { createResponseHandler } from './response-handlers';
 import { supportedRequestMethods } from './utils';
@@ -39,7 +39,7 @@ export class RouteManager {
 }
 
 type RouteTreeBranch = {
-  handler?: (stream: ServerHttp2Stream, headers: IncomingHttpHeaders) => void | Promise<void>,
+  handler?: (request: IncomingMessage, response: ServerResponse) => void | Promise<void>
   next: RouteTreeNode,
 };
 

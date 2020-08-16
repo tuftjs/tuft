@@ -1,6 +1,6 @@
 import type { TuftContext } from '../context';
 import { unescape } from 'querystring';
-import { HTTP2_HEADER_COOKIE } from '../constants';
+import { HTTP_HEADER_COOKIE } from '../constants';
 
 /**
  * Returns the 'cookieParser' pre-handler function, which attaches any cookies present on the
@@ -9,7 +9,7 @@ import { HTTP2_HEADER_COOKIE } from '../constants';
 
 export function createCookieParser() {
   return function cookieParser(t: TuftContext) {
-    const cookiesStr = t.request.headers[HTTP2_HEADER_COOKIE];
+    const cookiesStr = t.request.headers[HTTP_HEADER_COOKIE];
     const result: { [name: string]: string } = {};
 
     if (cookiesStr) {

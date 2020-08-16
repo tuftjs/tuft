@@ -1,7 +1,6 @@
-import type { ServerHttp2Stream, OutgoingHttpHeaders } from 'http2';
+import type { ServerResponse } from 'http';
 import type { TuftResponse } from '../route-map';
 import { createPromise } from '../utils';
-import { HTTP2_HEADER_STATUS } from '../constants';
 
 type StreamWriter = (chunk: any, encoding?: BufferEncoding) => Promise<Error | any[]>;
 
@@ -18,23 +17,20 @@ declare module '../route-map' {
 
 export function createWriteStreamResponder() {
   return async function writeStreamResponder(
-    response: TuftResponse,
-    stream: ServerHttp2Stream,
-    outgoingHeaders: OutgoingHttpHeaders,
+    tuftResponse: TuftResponse,
+    response: ServerResponse,
   ) {
-    const { writeStream, status } = response;
+    const { writeStream, status } = tuftResponse;
 
     if (typeof writeStream !== 'function') {
       // A 'writeStream' callback was not provided, so return the passed response object.
-      return response;
+      return tuftResponse;
     }
 
     if (status) {
       // Add the provided status to the outgoing headers.
-      outgoingHeaders[HTTP2_HEADER_STATUS] = status;
+      response.statusCode = status;
     }
-
-    stream.respond(outgoingHeaders);
 
     let isDrained = true;
 
@@ -42,17 +38,25 @@ export function createWriteStreamResponder() {
     await writeStream((chunk, encoding) => {
       return createPromise(done => {
         if (!isDrained) {
-          stream.once('drain', () => {
-            isDrained = stream.write(chunk, encoding, done);
+          response.once('drain', () => {
+            if (encoding !== undefined) {
+              response.setDefaultEncoding(encoding);
+            }
+
+            isDrained = response.write(chunk, done);
           });
           return;
         }
 
-        isDrained = stream.write(chunk, encoding, done);
+        if (encoding !== undefined) {
+          response.setDefaultEncoding(encoding);
+        }
+
+        isDrained = response.write(chunk, done);
       });
     });
 
     // Writing is complete, so end the stream.
-    stream.end();
+    response.end();
   };
 }

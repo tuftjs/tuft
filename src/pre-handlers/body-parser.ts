@@ -1,11 +1,11 @@
 import { finished as finishedStream } from 'stream';
 import { promisify } from 'util';
 import { unescape } from 'querystring';
-import { TuftContext, streamSymbol } from '../context';
+import { TuftContext, requestSymbol } from '../context';
 import {
   DEFAULT_MAX_BODY_SIZE,
-  HTTP2_HEADER_CONTENT_LENGTH,
-  HTTP2_HEADER_CONTENT_TYPE,
+  HTTP_HEADER_CONTENT_LENGTH,
+  HTTP_HEADER_CONTENT_TYPE,
 } from '../constants';
 
 const finished = promisify(finishedStream);
@@ -45,16 +45,16 @@ export function createBodyParser(type: string, maxSize: number = DEFAULT_MAX_BOD
   }
 
   return async function bodyParser(t: TuftContext) {
-    const stream = t[streamSymbol];
+    const stream = t[requestSymbol];
     const { headers } = t.request;
 
-    const contentType = headers[HTTP2_HEADER_CONTENT_TYPE];
+    const contentType = headers[HTTP_HEADER_CONTENT_TYPE];
 
     if (!contentType || !regexp.test(contentType)) {
       return;
     }
 
-    let expectedContentLength: string | number | undefined = headers[HTTP2_HEADER_CONTENT_LENGTH];
+    let expectedContentLength: string | number | undefined = headers[HTTP_HEADER_CONTENT_LENGTH];
 
     if (!expectedContentLength) {
       // The 'content-length' header is missing.
