@@ -1,5 +1,5 @@
 import { PassThrough } from 'stream';
-import { streamSymbol } from '../../src/context';
+import { requestSymbol } from '../../src/context';
 import { createBodyParser } from '../../src/pre-handlers/body-parser';
 
 type MockTuftContext = {
@@ -9,7 +9,7 @@ type MockTuftContext = {
     };
     [key: string]: any;
   };
-  [streamSymbol]: PassThrough;
+  [requestSymbol]: PassThrough;
 };
 
 function createMockContext(): MockTuftContext {
@@ -17,7 +17,7 @@ function createMockContext(): MockTuftContext {
     request: {
       headers: {},
     },
-    [streamSymbol]: new PassThrough(),
+    [requestSymbol]: new PassThrough(),
   };
 }
 
@@ -60,7 +60,7 @@ describe('createBodyParser(`raw`)', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -76,8 +76,8 @@ describe('createBodyParser(`raw`)', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        textChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', expectedBody);
@@ -91,7 +91,7 @@ describe('createBodyParser(`raw`)', () => {
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'LENGTH_REQUIRED' });
         expect(context.request).not.toHaveProperty('body');
@@ -106,7 +106,7 @@ describe('createBodyParser(`raw`)', () => {
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'BAD_REQUEST' });
         expect(context.request).not.toHaveProperty('body');
@@ -121,8 +121,8 @@ describe('createBodyParser(`raw`)', () => {
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        textChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -137,8 +137,8 @@ describe('createBodyParser(`raw`)', () => {
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        textChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'BAD_REQUEST' });
         expect(context.request).not.toHaveProperty('body');
@@ -167,7 +167,7 @@ describe('createBodyParser(`raw`) with second argument set to 0', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -196,7 +196,7 @@ describe('createBodyParser(`raw`) with second argument set to 1', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -212,8 +212,8 @@ describe('createBodyParser(`raw`) with second argument set to 1', () => {
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        textChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -242,7 +242,7 @@ describe('createBodyParser(`text`)', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -258,8 +258,8 @@ describe('createBodyParser(`text`)', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        textChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', expectedBody.toString());
@@ -288,7 +288,7 @@ describe('createBodyParser(`text`) with second argument set to 0', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -317,7 +317,7 @@ describe('createBodyParser(`text`) with second argument set to 1', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -333,8 +333,8 @@ describe('createBodyParser(`text`) with second argument set to 1', () => {
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
-        textChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        textChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -363,7 +363,7 @@ describe('createBodyParser(`json`)', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -379,8 +379,8 @@ describe('createBodyParser(`json`)', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        jsonChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        jsonChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', { abc: 123 });
@@ -409,7 +409,7 @@ describe('createBodyParser(`json`) with second argument set to 0', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -438,7 +438,7 @@ describe('createBodyParser(`json`) with second argument set to 1', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -454,8 +454,8 @@ describe('createBodyParser(`json`) with second argument set to 1', () => {
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        jsonChunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        jsonChunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');
@@ -484,7 +484,7 @@ describe('createBodyParser(`urlEncoded`)', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -501,8 +501,8 @@ describe('createBodyParser(`urlEncoded`)', () => {
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
-        chunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        chunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).toHaveProperty('body', { abc: '123' });
@@ -519,8 +519,8 @@ describe('createBodyParser(`urlEncoded`)', () => {
 
     test('adds a `body` property set to the expected value to the request object', async () => {
       const promise = bodyParser(context);
-      urlEncodedChunks.forEach(chunk => context[streamSymbol].write(chunk));
-      context[streamSymbol].end();
+      urlEncodedChunks.forEach(chunk => context[requestSymbol].write(chunk));
+      context[requestSymbol].end();
 
       await expect(promise).resolves.toBeUndefined();
       expect(context.request).toHaveProperty('body', { abc: '123', def: '456' });
@@ -548,7 +548,7 @@ describe('createBodyParser(`urlEncoded`) with second argument set to 0', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -577,7 +577,7 @@ describe('createBodyParser(`urlEncoded`) with second argument set to 1', () => {
 
       test('does not add a `body` property to the request object', async () => {
         const promise = bodyParser(context);
-        context[streamSymbol].end();
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.request).not.toHaveProperty('body');
@@ -593,8 +593,8 @@ describe('createBodyParser(`urlEncoded`) with second argument set to 1', () => {
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
-        chunks.forEach(chunk => context[streamSymbol].write(chunk));
-        context[streamSymbol].end();
+        chunks.forEach(chunk => context[requestSymbol].write(chunk));
+        context[requestSymbol].end();
 
         await expect(promise).resolves.toEqual({ error: 'PAYLOAD_TOO_LARGE' });
         expect(context.request).not.toHaveProperty('body');

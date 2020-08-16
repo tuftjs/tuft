@@ -2,7 +2,7 @@ import { createWriteStreamResponder } from '../../src/responders/write-stream';
 
 let mockIsDrained = true;
 
-const mockStream = {
+const mockResponse = {
   respond: jest.fn(),
   write: jest.fn(() => {
     mockIsDrained = !mockIsDrained;
@@ -12,14 +12,14 @@ const mockStream = {
   once: jest.fn((event, callback) => {
     if (event === 'drain') callback();
   }),
+  setDefaultEncoding: jest.fn(),
 };
 
 beforeEach(() => {
   mockIsDrained = true;
-  mockStream.respond.mockClear();
-  mockStream.write.mockClear();
-  mockStream.end.mockClear();
-  mockStream.once.mockClear();
+  mockResponse.write.mockClear();
+  mockResponse.end.mockClear();
+  mockResponse.once.mockClear();
 });
 
 const writeStreamResponder = createWriteStreamResponder();
@@ -30,7 +30,7 @@ const writeStreamResponder = createWriteStreamResponder();
 
 describe('writeStreamResponder()', () => {
   describe('when passed an object with a `writeStream` property set to a function', () => {
-    test('stream.respond(), stream.write(), and stream.end() are called', async () => {
+    test('response.write(), response.end(), and response.once() are called', async () => {
       const response = {
         writeStream: (write: any) => {
           write('a');
@@ -41,20 +41,18 @@ describe('writeStreamResponder()', () => {
       const result = writeStreamResponder(
         response,
         //@ts-expect-error
-        mockStream,
-        {},
+        mockResponse
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalled();
-      expect(mockStream.write).toHaveBeenCalled();
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockStream.once).toHaveBeenCalled();
+      expect(mockResponse.write).toHaveBeenCalled();
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.once).toHaveBeenCalled();
     });
   });
 
   describe('when passed an object with a `writeStream` property and a `status` property', () => {
-    test('stream.respond(), stream.write(), and stream.end() are called', async () => {
+    test('response.write(), response.end(), and response.once() are called', async () => {
       const response = {
         status: 200,
         writeStream: (write: any) => {
@@ -66,15 +64,36 @@ describe('writeStreamResponder()', () => {
       const result = writeStreamResponder(
         response,
         //@ts-expect-error
-        mockStream,
-        {},
+        mockResponse
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalled();
-      expect(mockStream.write).toHaveBeenCalled();
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockStream.once).toHaveBeenCalled();
+      expect(mockResponse.write).toHaveBeenCalled();
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.once).toHaveBeenCalled();
+    });
+  });
+
+  describe('when passed an object with a `writeStream` property that uses an `encoding` argument', () => {
+    test('response.write(), response.end(), and response.once() are called', async () => {
+      const response = {
+        writeStream: (write: any) => {
+          write('a', 'utf-8');
+          write('b', 'utf-8');
+          write('c', 'utf-8');
+        },
+      };
+      const result = writeStreamResponder(
+        response,
+        //@ts-expect-error
+        mockResponse
+      );
+
+      await expect(result).resolves.toBeUndefined();
+      expect(mockResponse.write).toHaveBeenCalled();
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.once).toHaveBeenCalled();
+      expect(mockResponse.setDefaultEncoding).toHaveBeenCalledWith('utf-8');
     });
   });
 
@@ -84,15 +103,13 @@ describe('writeStreamResponder()', () => {
       const result = writeStreamResponder(
         response,
         //@ts-expect-error
-        mockStream,
-        {},
+        mockResponse
       );
 
       await expect(result).resolves.toBe(response);
-      expect(mockStream.respond).not.toHaveBeenCalled();
-      expect(mockStream.write).not.toHaveBeenCalled();
-      expect(mockStream.end).not.toHaveBeenCalled();
-      expect(mockStream.once).not.toHaveBeenCalled();
+      expect(mockResponse.write).not.toHaveBeenCalled();
+      expect(mockResponse.end).not.toHaveBeenCalled();
+      expect(mockResponse.once).not.toHaveBeenCalled();
     });
   });
 });
