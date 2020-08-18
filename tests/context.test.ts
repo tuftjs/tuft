@@ -1,6 +1,6 @@
 import { URLSearchParams } from 'url';
 import { TuftContext, createTuftContext, TuftRequest } from '../src/context';
-import { HTTP_HEADER_STATUS, HTTP_STATUS_OK } from '../src/constants';
+import { HTTP_HEADER_SET_COOKIE } from '../src/constants';
 
 function createMockRequest(method: string = 'GET', url: string = '/') {
   const mockRequest: any = {
@@ -81,7 +81,7 @@ describe('TuftContext', () => {
         mockTuftRequest,
       );
 
-      expect(t.setHeader(HTTP_HEADER_STATUS, HTTP_STATUS_OK)).toBe(t);
+      expect(t.setHeader('custom-header-name', 'custom-header-value')).toBe(t);
     });
   });
 
@@ -97,9 +97,9 @@ describe('TuftContext', () => {
         mockTuftRequest,
       );
 
-      t.setHeader(HTTP_HEADER_STATUS, HTTP_STATUS_OK);
+      t.setHeader('custom-header-name', 'custom-header-value');
 
-      expect(t.getHeader(HTTP_HEADER_STATUS)).toBe(HTTP_STATUS_OK);
+      expect(t.getHeader('custom-header-name')).toBe('custom-header-value');
     });
   });
 
@@ -115,15 +115,15 @@ describe('TuftContext', () => {
     );
 
     test('adds `set-cookie` to the `outgoingHeaders` property', () => {
-      expect(t.getHeader('set-cookie')).toBeUndefined();
+      expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toBeUndefined();
       expect(t.setCookie('a', 'foo')).toBe(t);
-      expect(t.getHeader('set-cookie')).toEqual(['a=foo; Path=/']);
+      expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; Path=/']);
     });
 
     test('updates `set-cookie` on the `outgoingHeaders` property', () => {
-      expect(t.getHeader('set-cookie')).toBeDefined();
+      expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toBeDefined();
       expect(t.setCookie('b', 'bar')).toBe(t);
-      expect(t.getHeader('set-cookie')).toEqual(['a=foo; Path=/', 'b=bar; Path=/']);
+      expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; Path=/', 'b=bar; Path=/']);
     });
   });
 
@@ -151,7 +151,7 @@ describe('TuftContext', () => {
           httpOnly: true,
         });
 
-        expect(t.getHeader('set-cookie')).toEqual([
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual([
           `a=foo; Expires=${expires.toUTCString()}; Max-Age=1000; Domain=example.com; Path=/; Secure; HttpOnly`,
         ]);
       });
@@ -170,7 +170,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { invalidProperty: 42 });
-        expect(t.getHeader('set-cookie')).toEqual(['a=foo; Path=/']);
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; Path=/']);
       });
     });
 
@@ -191,7 +191,7 @@ describe('TuftContext', () => {
           httpOnly: false,
         });
 
-        expect(t.getHeader('set-cookie')).toEqual(['a=foo; Path=/']);
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; Path=/']);
       });
     });
 
@@ -208,7 +208,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'Strict' });
-        expect(t.getHeader('set-cookie')).toEqual(['a=foo; SameSite=Strict; Path=/']);
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; SameSite=Strict; Path=/']);
       });
     });
 
@@ -225,7 +225,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'Lax' });
-        expect(t.getHeader('set-cookie')).toEqual(['a=foo; SameSite=Lax; Path=/']);
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; SameSite=Lax; Path=/']);
       });
     });
 
@@ -242,7 +242,7 @@ describe('TuftContext', () => {
 
       test('adds the expected cookie entry', () => {
         t.setCookie('a', 'foo', { sameSite: 'None' });
-        expect(t.getHeader('set-cookie')).toEqual(['a=foo; SameSite=None; Path=/']);
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; SameSite=None; Path=/']);
       });
     });
 
@@ -260,7 +260,7 @@ describe('TuftContext', () => {
       test('adds the expected cookie entry', () => {
         //@ts-expect-error
         t.setCookie('a', 'foo', { sameSite: 'foo' });
-        expect(t.getHeader('set-cookie')).toEqual(['a=foo; Path=/']);
+        expect(t.getHeader(HTTP_HEADER_SET_COOKIE)).toEqual(['a=foo; Path=/']);
       });
     });
   });

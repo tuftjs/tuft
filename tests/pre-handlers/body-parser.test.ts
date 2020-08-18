@@ -1,6 +1,7 @@
 import { PassThrough } from 'stream';
 import { requestSymbol } from '../../src/context';
 import { createBodyParser } from '../../src/pre-handlers/body-parser';
+import { HTTP_HEADER_CONTENT_TYPE, HTTP_HEADER_CONTENT_LENGTH } from '../../src/constants';
 
 type MockTuftContext = {
   request: {
@@ -71,8 +72,8 @@ describe('createBodyParser(`raw`)', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(textChunks);
 
-      context.request.headers['content-type'] = 'application/octet-stream';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
@@ -87,7 +88,7 @@ describe('createBodyParser(`raw`)', () => {
     describe('when passed a stream without a `content-length` header', () => {
       const context = createMockContext();
 
-      context.request.headers['content-type'] = 'application/octet-stream';
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
@@ -101,8 +102,8 @@ describe('createBodyParser(`raw`)', () => {
     describe('when passed a stream without a valid `content-length` header', () => {
       const context = createMockContext();
 
-      context.request.headers['content-type'] = 'application/octet-stream';
-      context.request.headers['content-length'] = 'this is not a number';
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = 'this is not a number';
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
@@ -116,8 +117,8 @@ describe('createBodyParser(`raw`)', () => {
     describe('when passed a stream with data of size greater than `content-length`', () => {
       const context = createMockContext();
 
-      context.request.headers['content-type'] = 'application/octet-stream';
-      context.request.headers['content-length'] = '1';
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = '1';
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
@@ -132,8 +133,8 @@ describe('createBodyParser(`raw`)', () => {
     describe('when passed a stream with data of size less than `content-length`', () => {
       const context = createMockContext();
 
-      context.request.headers['content-type'] = 'application/octet-stream';
-      context.request.headers['content-length'] = '10';
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = '10';
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
@@ -207,8 +208,8 @@ describe('createBodyParser(`raw`) with second argument set to 1', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(textChunks);
 
-      context.request.headers['content-type'] = 'application/octet-stream';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
@@ -253,8 +254,8 @@ describe('createBodyParser(`text`)', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(textChunks);
 
-      context.request.headers['content-type'] = 'text/plain';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'text/plain';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
@@ -328,8 +329,8 @@ describe('createBodyParser(`text`) with second argument set to 1', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(textChunks);
 
-      context.request.headers['content-type'] = 'text/plain';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'text/plain';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('resolves with an HTTP error response object', async () => {
         const promise = bodyParser(context);
@@ -374,8 +375,8 @@ describe('createBodyParser(`json`)', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(jsonChunks);
 
-      context.request.headers['content-type'] = 'application/json';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/json';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
@@ -449,8 +450,8 @@ describe('createBodyParser(`json`) with second argument set to 1', () => {
       const context = createMockContext();
       const expectedBody = Buffer.concat(jsonChunks);
 
-      context.request.headers['content-type'] = 'application/json';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/json';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
@@ -496,8 +497,8 @@ describe('createBodyParser(`urlEncoded`)', () => {
       const chunks = urlEncodedChunks.slice(0, 2);
       const expectedBody = Buffer.concat(chunks);
 
-      context.request.headers['content-type'] = 'application/x-www-form-urlencoded';
-      context.request.headers['content-length'] = expectedBody.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/x-www-form-urlencoded';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
       test('adds a `body` property set to the expected value to the request object', async () => {
         const promise = bodyParser(context);
@@ -514,8 +515,8 @@ describe('createBodyParser(`urlEncoded`)', () => {
     const context = createMockContext();
     const expectedBody = Buffer.concat(urlEncodedChunks);
 
-    context.request.headers['content-type'] = 'application/x-www-form-urlencoded';
-    context.request.headers['content-length'] = expectedBody.length.toString();
+    context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/x-www-form-urlencoded';
+    context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = expectedBody.length.toString();
 
     test('adds a `body` property set to the expected value to the request object', async () => {
       const promise = bodyParser(context);
@@ -588,8 +589,8 @@ describe('createBodyParser(`urlEncoded`) with second argument set to 1', () => {
       const context = createMockContext();
       const chunks = urlEncodedChunks.slice(0, 2);
 
-      context.request.headers['content-type'] = 'application/x-www-form-urlencoded';
-      context.request.headers['content-length'] = chunks.length.toString();
+      context.request.headers[HTTP_HEADER_CONTENT_TYPE] = 'application/x-www-form-urlencoded';
+      context.request.headers[HTTP_HEADER_CONTENT_LENGTH] = chunks.length.toString();
 
       test('rejects with an error', async () => {
         const promise = bodyParser(context);
