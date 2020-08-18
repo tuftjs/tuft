@@ -48,16 +48,16 @@ export function createBodyParser(type: string, maxSize: number = DEFAULT_MAX_BOD
     const stream = t[requestSymbol];
     const { headers } = t.request;
 
-    const contentType = headers[HTTP_HEADER_CONTENT_TYPE];
+    const contentType = headers[HTTP_HEADER_CONTENT_TYPE] as string | undefined;
 
     if (!contentType || !regexp.test(contentType)) {
       return;
     }
 
-    let expectedContentLength: string | number | undefined = headers[HTTP_HEADER_CONTENT_LENGTH];
+    let expectedContentLength: string | number | undefined = headers[HTTP_HEADER_CONTENT_LENGTH] as string | undefined;
 
     if (!expectedContentLength) {
-      // The 'content-length' header is missing.
+      // The 'Content-Length' header is missing.
       return {
         error: 'LENGTH_REQUIRED',
       };
@@ -66,7 +66,7 @@ export function createBodyParser(type: string, maxSize: number = DEFAULT_MAX_BOD
     expectedContentLength = parseInt(expectedContentLength, 10);
 
     if (Number.isNaN(expectedContentLength)) {
-      // The 'content-length' header string does not parse to a valid number.
+      // The 'Content-Length' header string does not parse to a valid number.
       return {
         error: 'BAD_REQUEST',
       };

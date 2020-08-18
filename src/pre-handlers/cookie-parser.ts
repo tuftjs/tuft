@@ -9,7 +9,7 @@ import { HTTP_HEADER_COOKIE } from '../constants';
 
 export function createCookieParser() {
   return function cookieParser(t: TuftContext) {
-    const cookiesStr = t.request.headers[HTTP_HEADER_COOKIE];
+    const cookiesStr = t.request.headers[HTTP_HEADER_COOKIE] as string | undefined;
     const result: { [name: string]: string } = {};
 
     if (cookiesStr) {
