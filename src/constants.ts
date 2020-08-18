@@ -9,14 +9,14 @@ export const HTTP_METHOD_PUT       = 'PUT';
 export const HTTP_METHOD_TRACE     = 'TRACE';
 
 // HTTP headers.
-export const HTTP_HEADER_COOKIE            = 'Cookie';
-export const HTTP_HEADER_SET_COOKIE        = 'Set-Cookie';
-export const HTTP_HEADER_LOCATION          = 'Location';
-export const HTTP_HEADER_CONTENT_LENGTH    = 'Content-Length';
-export const HTTP_HEADER_CONTENT_RANGE     = 'Content-Range';
-export const HTTP_HEADER_CONTENT_TYPE      = 'Content-Type';
-export const HTTP_HEADER_LAST_MODIFIED     = 'Last-Modified';
-export const HTTP_HEADER_ACCEPT_RANGES     = 'Accept-Ranges';
+export const HTTP_HEADER_COOKIE            = 'cookie';
+export const HTTP_HEADER_SET_COOKIE        = 'set-cookie';
+export const HTTP_HEADER_LOCATION          = 'location';
+export const HTTP_HEADER_CONTENT_LENGTH    = 'content-length';
+export const HTTP_HEADER_CONTENT_RANGE     = 'content-range';
+export const HTTP_HEADER_CONTENT_TYPE      = 'content-type';
+export const HTTP_HEADER_LAST_MODIFIED     = 'last-modified';
+export const HTTP_HEADER_ACCEPT_RANGES     = 'accept-ranges';
 
 // HTTP status codes.
 export const HTTP_STATUS_OK                       = 200;
