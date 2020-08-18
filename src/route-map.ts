@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
 import type { HttpError } from './utils';
-import { constants } from 'http2';
+
 import { promises as fsPromises } from 'fs';
 import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
 import { RouteManager } from './route-manager';
@@ -14,6 +14,11 @@ import {
   HTTP_HEADER_LAST_MODIFIED,
   HTTP_HEADER_CONTENT_RANGE,
   HTTP_HEADER_CONTENT_LENGTH,
+  HTTP_STATUS_OK,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  HTTP_STATUS_NOT_IMPLEMENTED,
+  HTTP_STATUS_PARTIAL_CONTENT,
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
 } from './constants';
@@ -62,14 +67,6 @@ export type RouteMapOptions = {
 }
 
 const mimeTypes: { [key: string]: string } = importedMimeTypes;
-
-const {
-  HTTP_STATUS_OK,
-  HTTP_STATUS_NOT_FOUND,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_NOT_IMPLEMENTED,
-  HTTP_STATUS_PARTIAL_CONTENT,
-} = constants;
 
 /**
  * Stores route data indexed by method and path. Instances of TuftRouteMap can be merged with other

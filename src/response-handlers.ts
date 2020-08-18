@@ -7,8 +7,8 @@ import type {
   TuftPreHandler,
   TuftResponder,
 } from './route-map';
+
 import { promises as fsPromises, createReadStream } from 'fs';
-import { constants } from 'http2';
 import { createTuftContext } from './context';
 import { httpErrorCodes, HttpError } from './utils';
 import {
@@ -17,13 +17,10 @@ import {
   HTTP_HEADER_LOCATION,
   HTTP_HEADER_LAST_MODIFIED,
   HTTP_HEADER_ACCEPT_RANGES,
-} from './constants';
-
-const {
   HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
-} = constants;
+} from './constants';
 
 const EMPTY_ARRAY: [] = [];
 
