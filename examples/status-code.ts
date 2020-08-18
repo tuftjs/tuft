@@ -8,7 +8,7 @@ app.set('GET /200', () => {
   };
 });
 
-app.set('GET /foo', () => {
+app.set('GET /204', () => {
   return {
     status: 204,
   };
