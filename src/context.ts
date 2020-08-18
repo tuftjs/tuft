@@ -181,10 +181,8 @@ export function createTuftContext(
     }
   }
 
-  const headers = request.headers;
-
   const tuftRequest = {
-    headers,
+    headers: request.headers,
     method,
     pathname,
     search,
