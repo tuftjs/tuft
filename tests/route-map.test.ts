@@ -1,6 +1,6 @@
-import { constants } from 'http2';
 import { promises as fsPromises } from 'fs';
 import { resolve } from 'path';
+import { TuftServer, TuftSecureServer } from '../src/server';
 import {
   TuftRouteMap,
   handleStaticFileGetRequest,
@@ -10,44 +10,38 @@ import {
   primaryHandler,
   primaryErrorHandler,
 } from '../src/route-map';
-import { RouteManager } from '../src/route-manager';
-import { TuftServer, TuftSecureServer } from '../src/server';
 import {
-  HTTP2_HEADER_STATUS,
-  HTTP2_HEADER_ACCEPT_RANGES,
-  HTTP2_HEADER_CONTENT_TYPE,
-  HTTP2_HEADER_LAST_MODIFIED,
-  HTTP2_HEADER_CONTENT_LENGTH,
-  HTTP2_HEADER_CONTENT_RANGE,
-} from '../src/constants';
-
-const {
+  HTTP_HEADER_ACCEPT_RANGES,
+  HTTP_HEADER_CONTENT_TYPE,
+  HTTP_HEADER_LAST_MODIFIED,
+  HTTP_HEADER_CONTENT_LENGTH,
+  HTTP_HEADER_CONTENT_RANGE,
   HTTP_STATUS_OK,
   HTTP_STATUS_PARTIAL_CONTENT,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_NOT_IMPLEMENTED,
-} = constants;
+  HTTP_STATUS_NOT_IMPLEMENTED
+} from '../src/constants';
 
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => { });
-const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+const mockConsoleError = jest
+  .spyOn(console, 'error')
+  .mockImplementation(() => { });
 
-const mockStream = {
-  destroyed: false,
-  headersSent: false,
-  on: jest.fn(),
-  respond: jest.fn(),
-  end: jest.fn(),
-};
+const mockExit = jest
+  .spyOn(process, 'exit')
+  .mockImplementation(() => undefined as never);
 
 const mockContext: any = {
+  _outgoingHeaders: {},
   request: {
     headers: {},
   },
-  outgoingHeaders: {},
   setHeader: jest.fn((key, value) => {
-    mockContext.outgoingHeaders[key] = value;
+    mockContext._outgoingHeaders[key] = value;
     return mockContext;
+  }),
+  getHeader: jest.fn((key) => {
+    return mockContext._outgoingHeaders[key];
   }),
 };
 
@@ -57,16 +51,10 @@ beforeEach(() => {
   mockConsoleError.mockClear();
   mockExit.mockClear();
 
-  mockStream.destroyed = false;
-  mockStream.headersSent = false;
-  mockStream.on.mockClear();
-  mockStream.respond.mockClear();
-  mockStream.end.mockClear();
-
+  mockContext._outgoingHeaders = {},
   mockContext.request = {
     headers: {},
   };
-  mockContext.outgoingHeaders = {};
   mockContext.setHeader.mockClear();
 
   mockErrorHandler.mockClear();
@@ -82,14 +70,6 @@ afterAll(() => {
  */
 
 describe('TuftRouteMap', () => {
-  describe('new TuftRouteMap()', () => {
-    test('returns an instance of TuftRouteMap', () => {
-      const result = new TuftRouteMap();
-
-      expect(result).toBeInstanceOf(TuftRouteMap);
-    });
-  });
-
   describe('TuftRouteMap.prototype.merge()', () => {
     describe('when passed another instance of TuftRouteMap with its own custom options', () => {
       test('adds a `GET /foo/bar` entry to the map', () => {
@@ -99,10 +79,9 @@ describe('TuftRouteMap', () => {
           preHandlers: [() => { }],
           responders: [() => { }],
         });
+        const map2 = new TuftRouteMap();
 
         map1.set('GET /bar', {});
-
-        const map2 = new TuftRouteMap();
         map2.merge(map1);
 
         expect(map2.has('GET /foo/bar')).toBe(true);
@@ -112,9 +91,6 @@ describe('TuftRouteMap', () => {
     describe('when passed an options object with all supported properties set and when passed another instance of TuftRouteMap', () => {
       test('adds a `GET /foo/bar` entry to the map', () => {
         const map1 = new TuftRouteMap();
-
-        map1.set('GET /bar', {});
-
         const map2 = new TuftRouteMap({
           basePath: '/foo',
           trailingSlash: true,
@@ -122,6 +98,7 @@ describe('TuftRouteMap', () => {
           responders: [() => { }],
         });
 
+        map1.set('GET /bar', {});
         map2.merge(map1);
 
         expect(map2.has('GET /foo/bar')).toBe(true);
@@ -131,10 +108,9 @@ describe('TuftRouteMap', () => {
     describe('when passed another instance of TuftRouteMap with no custom options', () => {
       test('adds a `GET /foo` entry to the map', () => {
         const map1 = new TuftRouteMap();
+        const map2 = new TuftRouteMap();
 
         map1.set('GET /foo', {});
-
-        const map2 = new TuftRouteMap();
         map2.merge(map1);
 
         expect(map2.has('GET /foo')).toBe(true);
@@ -144,13 +120,9 @@ describe('TuftRouteMap', () => {
     describe('when adding a route with a lone slash that gets merged with a base path', () => {
       test('adds a `GET /` entry to the map', () => {
         const map1 = new TuftRouteMap();
+        const map2 = new TuftRouteMap({ basePath: '/foo' });
 
         map1.set('GET /', {});
-
-        const map2 = new TuftRouteMap({
-          basePath: '/foo',
-        });
-
         map2.merge(map1);
 
         expect(map2.has('GET /foo')).toBe(true);
@@ -196,7 +168,7 @@ describe('TuftRouteMap', () => {
 
         map.redirect('GET /foo', '/bar');
 
-        expect(map.get('GET /foo')).toBeDefined();
+        expect(map.has('GET /foo')).toBe(true);
       });
     });
   });
@@ -580,14 +552,14 @@ describe('createStaticFileResponseObject()', () => {
       };
 
       await expect(result).resolves.toEqual(expectedResult);
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_ACCEPT_RANGES, 'bytes');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
+        .toHaveBeenCalledWith(HTTP_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_RANGE, 'bytes 0-3/4');
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_RANGE, 'bytes 0-3/4');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 4);
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, 4);
     });
   });
 
@@ -604,10 +576,10 @@ describe('createStaticFileResponseObject()', () => {
       };
 
       await expect(result).resolves.toEqual(expectedResult);
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_ACCEPT_RANGES, 'bytes');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
+        .toHaveBeenCalledWith(HTTP_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
     });
   });
 
@@ -622,11 +594,11 @@ describe('createStaticFileResponseObject()', () => {
       };
 
       await expect(result).resolves.toEqual(expectedResult);
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_TYPE, 'text/plain');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_ACCEPT_RANGES, 'bytes');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 4);
+        .toHaveBeenCalledWith(HTTP_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, 4);
     });
   });
 
@@ -641,15 +613,15 @@ describe('createStaticFileResponseObject()', () => {
       };
 
       await expect(result).resolves.toEqual(expectedResult);
-      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP2_HEADER_ACCEPT_RANGES, 'bytes');
+      expect(mockContext.setHeader).toHaveBeenCalledWith(HTTP_HEADER_ACCEPT_RANGES, 'bytes');
       expect(mockContext.setHeader).toHaveBeenCalledWith(
-        HTTP2_HEADER_CONTENT_TYPE,
+        HTTP_HEADER_CONTENT_TYPE,
         'application/octet-stream',
       );
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
+        .toHaveBeenCalledWith(HTTP_HEADER_LAST_MODIFIED, stats.mtime.toUTCString());
       expect(mockContext.setHeader)
-        .toHaveBeenCalledWith(HTTP2_HEADER_CONTENT_LENGTH, 4);
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, 4);
     });
   });
 });
@@ -659,94 +631,166 @@ describe('createStaticFileResponseObject()', () => {
  */
 
 describe('primaryHandler()', () => {
-  const map = new TuftRouteMap();
+  const mockResponseHandler = jest.fn();
+  const mockError = Error('mockError');
+  const mockRoutes = {
+    find: jest.fn((method, pathname) => {
+      if (method === 'GET') {
+        if (pathname === '/foo') {
+          return mockResponseHandler;
+        }
 
-  map.set('GET /foo', {});
+        if (pathname === '/error') {
+          return () => { throw mockError; };
+        }
+      }
+    })
+  };
 
-  const routes = new RouteManager(map);
+  beforeEach(() => {
+    mockResponseHandler.mockClear();
+    mockRoutes.find.mockClear();
+  });
 
-  describe('when the value of `:path` does not match a route', () => {
+  describe('when the value of `request.url` does not match a route', () => {
     test('stream.respond() is called with a 404 status code', async () => {
-      const result = primaryHandler(
-        routes,
-        mockErrorHandler,
+      const method = 'GET';
+      const path = '/does_not_exist';
+
+      const mockRequest = {
+        method,
+        url: path,
+        on: jest.fn()
+      };
+
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: false,
+        statusCode: HTTP_STATUS_OK,
+        on: jest.fn(),
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryHandler(
         //@ts-expect-error
-        mockStream,
-        {
-          ':method': 'GET',
-          ':path': '/does_not_exist',
-        },
+        mockRoutes,
+        mockErrorHandler,
+        mockRequest,
+        mockResponse
       );
 
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith({
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
-      }, { endStream: true });
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_NOT_FOUND);
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockRoutes.find).toHaveBeenCalledWith(method, path);
+      expect(mockResponseHandler).not.toHaveBeenCalled();
     });
   });
 
-  describe('when the value of `:method` is not a supported request method', () => {
-    test('stream.respond() is called with a 501 status code', async () => {
-      const result = primaryHandler(
-        routes,
-        mockErrorHandler,
+  describe('when the value of `request.method` is not a supported request method', () => {
+    test('response.end() is called with a 501 status code', async () => {
+      const method = 'LINK';
+      const path = '/foo';
+
+      const mockRequest = {
+        method,
+        url: path,
+        on: jest.fn()
+      };
+
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: false,
+        statusCode: HTTP_STATUS_OK,
+        on: jest.fn(),
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryHandler(
         //@ts-expect-error
-        mockStream,
-        {
-          ':method': 'LINK',
-          ':path': '/foo',
-        },
+        mockRoutes,
+        mockErrorHandler,
+        mockRequest,
+        mockResponse
       );
 
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith({
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_IMPLEMENTED,
-      }, { endStream: true });
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_NOT_IMPLEMENTED);
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockRoutes.find).not.toHaveBeenCalled();
+      expect(mockResponseHandler).not.toHaveBeenCalled();
     });
   });
 
 
-  describe('when the value of `path` includes a query string', () => {
+  describe('when the value of `request.url` includes a query string', () => {
     test('returns undefined', async () => {
-      const result = primaryHandler(
-        routes,
-        mockErrorHandler,
+      const method = 'GET';
+      const path = '/foo?bar=baz';
+
+      const mockRequest = {
+        method,
+        url: path,
+        on: jest.fn()
+      };
+
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: false,
+        statusCode: HTTP_STATUS_OK,
+        on: jest.fn(),
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryHandler(
         //@ts-expect-error
-        mockStream,
-        {
-          ':method': 'GET',
-          ':path': '/foo?bar=baz',
-        },
+        mockRoutes,
+        mockErrorHandler,
+        mockRequest,
+        mockResponse
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_OK);
+      expect(mockResponse.end).not.toHaveBeenCalled();
+      expect(mockRoutes.find).toHaveBeenCalledWith(method, '/foo');
+      expect(mockResponseHandler).toHaveBeenCalledWith(mockRequest, mockResponse);
     });
   });
-});
-
-describe('primaryHandler()', () => {
-  const err = Error('mock error');
-  const map = new TuftRouteMap();
-
-  map.set('GET /foo', () => { throw err; });
-
-  const routes = new RouteManager(map);
 
   describe('when the response handler throws an error', () => {
     test('the passed error handler is called', async () => {
-      const result = primaryHandler(
-        routes,
-        mockErrorHandler,
+      const method = 'GET';
+      const path = '/error';
+
+      const mockRequest = {
+        method,
+        url: path,
+        on: jest.fn()
+      };
+
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: false,
+        statusCode: HTTP_STATUS_OK,
+        on: jest.fn(),
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryHandler(
         //@ts-expect-error
-        mockStream,
-        {
-          ':method': 'GET',
-          ':path': '/foo',
-        },
+        mockRoutes,
+        mockErrorHandler,
+        mockRequest,
+        mockResponse
       );
 
-      await expect(result).resolves.toBeUndefined();
-      expect(mockErrorHandler).toHaveBeenCalledWith(err);
+      expect(returnValue).toBeUndefined();
+      expect(mockErrorHandler).toHaveBeenCalledWith(mockError);
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockRoutes.find).toHaveBeenCalledWith(method, path);
+      expect(mockResponseHandler).not.toHaveBeenCalled();
     });
   });
 });
@@ -756,80 +800,92 @@ describe('primaryHandler()', () => {
  */
 
 describe('primaryErrorHandler()', () => {
+  const mockError = Error('mockError');
+
   describe('when `stream.destroyed` is set to false', () => {
-    test('stream.respond() is called with a 500 status code and the passed error handler is called', async () => {
-      const err = Error('mock error');
-      mockStream.destroyed = false;
-
-      const result = primaryErrorHandler(
-        //@ts-expect-error
-        mockStream,
-        mockErrorHandler,
-        err,
-      );
-
-      const expectedHeaders = {
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    test('response.end() is called with a 500 status code and the passed error handler is called', async () => {
+      const mockResponse = {
+        writableEnded: false,
+        statusCode: HTTP_STATUS_OK,
+        end: jest.fn()
       };
 
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).toHaveBeenCalledWith(expectedHeaders);
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockErrorHandler).toHaveBeenCalledWith(err);
-    });
-  });
-
-  describe('when `stream.destroyed` is set to true', () => {
-    test('stream.respond() is not called and the passed error handler is called', async () => {
-      const err = Error('mock error');
-      mockStream.destroyed = true;
-
-      const result = primaryErrorHandler(
+      const returnValue = await primaryErrorHandler(
         //@ts-expect-error
-        mockStream,
+        mockResponse,
         mockErrorHandler,
-        err,
+        mockError
       );
 
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).not.toHaveBeenCalled();
-      expect(mockStream.end).not.toHaveBeenCalled();
-      expect(mockErrorHandler).toHaveBeenCalledWith(err);
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockErrorHandler).toHaveBeenCalledWith(mockError);
     });
   });
 
-  describe('when `stream.destroyed` is set to false and `stream.headerSent` is set to true', () => {
-    test('stream.respond() is not called and the passed error handler is called', async () => {
-      const err = Error('mock error');
-      mockStream.destroyed = false;
-      mockStream.headersSent = true;
+  describe('when `response.writableEnded` is set to true', () => {
+    test('response.end() is not called and the passed error handler is called', async () => {
+      const mockResponse = {
+        writableEnded: true,
+        statusCode: HTTP_STATUS_OK,
+        end: jest.fn()
+      };
 
-      const result = primaryErrorHandler(
+      const returnValue = await primaryErrorHandler(
         //@ts-expect-error
-        mockStream,
+        mockResponse,
         mockErrorHandler,
-        err,
+        mockError
       );
 
-      await expect(result).resolves.toBeUndefined();
-      expect(mockStream.respond).not.toHaveBeenCalled();
-      expect(mockStream.end).toHaveBeenCalled();
-      expect(mockErrorHandler).toHaveBeenCalledWith(err);
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_OK);
+      expect(mockResponse.end).not.toHaveBeenCalled();
+      expect(mockErrorHandler).toHaveBeenCalledWith(mockError);
     });
   });
 
-  describe('when the provided error handler is null', () => {
+  describe('when `response.writableEnded` is set to false and `response.headerSent` is set to true', () => {
+    test('response.end() is not called and the passed error handler is called', async () => {
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: true,
+        statusCode: HTTP_STATUS_OK,
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryErrorHandler(
+        //@ts-expect-error
+        mockResponse,
+        mockErrorHandler,
+        mockError
+      );
+
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_OK);
+      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockErrorHandler).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  describe('when no error handler is provided', () => {
     test('returns undefined', async () => {
-      const err = Error('mock error');
+      const mockResponse = {
+        statusCode: HTTP_STATUS_OK,
+        end: jest.fn()
+      };
 
-      const result = primaryErrorHandler(
+      const returnValue = await primaryErrorHandler(
         //@ts-expect-error
-        mockStream,
+        mockResponse,
         null,
-        err,
+        mockError
       );
 
-      await expect(result).resolves.toBeUndefined();
+      expect(returnValue).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      expect(mockResponse.end).toHaveBeenCalled();
     });
   });
 });

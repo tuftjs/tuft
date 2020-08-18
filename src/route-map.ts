@@ -1,24 +1,26 @@
-import type { ServerHttp2Stream, IncomingHttpHeaders, OutgoingHttpHeaders } from 'http2';
+import type { IncomingMessage, ServerResponse } from 'http';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
 import type { HttpError } from './utils';
-import { constants } from 'http2';
+
 import { promises as fsPromises } from 'fs';
 import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { supportedRequestMethods } from './utils';
 import {
+  HTTP_HEADER_ACCEPT_RANGES,
+  HTTP_HEADER_CONTENT_TYPE,
+  HTTP_HEADER_LAST_MODIFIED,
+  HTTP_HEADER_CONTENT_RANGE,
+  HTTP_HEADER_CONTENT_LENGTH,
+  HTTP_STATUS_OK,
+  HTTP_STATUS_NOT_FOUND,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  HTTP_STATUS_NOT_IMPLEMENTED,
+  HTTP_STATUS_PARTIAL_CONTENT,
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
-  HTTP2_HEADER_METHOD,
-  HTTP2_HEADER_PATH,
-  HTTP2_HEADER_STATUS,
-  HTTP2_HEADER_ACCEPT_RANGES,
-  HTTP2_HEADER_CONTENT_RANGE,
-  HTTP2_HEADER_CONTENT_LENGTH,
-  HTTP2_HEADER_LAST_MODIFIED,
-  HTTP2_HEADER_CONTENT_TYPE,
 } from './constants';
 import importedMimeTypes from './data/mime-types.json';
 
@@ -32,9 +34,8 @@ export interface TuftPreHandler {
 
 export interface TuftResponder {
   (
-    response: TuftResponse,
-    stream: ServerHttp2Stream,
-    outgoingHeaders: OutgoingHttpHeaders,
+    tuftResponse: TuftResponse,
+    response: ServerResponse,
   ): TuftResponse | null | void | Promise<TuftResponse | null | void>;
 }
 
@@ -66,14 +67,6 @@ export type RouteMapOptions = {
 }
 
 const mimeTypes: { [key: string]: string } = importedMimeTypes;
-
-const {
-  HTTP_STATUS_OK,
-  HTTP_STATUS_NOT_FOUND,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_NOT_IMPLEMENTED,
-  HTTP_STATUS_PARTIAL_CONTENT,
-} = constants;
 
 /**
  * Stores route data indexed by method and path. Instances of TuftRouteMap can be merged with other
@@ -342,9 +335,9 @@ export async function createStaticFileResponseObject(
   const contentType = mimeTypes[extname(file)] ?? 'application/octet-stream';
 
   t
-    .setHeader(HTTP2_HEADER_ACCEPT_RANGES, 'bytes')
-    .setHeader(HTTP2_HEADER_CONTENT_TYPE, contentType)
-    .setHeader(HTTP2_HEADER_LAST_MODIFIED, mtime.toUTCString());
+    .setHeader(HTTP_HEADER_ACCEPT_RANGES, 'bytes')
+    .setHeader(HTTP_HEADER_CONTENT_TYPE, contentType)
+    .setHeader(HTTP_HEADER_LAST_MODIFIED, mtime.toUTCString());
 
   if (range) {
     const status = HTTP_STATUS_PARTIAL_CONTENT;
@@ -357,7 +350,7 @@ export async function createStaticFileResponseObject(
     const end = range.slice(j) ? parseInt(range.slice(j), 10) : size - 1;
 
     if (end >= size) {
-      t.setHeader(HTTP2_HEADER_CONTENT_RANGE, 'bytes */' + size);
+      t.setHeader(HTTP_HEADER_CONTENT_RANGE, 'bytes */' + size);
 
       return {
         error: 'RANGE_NOT_SATISFIABLE',
@@ -367,8 +360,8 @@ export async function createStaticFileResponseObject(
     const length = end - offset + 1;
 
     t
-      .setHeader(HTTP2_HEADER_CONTENT_RANGE, 'bytes ' + offset + '-' + end + '/' + size)
-      .setHeader(HTTP2_HEADER_CONTENT_LENGTH, length);
+      .setHeader(HTTP_HEADER_CONTENT_RANGE, 'bytes ' + offset + '-' + end + '/' + size)
+      .setHeader(HTTP_HEADER_CONTENT_LENGTH, length);
 
     return {
       status,
@@ -381,7 +374,7 @@ export async function createStaticFileResponseObject(
   else {
     const status = HTTP_STATUS_OK;
 
-    t.setHeader(HTTP2_HEADER_CONTENT_LENGTH, size);
+    t.setHeader(HTTP_HEADER_CONTENT_LENGTH, size);
 
     return {
       status,
@@ -411,24 +404,24 @@ function createPrimaryHandler(
 export async function primaryHandler(
   routes: RouteManager,
   errorHandler: ((err: Error) => void | Promise<void>) | null,
-  stream: ServerHttp2Stream,
-  headers: IncomingHttpHeaders
+  request: IncomingMessage,
+  response: ServerResponse,
 ) {
   try {
-    stream.on('error', primaryErrorHandler.bind(null, stream, errorHandler));
+    request.on('error', primaryErrorHandler.bind(null, response, errorHandler));
+    response.on('error', primaryErrorHandler.bind(null, response, errorHandler));
 
-    const method = headers[HTTP2_HEADER_METHOD] as string;
+    const method = request.method as string;
 
     if (!supportedRequestMethods.includes(method)) {
       // The request method is not supported.
-      stream.respond({
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_IMPLEMENTED,
-      }, { endStream: true });
+      response.statusCode = HTTP_STATUS_NOT_IMPLEMENTED;
+      response.end();
 
       return;
     }
 
-    const path = headers[HTTP2_HEADER_PATH] as string;
+    const path = request.url as string;
     const queryStringSeparatorIndex = path.indexOf('?');
 
     // Separate the pathname from the query string, if it exists.
@@ -441,19 +434,18 @@ export async function primaryHandler(
 
     if (!handleResponse) {
       // There is no response handler for the given route.
-      stream.respond({
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_NOT_FOUND,
-      }, { endStream: true });
+      response.statusCode = HTTP_STATUS_NOT_FOUND;
+      response.end();
 
       return;
     }
 
     // Pass control of the stream to the response handler.
-    await handleResponse(stream, headers);
+    await handleResponse(request, response);
   }
 
   catch (err) {
-    primaryErrorHandler(stream, errorHandler, err);
+    primaryErrorHandler(response, errorHandler, err);
   }
 }
 
@@ -463,19 +455,17 @@ export async function primaryHandler(
  */
 
 export async function primaryErrorHandler(
-  stream: ServerHttp2Stream,
+  response: ServerResponse,
   handleError: ((err: Error) => void | Promise<void>) | null,
   err: Error,
 ) {
-  if (!stream.destroyed) {
-    if (!stream.headersSent) {
+  if (!response.writableEnded) {
+    if (!response.headersSent) {
       // The stream is still active and no headers have been sent.
-      stream.respond({
-        [HTTP2_HEADER_STATUS]: HTTP_STATUS_INTERNAL_SERVER_ERROR,
-      });
+      response.statusCode = HTTP_STATUS_INTERNAL_SERVER_ERROR;
     }
 
-    stream.end();
+    response.end();
   }
 
   // Pass the error object to the user-defined error handler.

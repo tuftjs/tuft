@@ -1,4 +1,4 @@
-import { tuft, createCookieParser } from '../../src';
+import { tuft, createCookieParser } from '../src';
 
 const app = tuft({
   preHandlers: [createCookieParser()],
@@ -17,5 +17,5 @@ const server = app.createServer({ port: 3000 });
 server
   .start()
   .then(() => {
-    console.log(`${server.protocol} server listening at http://${server.host}:${server.port}`);
+    console.log(`Server listening at http://${server.host}:${server.port}`);
   });

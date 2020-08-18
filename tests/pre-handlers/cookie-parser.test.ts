@@ -1,10 +1,11 @@
 import type { TuftContext } from '../../src/context';
 import { createCookieParser } from '../../src/pre-handlers/cookie-parser';
+import { HTTP_HEADER_COOKIE } from '../../src/constants';
 
 type MockTuftContext = {
   request: {
     headers: {
-      cookie?: string,
+      [HTTP_HEADER_COOKIE]?: string,
     },
     [key: string]: any;
   },
@@ -18,7 +19,7 @@ function createMockContext(withCookie = false) {
   };
 
   if (withCookie) {
-    mockContext.request.headers.cookie = 'name-1=value-1;name-2=value-2';
+    mockContext.request.headers[HTTP_HEADER_COOKIE] = 'name-1=value-1;name-2=value-2';
   }
 
   return mockContext;
@@ -50,6 +51,7 @@ describe('createCookieParser()', () => {
         const cookieParser = createCookieParser();
         const context = createMockContext(true);
         cookieParser(context as TuftContext);
+
         expect(context.request).toHaveProperty('cookies');
         expect(context.request.cookies).toHaveProperty('name-1', 'value-1');
         expect(context.request.cookies).toHaveProperty('name-2', 'value-2');

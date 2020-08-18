@@ -1,4 +1,4 @@
-import { tuft, createBodyParser } from '../../src';
+import { tuft, createBodyParser } from '../src';
 
 const app = tuft({
   preHandlers: [
@@ -20,17 +20,21 @@ app.set('POST /body-parser', t => {
     };
   }
 
-  else if (Buffer.isBuffer(body)) {
+  if (Buffer.isBuffer(body)) {
     return {
       raw: t.request.body,
     };
   }
 
-  else if (typeof body === 'object' && body !== null) {
+  if (typeof body === 'object' && body !== null) {
     return {
       json: t.request.body,
     };
   }
+
+  return {
+    text: 'No body was detected in the request message.'
+  };
 });
 
 const server = app.createServer({ port: 3000 });
@@ -38,5 +42,5 @@ const server = app.createServer({ port: 3000 });
 server
   .start()
   .then(() => {
-    console.log(`${server.protocol} server listening at http://${server.host}:${server.port}`);
+    console.log(`Server listening at http://${server.host}:${server.port}`);
   });

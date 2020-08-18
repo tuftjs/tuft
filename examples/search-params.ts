@@ -1,4 +1,4 @@
-import { tuft, createSearchParams } from '../../src';
+import { tuft, createSearchParams } from '../src';
 
 const app = tuft({
   preHandlers: [createSearchParams()],
@@ -16,10 +16,10 @@ app.set('GET /search-params', t => {
   return { json };
 });
 
-const server = app.createServer({ port: 3000, http1: true });
+const server = app.createServer({ port: 3000 });
 
 server
   .start()
   .then(() => {
-    console.log(`${server.protocol} server listening at http://${server.host}:${server.port}`);
+    console.log(`Server listening at http://${server.host}:${server.port}`);
   });
