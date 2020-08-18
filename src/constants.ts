@@ -9,19 +9,20 @@ export const HTTP_METHOD_PUT       = 'PUT';
 export const HTTP_METHOD_TRACE     = 'TRACE';
 
 // HTTP headers.
-export const HTTP_HEADER_STATUS            = 'status';
-export const HTTP_HEADER_CONTENT_LENGTH    = 'content-length';
-export const HTTP_HEADER_CONTENT_TYPE      = 'content-type';
-export const HTTP_HEADER_COOKIE            = 'cookie';
-export const HTTP_HEADER_SET_COOKIE        = 'set-cookie';
-export const HTTP_HEADER_LOCATION          = 'location';
-export const HTTP_HEADER_LAST_MODIFIED     = 'last-modified';
-export const HTTP_HEADER_ACCEPT_RANGES     = 'accept-ranges';
-export const HTTP_HEADER_CONTENT_RANGE     = 'content-range';
+export const HTTP_HEADER_COOKIE            = 'Cookie';
+export const HTTP_HEADER_SET_COOKIE        = 'Set-Cookie';
+export const HTTP_HEADER_LOCATION          = 'Location';
+export const HTTP_HEADER_CONTENT_LENGTH    = 'Content-Length';
+export const HTTP_HEADER_CONTENT_RANGE     = 'Content-Range';
+export const HTTP_HEADER_CONTENT_TYPE      = 'Content-Type';
+export const HTTP_HEADER_LAST_MODIFIED     = 'Last-Modified';
+export const HTTP_HEADER_ACCEPT_RANGES     = 'Accept-Ranges';
 
 // HTTP status codes.
 export const HTTP_STATUS_OK                       = 200;
 export const HTTP_STATUS_PARTIAL_CONTENT          = 206;
+export const HTTP_STATUS_FOUND                    = 302;
+export const HTTP_STATUS_BAD_REQUEST              = 400;
 export const HTTP_STATUS_NOT_FOUND                = 404;
 export const HTTP_STATUS_TEAPOT                   = 418;
 export const HTTP_STATUS_INTERNAL_SERVER_ERROR    = 500;
