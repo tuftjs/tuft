@@ -51,6 +51,13 @@ function createMockResponse() {
     on: jest.fn(),
     once: jest.fn(),
     emit: jest.fn(),
+    writeHead: jest.fn((statusCode: number, headers: any) => {
+      mockResponse.statusCode = statusCode;
+      for (const header in headers) {
+        mockResponse._headers[header] = headers[header];
+      }
+      return mockResponse;
+    }),
     write: jest.fn(),
     end: jest.fn(),
     setHeader: jest.fn((name: string, value: string | number) => {
