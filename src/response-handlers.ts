@@ -17,9 +17,9 @@ import {
   HTTP_HEADER_LOCATION,
   HTTP_HEADER_LAST_MODIFIED,
   HTTP_HEADER_ACCEPT_RANGES,
-  HTTP_STATUS_OK,
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
+  DEFAULT_HTTP_STATUS,
 } from './constants';
 
 const EMPTY_ARRAY: [] = [];
@@ -192,8 +192,9 @@ export async function handleUnknownResponse(
   }
 
   // No valid properties were found, so respond with a '200 OK' status code and end the stream.
-  response.statusCode = HTTP_STATUS_OK;
-  response.end();
+  response
+    .writeHead(DEFAULT_HTTP_STATUS)
+    .end();
 }
 
 /**
@@ -204,8 +205,11 @@ export function handleHttpErrorResponse(
   { error }: TuftResponse,
   response: ServerResponse,
 ) {
-  response.statusCode = httpErrorCodes[error as HttpError] ?? HTTP_STATUS_BAD_REQUEST;
-  response.end();
+  const status = httpErrorCodes[error as HttpError] ?? HTTP_STATUS_BAD_REQUEST;
+
+  response
+    .writeHead(status)
+    .end();
 }
 
 /**
@@ -216,9 +220,11 @@ export function handleRedirectResponse(
   { redirect }: TuftResponse,
   response: ServerResponse,
 ) {
-  response.statusCode = HTTP_STATUS_FOUND;
-  response.setHeader(HTTP_HEADER_LOCATION, redirect as string);
-  response.end();
+  response
+    .writeHead(HTTP_STATUS_FOUND, {
+      [HTTP_HEADER_LOCATION]: redirect as string,
+    })
+    .end();
 }
 
 /**
@@ -232,14 +238,12 @@ export function handleBufferResponse(
 ) {
   const body = raw as Buffer;
 
-  response.setHeader(HTTP_HEADER_CONTENT_TYPE, 'application/octet-stream');
-  response.setHeader(HTTP_HEADER_CONTENT_LENGTH, body.length);
-
-  if (status) {
-    response.statusCode = status;
-  }
-
-  response.end(body);
+  response
+    .writeHead(status ?? DEFAULT_HTTP_STATUS, {
+      [HTTP_HEADER_CONTENT_TYPE]: 'application/octet-stream',
+      [HTTP_HEADER_CONTENT_LENGTH]: body.length,
+    })
+    .end(body);
 }
 
 /**
@@ -252,14 +256,12 @@ export function handleTextResponse(
 ) {
   const body = typeof text === 'string' ? text : (text as number | boolean).toString();
 
-  response.setHeader(HTTP_HEADER_CONTENT_TYPE, 'text/plain; charset=UTF-8');
-  response.setHeader(HTTP_HEADER_CONTENT_LENGTH, Buffer.byteLength(body));
-
-  if (status) {
-    response.statusCode = status;
-  }
-
-  response.end(body);
+  response
+    .writeHead(status ?? DEFAULT_HTTP_STATUS, {
+      [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
+      [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
+    })
+    .end(body);
 }
 
 /**
@@ -272,14 +274,12 @@ export function handleHtmlResponse(
 ) {
   const body = html as string;
 
-  response.setHeader(HTTP_HEADER_CONTENT_TYPE, 'text/html; charset=UTF-8');
-  response.setHeader(HTTP_HEADER_CONTENT_LENGTH, Buffer.byteLength(body));
-
-  if (status) {
-    response.statusCode = status;
-  }
-
-  response.end(body);
+  response
+    .writeHead(status ?? DEFAULT_HTTP_STATUS, {
+      [HTTP_HEADER_CONTENT_TYPE]: 'text/html; charset=UTF-8',
+      [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
+    })
+    .end(body);
 }
 
 /**
@@ -292,14 +292,12 @@ export function handleJsonResponse(
 ) {
   const body = typeof json === 'string' ? json : JSON.stringify(json);
 
-  response.setHeader(HTTP_HEADER_CONTENT_TYPE, 'application/json; charset=UTF-8');
-  response.setHeader(HTTP_HEADER_CONTENT_LENGTH, Buffer.byteLength(body));
-
-  if (status) {
-    response.statusCode = status;
-  }
-
-  response.end(body);
+  response
+    .writeHead(status ?? DEFAULT_HTTP_STATUS, {
+      [HTTP_HEADER_CONTENT_TYPE]: 'application/json; charset=UTF-8',
+      [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
+    })
+    .end(body);
 }
 
 /**
@@ -352,6 +350,7 @@ export function handleStatusResponse(
   { status }: TuftResponse,
   response: ServerResponse,
 ) {
-  response.statusCode = status as number;
-  response.end();
+  response
+    .writeHead(status as number)
+    .end();
 }
