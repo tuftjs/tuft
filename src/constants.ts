@@ -37,5 +37,8 @@ export const ROUTE_MAP_DEFAULT_TRAILING_SLASH   = null;
 export const TUFT_SERVER_DEFAULT_HOST = 'localhost';
 export const TUFT_SERVER_DEFAULT_PORT = 0;
 
+// Default HTTP status for responses.
+export const DEFAULT_HTTP_STATUS = HTTP_STATUS_OK;
+
 // Default options for the bodyParser pre-handler.
 export const DEFAULT_MAX_BODY_SIZE = 1_048_576; // in bytes
