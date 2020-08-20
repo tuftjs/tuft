@@ -67,9 +67,7 @@ function createMockResponse() {
     getHeader: jest.fn((name: string) => {
       return mockResponse._headers[name];
     }),
-    hasHeader: jest.fn((name: string) => {
-      return mockResponse._headers[name] !== undefined;
-    }),
+    getHeaders: jest.fn(() => mockResponse._headers),
   };
 
   return mockResponse;
@@ -785,77 +783,121 @@ describe('handleJsonResponse()', () => {
 
 describe('handleFileResponse()', () => {
   describe('with a status property', () => {
-    test('response.end() is not called', async () => {
+    test('response.end() is not called', done => {
       const response = {
         status: HTTP_STATUS_OK,
         file: __filename,
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleFileResponse(
+      mockResponse.end = jest.fn(() => {
+        expect(mockResponse.writeHead).toHaveBeenCalled();
+        expect(mockResponse.end).toHaveBeenCalled();
+        done();
+      });
+
+      const result = handleFileResponse(
         response,
         mockResponse,
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).not.toHaveBeenCalled();
     });
   });
 
   describe('without a status property', () => {
-    test('response.end() is not called', async () => {
+    test('response.end() is not called', done => {
       const response = {
         file: __filename,
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleFileResponse(
+      mockResponse.end = jest.fn(() => {
+        expect(mockResponse.writeHead).toHaveBeenCalled();
+        expect(mockResponse.end).toHaveBeenCalled();
+        done();
+      });
+
+      const result = handleFileResponse(
         response,
         mockResponse,
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).not.toHaveBeenCalled();
     });
   });
 
   describe('with `content-type`, `accept-ranges`, and `last-modified` headers', () => {
-    test('response.end() is not called', async () => {
+    test('response.end() is not called', done => {
       const response = {
         file: __filename,
       };
 
       const mockResponse = createMockResponse();
+
+      mockResponse.end = jest.fn(() => {
+        expect(mockResponse.writeHead).toHaveBeenCalled();
+        expect(mockResponse.end).toHaveBeenCalled();
+        done();
+      });
 
       mockResponse.setHeader(HTTP_HEADER_CONTENT_TYPE, 'application/octet-stream');
       mockResponse.setHeader(HTTP_HEADER_ACCEPT_RANGES, 'none');
       mockResponse.setHeader(HTTP_HEADER_LAST_MODIFIED, (new Date()).toUTCString());
 
-      const result = await handleFileResponse(
+      const result = handleFileResponse(
         response,
         mockResponse,
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).not.toHaveBeenCalled();
     });
   });
 
   describe('with a length property', () => {
-    test('response.end() is not called', async () => {
+    test('response.end() is not called', done => {
       const response = {
         file: __filename,
         length: 1
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleFileResponse(
+      mockResponse.end = jest.fn(() => {
+        expect(mockResponse.writeHead).toHaveBeenCalled();
+        expect(mockResponse.end).toHaveBeenCalled();
+        done();
+      });
+
+      const result = handleFileResponse(
         response,
         mockResponse,
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('with an non-existent file path', () => {
+    test('response.end() is not called', done => {
+      const response = {
+        file: './does_not_exist',
+      };
+      const mockResponse = createMockResponse();
+
+      mockResponse.emit = jest.fn((name, err) => {
+        expect(name).toBe('error');
+        expect(err.code).toBe('ENOENT');
+        expect(mockResponse.writeHead).not.toHaveBeenCalled();
+        expect(mockResponse.emit).toHaveBeenCalled();
+        done();
+      });
+
+      const result = handleFileResponse(
+        response,
+        mockResponse,
+      );
+
+      expect(result).toBeUndefined();
     });
   });
 });
