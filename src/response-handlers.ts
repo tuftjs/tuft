@@ -8,7 +8,7 @@ import type {
   TuftResponder,
 } from './route-map';
 
-import { promises as fsPromises, createReadStream } from 'fs';
+import { stat, createReadStream } from 'fs';
 import { createTuftContext } from './context';
 import { httpErrorCodes, HttpError } from './utils';
 import {
@@ -145,7 +145,7 @@ export async function handleResponseHandler(
  * in the provided response object.
  */
 
-export async function handleUnknownResponse(
+export function handleUnknownResponse(
   tuftResponse: TuftResponse,
   response: ServerResponse,
 ) {
@@ -182,7 +182,7 @@ export async function handleUnknownResponse(
   }
 
   else if (file) {
-    await handleFileResponse(tuftResponse, response);
+    handleFileResponse(tuftResponse, response);
     return;
   }
 
@@ -304,42 +304,46 @@ export function handleJsonResponse(
  * Responds with a file, where the provided value is a file pathname.
  */
 
-export async function handleFileResponse(
+export function handleFileResponse(
   { file, status, offset = 0, length }: TuftResponse,
   response: ServerResponse,
 ) {
-  const fileHandle = await fsPromises.open(file as string, 'r');
-  const stat = await fileHandle.stat();
+  stat(file as string, (err, stats) => {
+    if (err) {
+      response.emit('error', err);
+      return;
+    }
 
-  if (!response.hasHeader(HTTP_HEADER_CONTENT_TYPE)) {
-    response.setHeader(HTTP_HEADER_CONTENT_TYPE, 'application/octet-stream');
-  }
+    const headers = response.getHeaders();
 
-  if (!response.hasHeader(HTTP_HEADER_ACCEPT_RANGES)) {
-    response.setHeader(HTTP_HEADER_ACCEPT_RANGES, 'none');
-  }
+    if (!headers[HTTP_HEADER_CONTENT_TYPE]) {
+      headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
+    }
 
-  if (!response.hasHeader(HTTP_HEADER_LAST_MODIFIED)) {
-    response.setHeader(HTTP_HEADER_LAST_MODIFIED, stat.mtime.toUTCString());
-  }
+    if (!headers[HTTP_HEADER_ACCEPT_RANGES]) {
+      headers[HTTP_HEADER_ACCEPT_RANGES] = 'none';
+    }
 
-  if (status) {
-    response.statusCode = status;
-  }
+    if (!headers[HTTP_HEADER_LAST_MODIFIED]) {
+      headers[HTTP_HEADER_LAST_MODIFIED] = stats.mtime.toUTCString();
+    }
 
-  const options: any = {};
+    response.writeHead(status ?? DEFAULT_HTTP_STATUS, headers);
 
-  options.start = offset;
+    const options: {
+      start: number,
+      end?: number,
+    } = {
+      start: offset,
+    };
 
-  if (length) {
-    options.end = offset + length;
-  }
+    if (length) {
+      options.end = offset + length;
+    }
 
-  const stream = createReadStream(file as string, options);
-
-  stream.pipe(response);
-
-  await fileHandle.close();
+    const stream = createReadStream(file as string, options);
+    stream.pipe(response);
+  });
 }
 
 /**
