@@ -417,7 +417,6 @@ export async function primaryHandler(
       // The request method is not supported.
       response.statusCode = HTTP_STATUS_NOT_IMPLEMENTED;
       response.end();
-
       return;
     }
 
@@ -436,7 +435,6 @@ export async function primaryHandler(
       // There is no response handler for the given route.
       response.statusCode = HTTP_STATUS_NOT_FOUND;
       response.end();
-
       return;
     }
 
