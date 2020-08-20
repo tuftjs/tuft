@@ -428,7 +428,7 @@ export async function primaryHandler(
       ? path.slice(0, queryStringSeparatorIndex)
       : path;
 
-    // Determine if a response handler exists for the given method and pathname.
+    // Determine if a response handler exists for the given route.
     const handleResponse = routes.find(method, pathname);
 
     if (!handleResponse) {
@@ -438,7 +438,7 @@ export async function primaryHandler(
       return;
     }
 
-    // Pass control of the stream to the response handler.
+    // Pass control to the response handler.
     await handleResponse(request, response);
   }
 
