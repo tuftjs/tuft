@@ -1,6 +1,6 @@
 {
   "name": "tuft",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0-beta.3",
   "description": "A web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
@@ -36,7 +36,7 @@
     "eslint": "^7.7.0",
     "jest": "^26.4.1",
     "ts-jest": "^26.2.0",
-    "ts-node": "^8.10.2",
+    "ts-node": "^9.0.0",
     "typescript": "^4.0.2"
   }
 }
