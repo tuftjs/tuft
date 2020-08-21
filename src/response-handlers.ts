@@ -314,10 +314,12 @@ export function handleFileResponse(
       return;
     }
 
+    const headers = response.getHeaders();
+
     response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
-      [HTTP_HEADER_CONTENT_TYPE]: 'application/octet-stream',
-      [HTTP_HEADER_ACCEPT_RANGES]: 'none',
-      [HTTP_HEADER_LAST_MODIFIED]: stats.mtime.toUTCString(),
+      [HTTP_HEADER_CONTENT_TYPE]: headers[HTTP_HEADER_CONTENT_TYPE] ?? 'application/octet-stream',
+      [HTTP_HEADER_ACCEPT_RANGES]: headers[HTTP_HEADER_ACCEPT_RANGES] ?? 'none',
+      [HTTP_HEADER_LAST_MODIFIED]: headers[HTTP_HEADER_LAST_MODIFIED] ?? stats.mtime.toUTCString(),
     });
 
     const options: {
