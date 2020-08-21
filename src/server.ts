@@ -10,13 +10,11 @@ import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants'
 export type ServerOptions = {
   host?: string,
   port?: number,
-  http2?: boolean,
 };
 
 export type SecureServerOptions = {
   host?: string,
   port?: number,
-  http2?: boolean,
   key?: string | Buffer | Array<Buffer | KeyObject>,
   cert?: string | Buffer | Array<string | Buffer>,
 };
