@@ -156,37 +156,37 @@ export function handleUnknownResponse(
     return;
   }
 
-  else if (redirect) {
+  if (redirect) {
     handleRedirectResponse(tuftResponse, response);
     return;
   }
 
-  else if (raw) {
+  if (raw) {
     handleBufferResponse(tuftResponse, response);
     return;
   }
 
-  else if (text) {
+  if (text) {
     handleTextResponse(tuftResponse, response);
     return;
   }
 
-  else if (html) {
+  if (html) {
     handleHtmlResponse(tuftResponse, response);
     return;
   }
 
-  else if (json) {
+  if (json) {
     handleJsonResponse(tuftResponse, response);
     return;
   }
 
-  else if (file) {
+  if (file) {
     handleFileResponse(tuftResponse, response);
     return;
   }
 
-  else if (status) {
+  if (status) {
     handleStatusResponse(tuftResponse, response);
     return;
   }
@@ -254,7 +254,7 @@ export function handleTextResponse(
   { text, status }: TuftResponse,
   response: ServerResponse,
 ) {
-  const body = typeof text === 'string' ? text : (text as number | boolean).toString();
+  const body = (text as string | number | boolean).toString();
 
   response
     .writeHead(status ?? DEFAULT_HTTP_STATUS, {
@@ -314,21 +314,11 @@ export function handleFileResponse(
       return;
     }
 
-    const headers = response.getHeaders();
-
-    if (!headers[HTTP_HEADER_CONTENT_TYPE]) {
-      headers[HTTP_HEADER_CONTENT_TYPE] = 'application/octet-stream';
-    }
-
-    if (!headers[HTTP_HEADER_ACCEPT_RANGES]) {
-      headers[HTTP_HEADER_ACCEPT_RANGES] = 'none';
-    }
-
-    if (!headers[HTTP_HEADER_LAST_MODIFIED]) {
-      headers[HTTP_HEADER_LAST_MODIFIED] = stats.mtime.toUTCString();
-    }
-
-    response.writeHead(status ?? DEFAULT_HTTP_STATUS, headers);
+    response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+      [HTTP_HEADER_CONTENT_TYPE]: 'application/octet-stream',
+      [HTTP_HEADER_ACCEPT_RANGES]: 'none',
+      [HTTP_HEADER_LAST_MODIFIED]: stats.mtime.toUTCString(),
+    });
 
     const options: {
       start: number,
