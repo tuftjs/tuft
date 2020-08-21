@@ -47,7 +47,11 @@ describe('TuftServer', () => {
     afterAll(async () => await server.stop());
 
     test('returns a promise that resolves to be undefined', async () => {
-      await expect(server.start()).resolves.toBeUndefined();
+      const returnValue = await server.start();
+      expect(returnValue).toBeDefined();
+      expect(returnValue).toHaveProperty('host', TUFT_SERVER_DEFAULT_HOST);
+      expect(returnValue).toHaveProperty('port');
+      expect(typeof returnValue.port).toBe('number');
     });
   });
 
@@ -142,7 +146,11 @@ describe('TuftSecureServer', () => {
     afterAll(async () => await server.stop());
 
     test('returns a promise that resolves to be undefined', async () => {
-      await expect(server.start()).resolves.toBeUndefined();
+      const returnValue = await server.start();
+      expect(returnValue).toBeDefined();
+      expect(returnValue).toHaveProperty('host', TUFT_SERVER_DEFAULT_HOST);
+      expect(returnValue).toHaveProperty('port');
+      expect(typeof returnValue.port).toBe('number');
     });
   });
 
