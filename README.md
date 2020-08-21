@@ -18,21 +18,13 @@ A simple "Hello, world!" example:
 ```js
 const { tuft } = require('tuft')
 
-async function init() {
-  const app = tuft()
-
-  app.set('GET /', {
-    text: 'Hello, world!'
+tuft()
+  .set('GET /', { text: 'Hello, world!' })
+  .createServer({ port: 3000 })
+  .start()
+  .then(({ host, port }) => {
+    console.log(`Server listening at http://${host}:${port}`)
   })
-
-  const server = app.createServer({ port: 3000 })
-
-  await server.start()
-
-  console.log(`Server listening at http://${server.host}:${server.port}`)
-}
-
-init()
 ```
 
 For more information on how to use Tuft, see the [official documentation](https://tuft.dev/docs).
