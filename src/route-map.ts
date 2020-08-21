@@ -408,8 +408,8 @@ export async function primaryHandler(
   response: ServerResponse,
 ) {
   try {
-    request.on('error', primaryErrorHandler.bind(null, response, errorHandler));
-    response.on('error', primaryErrorHandler.bind(null, response, errorHandler));
+    request.on('error', err => primaryErrorHandler(response, errorHandler, err));
+    response.on('error', err => primaryErrorHandler(response, errorHandler, err));
 
     const method = request.method as string;
 
