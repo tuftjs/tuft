@@ -34,7 +34,7 @@ export const ROUTE_MAP_DEFAULT_PATH             = '/';
 export const ROUTE_MAP_DEFAULT_TRAILING_SLASH   = null;
 
 // Default options for instances of TuftServer and TuftSecureServer.
-export const TUFT_SERVER_DEFAULT_HOST = 'localhost';
+export const TUFT_SERVER_DEFAULT_HOST = '127.0.0.1';
 export const TUFT_SERVER_DEFAULT_PORT = 0;
 
 // Default HTTP status for responses.
