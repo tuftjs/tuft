@@ -1,6 +1,7 @@
 import type { Server as Http1Server, IncomingMessage, ServerResponse } from 'http';
 import type { Server as Http1SecureServer } from 'https';
 import type { KeyObject } from 'tls';
+import type { AddressInfo } from 'net';
 
 import { createServer } from 'http';
 import { createServer as createSecureServer } from 'https';
@@ -59,8 +60,13 @@ abstract class TuftServerBase extends EventEmitter {
    */
 
   start() {
-    return new Promise(resolve => {
-      this.#server.listen(this.#port, resolve);
+    return new Promise<{ host: string, port: number }>(resolve => {
+      this.#server.listen(this.#port, this.#host, () => {
+        resolve({
+          host: this.#host,
+          port: (this.#server.address() as AddressInfo).port,
+        });
+      });
     });
   }
 
