@@ -10,12 +10,12 @@ import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants'
 
 export type ServerOptions = {
   host?: string,
-  port?: number,
+  port?: string | number,
 };
 
 export type SecureServerOptions = {
   host?: string,
-  port?: number,
+  port?: string | number,
   key?: string | Buffer | Array<Buffer | KeyObject>,
   cert?: string | Buffer | Array<string | Buffer>,
 };
@@ -51,8 +51,16 @@ abstract class TuftServerBase extends EventEmitter {
 
     this.#server = server;
 
-    this.#host = options.host ?? TUFT_SERVER_DEFAULT_HOST;
-    this.#port = options.port ?? TUFT_SERVER_DEFAULT_PORT;
+    const host = options.host ?? TUFT_SERVER_DEFAULT_HOST;
+
+    let port: string | number = options.port ?? TUFT_SERVER_DEFAULT_PORT;
+
+    if (typeof port !== 'number') {
+      port = parseInt(port, 10);
+    }
+
+    this.#host = host;
+    this.#port = port;
   }
 
   /**
