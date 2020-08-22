@@ -39,6 +39,17 @@ describe('TuftServer', () => {
         expect(server).toHaveProperty('port', port);
       });
     });
+
+    describe('with port set to a string', () => {
+      const port = '8080';
+      const server = new TuftServer(() => {}, { port });
+
+      test('returns an instance of TuftServer with custom options', () => {
+        expect(server).toBeInstanceOf(TuftServer);
+        expect(server).toHaveProperty('host', TUFT_SERVER_DEFAULT_HOST);
+        expect(server).toHaveProperty('port', parseInt(port, 10));
+      });
+    });
   });
 
   describe('TuftServer.prototype.start()', () => {
