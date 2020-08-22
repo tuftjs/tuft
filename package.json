@@ -1,6 +1,6 @@
 {
   "name": "tuft",
-  "version": "2.0.0-beta.4",
+  "version": "2.0.0-beta.5",
   "description": "A web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
