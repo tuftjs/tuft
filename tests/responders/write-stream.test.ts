@@ -3,7 +3,6 @@ import { createWriteStreamResponder } from '../../src/responders/write-stream';
 let mockIsDrained = true;
 
 const mockResponse = {
-  respond: jest.fn(),
   write: jest.fn(() => {
     mockIsDrained = !mockIsDrained;
     return mockIsDrained;
