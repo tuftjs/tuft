@@ -2,14 +2,6 @@ import type { ServerResponse } from 'http';
 import type { TuftResponse } from '../route-map';
 import { createPromise } from '../utils';
 
-type StreamWriter = (chunk: any, encoding?: BufferEncoding) => Promise<Error | any[]>;
-
-declare module '../route-map' {
-  interface TuftResponse {
-    writeStream?: (write: StreamWriter) => void | Promise<void>;
-  }
-}
-
 /**
  * Returns the 'streamResponder' responder function, which allows writing multiple chunks of data to
  * the outgoing response body.
@@ -35,7 +27,7 @@ export function createWriteStreamResponder() {
     let isDrained = true;
 
     // Wait for all chunks to be written to the stream.
-    await writeStream((chunk, encoding) => {
+    await writeStream((chunk: any, encoding?: BufferEncoding) => {
       return createPromise(done => {
         if (!isDrained) {
           response.once('drain', () => {
