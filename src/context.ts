@@ -9,7 +9,7 @@ import { escape } from 'querystring';
 
 declare module 'net' {
   interface Socket {
-     encrypted?: true;
+     encrypted?: boolean;
   }
 }
 
