@@ -45,7 +45,7 @@ export const requestSymbol = Symbol.for('tuft.incomingMessage');
 export const responseSymbol = Symbol.for('tuft.serverResponse');
 
 /**
- * An instance of TuftContext represents a single HTTP/2 transaction, and is passed as the first
+ * An instance of TuftContext represents a single HTTP transaction, and is passed as the first
  * and only argument to each response handler.
  */
 
