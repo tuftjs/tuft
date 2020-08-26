@@ -20,7 +20,7 @@ import {
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_NOT_IMPLEMENTED
 } from '../src/constants';
-import { stat } from 'fs/promises';
+import { promises as fsPromises } from 'fs';
 import { resolve } from 'path';
 
 const mockConsoleError = jest
@@ -531,7 +531,7 @@ describe('getFilePaths()', () => {
 describe('createStaticFileResponseObject()', () => {
   describe('when passed a context with a \'range\' header', () => {
     test('returns the expected object', async () => {
-      const stats = await stat('./mock-assets/abc.txt');
+      const stats = await fsPromises.stat('./mock-assets/abc.txt');
 
       mockContext.request.headers.range = 'bytes=0-';
 
@@ -558,7 +558,7 @@ describe('createStaticFileResponseObject()', () => {
 
   describe('when passed a context with a \'range\' header that is not satisfiable', () => {
     test('returns the expected object', async () => {
-      const stats = await stat('./mock-assets/abc.txt');
+      const stats = await fsPromises.stat('./mock-assets/abc.txt');
 
       mockContext.request.headers.range = 'bytes=0-4';
 
@@ -578,7 +578,7 @@ describe('createStaticFileResponseObject()', () => {
 
   describe('when passed a context without a \'range\' header', () => {
     test('returns the expected object', async () => {
-      const stats = await stat('./mock-assets/abc.txt');
+      const stats = await fsPromises.stat('./mock-assets/abc.txt');
       const result = createStaticFileResponseObject(mockContext, './mock-assets/abc.txt');
 
       const expectedResult = {
@@ -597,7 +597,7 @@ describe('createStaticFileResponseObject()', () => {
 
   describe('when passed a file with undetermined file type', () => {
     test('returns the expected object', async () => {
-      const stats = await stat('./mock-assets/abc.foo');
+      const stats = await fsPromises.stat('./mock-assets/abc.foo');
       const result = createStaticFileResponseObject(mockContext, './mock-assets/abc.foo');
 
       const expectedResult = {

@@ -21,7 +21,7 @@ import {
   ROUTE_MAP_DEFAULT_BASE_PATH,
 } from './constants';
 import importedMimeTypes from './data/mime-types.json';
-import { stat, opendir } from 'fs/promises';
+import { promises as fsPromises } from 'fs';
 import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
 
 export interface TuftHandler {
@@ -216,7 +216,7 @@ export class TuftRouteMap extends Map {
     let rootDir: string, pathnames: string[];
 
     try {
-      const stats = await stat(path);
+      const stats = await fsPromises.stat(path);
       rootDir = stats.isDirectory() ? path : dirname(path);
       pathnames = await getFilePaths(path);
     }
@@ -303,14 +303,14 @@ export async function handleStaticFileHeadRequest(path: string, t: TuftContext) 
 export async function getFilePaths(path: string) {
   const result: string[] = [];
 
-  const stats = await stat(path);
+  const stats = await fsPromises.stat(path);
 
   if (stats.isFile()) {
     result.push(path);
   }
 
   else {
-    const dir = await opendir(path);
+    const dir = await fsPromises.opendir(path);
 
     for await (const dirent of dir) {
       const paths = await getFilePaths(path + '/' + dirent.name);
@@ -330,7 +330,7 @@ export async function createStaticFileResponseObject(
   file: string,
 ): Promise<TuftResponse> {
   const { range } = t.request.headers;
-  const { size, mtime } = await stat(file);
+  const { size, mtime } = await fsPromises.stat(file);
 
   const contentType = mimeTypes[extname(file)] ?? 'application/octet-stream';
 
