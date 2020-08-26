@@ -2,8 +2,10 @@ import { URLSearchParams } from 'url';
 import { TuftContext, createTuftContext, TuftRequest } from '../src/context';
 import { HTTP_HEADER_SET_COOKIE } from '../src/constants';
 
-function createMockRequest(method: string = 'GET', url: string = '/') {
+function createMockRequest(method: string = 'GET', url: string = '/', headers = {}, socket = {}) {
   const mockRequest: any = {
+    headers,
+    socket,
     method,
     url,
     on: jest.fn((_, callback) => {
@@ -35,6 +37,9 @@ function createMockResponse() {
 function createMockTuftRequest(method: string = 'GET', pathname: string = '/') {
   const tuftRequest: TuftRequest = {
     headers: {},
+    protocol: 'http',
+    secure: false,
+    ip: '127.0.0.1',
     method,
     pathname,
     search: '',
@@ -317,6 +322,76 @@ describe('createTuftContext()', () => {
       );
 
       expect(result).toBeInstanceOf(TuftContext);
+    });
+  });
+
+  describe('with `x-forwarded-proto` set to `https`', () => {
+    test('returns an instance of TuftContext with the expected secure property', () => {
+      const mockRequest = createMockRequest('GET', '/foo?bar=baz', {
+        'x-forwarded-proto': 'https',
+      });
+      const mockResponse = createMockResponse();
+
+      const result = createTuftContext(
+        mockRequest,
+        mockResponse,
+      );
+
+      expect(result).toBeInstanceOf(TuftContext);
+      expect(result.request.protocol).toBe('https');
+      expect(result.secure).toBe(true);
+    });
+  });
+
+  describe('with `socket.encrypted` set to true', () => {
+    test('returns an instance of TuftContext with the expected secure property', () => {
+      const mockRequest = createMockRequest('GET', '/foo?bar=baz', {}, {
+        encrypted: true,
+      });
+      const mockResponse = createMockResponse();
+
+      const result = createTuftContext(
+        mockRequest,
+        mockResponse,
+      );
+
+      expect(result).toBeInstanceOf(TuftContext);
+      expect(result.request.protocol).toBe('https');
+      expect(result.secure).toBe(true);
+    });
+  });
+
+  describe('with `x-forwarded-for` set to a single IP address', () => {
+    test('returns an instance of TuftContext with the expected request IP', () => {
+      const mockRequest = createMockRequest('GET', '/foo?bar=baz', {
+        'x-forwarded-for': '10.0.0.1',
+      });
+      const mockResponse = createMockResponse();
+
+      const result = createTuftContext(
+        mockRequest,
+        mockResponse,
+      );
+
+      expect(result).toBeInstanceOf(TuftContext);
+      expect(result.request.ip).toBe('10.0.0.1');
+    });
+  });
+
+  describe('with `x-forwarded-for` set to multiple IP addresses', () => {
+    test('returns an instance of TuftContext with the expected request IP', () => {
+      const mockRequest = createMockRequest('GET', '/foo?bar=baz', {
+        'x-forwarded-for': '10.0.0.1, 10.0.0.2',
+      });
+      const mockResponse = createMockResponse();
+
+      const result = createTuftContext(
+        mockRequest,
+        mockResponse,
+      );
+
+      expect(result).toBeInstanceOf(TuftContext);
+      expect(result.request.ip).toBe('10.0.0.1');
     });
   });
 });

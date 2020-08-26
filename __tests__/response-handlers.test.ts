@@ -26,6 +26,8 @@ import {
 
 function createMockRequest(method: string = 'GET', url: string = '/') {
   const mockRequest: any = {
+    headers: {},
+    socket: {},
     method,
     url,
     on: jest.fn((_, callback) => {

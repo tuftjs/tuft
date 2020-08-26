@@ -87,6 +87,7 @@ describe('TuftRouteMap', () => {
         const map2 = new TuftRouteMap({
           basePath: '/foo',
           trailingSlash: true,
+          trustProxy: true,
           preHandlers: [() => { }],
           responders: [() => { }],
         });
@@ -640,13 +641,10 @@ describe('primaryHandler()', () => {
     })
   };
 
-  beforeEach(() => {
-    mockResponseHandler.mockClear();
-    mockRoutes.find.mockClear();
-  });
-
   describe('when the value of `request.url` does not match a route', () => {
-    test('stream.respond() is called with a 404 status code', async () => {
+    test('the response ends with a 404 status code', async () => {
+      const trustProxy = true;
+
       const method = 'GET';
       const path = '/does_not_exist';
 
@@ -665,6 +663,7 @@ describe('primaryHandler()', () => {
       };
 
       const returnValue = await primaryHandler(
+        trustProxy,
         //@ts-expect-error
         mockRoutes,
         mockErrorHandler,
@@ -681,7 +680,9 @@ describe('primaryHandler()', () => {
   });
 
   describe('when the value of `request.method` is not a supported request method', () => {
-    test('response.end() is called with a 501 status code', async () => {
+    test('the response ends with a 501 status code', async () => {
+      const trustProxy = true;
+
       const method = 'LINK';
       const path = '/foo';
 
@@ -700,6 +701,7 @@ describe('primaryHandler()', () => {
       };
 
       const returnValue = await primaryHandler(
+        trustProxy,
         //@ts-expect-error
         mockRoutes,
         mockErrorHandler,
@@ -715,9 +717,10 @@ describe('primaryHandler()', () => {
     });
   });
 
-
   describe('when the value of `request.url` includes a query string', () => {
     test('returns undefined', async () => {
+      const trustProxy = true;
+
       const method = 'GET';
       const path = '/foo?bar=baz';
 
@@ -736,6 +739,7 @@ describe('primaryHandler()', () => {
       };
 
       const returnValue = await primaryHandler(
+        trustProxy,
         //@ts-expect-error
         mockRoutes,
         mockErrorHandler,
@@ -751,8 +755,52 @@ describe('primaryHandler()', () => {
     });
   });
 
+  describe('when `trustProxy` is set to false', () => {
+    test('returns undefined', async () => {
+      const trustProxy = false;
+
+      const method = 'GET';
+      const path = '/foo';
+
+      const mockRequest = {
+        headers: {
+          'x-forwarded-proto': 'http',
+        },
+        method,
+        url: path,
+        on: jest.fn()
+      };
+
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: false,
+        statusCode: HTTP_STATUS_OK,
+        on: jest.fn(),
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryHandler(
+        trustProxy,
+        //@ts-expect-error
+        mockRoutes,
+        mockErrorHandler,
+        mockRequest,
+        mockResponse
+      );
+
+      expect(returnValue).toBeUndefined();
+      expect(mockRequest.headers['x-forwarded-proto']).toBeUndefined();
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_OK);
+      expect(mockResponse.end).not.toHaveBeenCalled();
+      expect(mockRoutes.find).toHaveBeenCalledWith(method, '/foo');
+      expect(mockResponseHandler).toHaveBeenCalledWith(mockRequest, mockResponse);
+    });
+  });
+
   describe('when the response handler throws an error', () => {
     test('the passed error handler is called', async () => {
+      const trustProxy = true;
+
       const method = 'GET';
       const path = '/error';
 
@@ -771,6 +819,7 @@ describe('primaryHandler()', () => {
       };
 
       const returnValue = await primaryHandler(
+        trustProxy,
         //@ts-expect-error
         mockRoutes,
         mockErrorHandler,
