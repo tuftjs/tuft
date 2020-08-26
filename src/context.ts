@@ -1,7 +1,17 @@
 import type { IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
 
-import { HTTP_HEADER_SET_COOKIE } from './constants';
+import {
+  HTTP_HEADER_SET_COOKIE,
+  HTTP_HEADER_X_FORWARDED_FOR,
+  HTTP_HEADER_X_FORWARDED_PROTO,
+} from './constants';
 import { escape } from 'querystring';
+
+declare module 'net' {
+  interface Socket {
+     encrypted?: true;
+  }
+}
 
 export type TuftContextOptions = {
   params?: { [key: number]: string };
@@ -20,6 +30,9 @@ type SetCookieOptions = {
 
 export interface TuftRequest {
   readonly headers: IncomingHttpHeaders;
+  readonly protocol: string;
+  readonly secure: boolean;
+  readonly ip: string | undefined;
   readonly method: string;
   readonly pathname: string;
   readonly search: string;
@@ -141,13 +154,44 @@ const cookieOptionStringGenerators: { [key: string]: ((value: any) => string) | 
  * Returns an instance of TuftContext created using the provided parameters.
  */
 
+
+
 export function createTuftContext(
   request: IncomingMessage,
   response: ServerResponse,
   options: TuftContextOptions = {},
 ) {
+  const { headers } = request;
+
+  let protocol: string;
+
+  if (headers[HTTP_HEADER_X_FORWARDED_PROTO]) {
+    // Use the trusted proxy header to determine the protocol.
+    protocol = headers[HTTP_HEADER_X_FORWARDED_PROTO] as string;
+  }
+
+  else {
+    // Determine the protocol via the Node socket.
+    protocol = request.socket.encrypted ? 'https' : 'http';
+  }
+
+  let ip: string | undefined;
+
+  if (headers[HTTP_HEADER_X_FORWARDED_FOR]) {
+    // Use the trusted proxy header to determine the client IP address.
+    const addresses = headers[HTTP_HEADER_X_FORWARDED_FOR] as string;
+    const separatorIndex = addresses.indexOf(',');
+    ip = separatorIndex > 0 ? addresses.slice(0, separatorIndex) : addresses;
+  }
+
+  else {
+    // Determine the client IP address via the Node socket.
+    ip = request.socket.remoteAddress;
+  }
+
   const method = request.method as string;
   const path = request.url as string;
+  const secure = protocol === 'https';
 
   let pathname = path;
   let search = '';
@@ -182,7 +226,10 @@ export function createTuftContext(
   }
 
   const tuftRequest = {
-    headers: request.headers,
+    headers,
+    protocol,
+    secure,
+    ip,
     method,
     pathname,
     search,

@@ -12,6 +12,9 @@ import {
   HTTP_HEADER_LAST_MODIFIED,
   HTTP_HEADER_CONTENT_RANGE,
   HTTP_HEADER_CONTENT_LENGTH,
+  HTTP_HEADER_X_FORWARDED_FOR,
+  HTTP_HEADER_X_FORWARDED_PORT,
+  HTTP_HEADER_X_FORWARDED_PROTO,
   HTTP_STATUS_OK,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
@@ -19,6 +22,7 @@ import {
   HTTP_STATUS_PARTIAL_CONTENT,
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
+  ROUTE_MAP_DEFAULT_TRUST_PROXY,
 } from './constants';
 import importedMimeTypes from './data/mime-types.json';
 import { promises as fsPromises } from 'fs';
@@ -64,6 +68,7 @@ export type RouteMapOptions = {
   responders?: TuftResponder[];
   basePath?: string;
   trailingSlash?: boolean;
+  trustProxy?: boolean;
 }
 
 const mimeTypes: { [key: string]: string } = importedMimeTypes;
@@ -78,6 +83,7 @@ export class TuftRouteMap extends Map {
   readonly #responders: TuftResponder[];
   readonly #trailingSlash: boolean | null;  // Match paths with a trailing slash.
   readonly #basePath: string;               // Prepend to route path.
+  readonly #trustProxy: boolean;
 
   #applicationErrorHandler: ((err: Error) => void | Promise<void>) | null;
 
@@ -88,7 +94,12 @@ export class TuftRouteMap extends Map {
     this.#responders = options.responders ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
+    this.#trustProxy = options.trustProxy ?? ROUTE_MAP_DEFAULT_TRUST_PROXY;
     this.#applicationErrorHandler = null;
+  }
+
+  get trustProxy() {
+    return this.#trustProxy;
   }
 
   /**
@@ -392,7 +403,7 @@ function createPrimaryHandler(
   errorHandler: ((err: Error) => void | Promise<void>) | null,
 ) {
   const routes = new RouteManager(routeMap);
-  return primaryHandler.bind(null, routes, errorHandler);
+  return primaryHandler.bind(null, routeMap.trustProxy, routes, errorHandler);
 }
 
 /**
@@ -402,6 +413,7 @@ function createPrimaryHandler(
  */
 
 export async function primaryHandler(
+  trustProxy: boolean,
   routes: RouteManager,
   errorHandler: ((err: Error) => void | Promise<void>) | null,
   request: IncomingMessage,
@@ -410,6 +422,13 @@ export async function primaryHandler(
   try {
     request.on('error', err => primaryErrorHandler(response, errorHandler, err));
     response.on('error', err => primaryErrorHandler(response, errorHandler, err));
+
+    if (!trustProxy) {
+      // Remove the untrusted proxy headers.
+      request.headers[HTTP_HEADER_X_FORWARDED_FOR] = undefined;
+      request.headers[HTTP_HEADER_X_FORWARDED_PORT] = undefined;
+      request.headers[HTTP_HEADER_X_FORWARDED_PROTO] = undefined;
+    }
 
     const method = request.method as string;
 
