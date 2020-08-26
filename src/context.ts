@@ -80,6 +80,14 @@ export class TuftContext {
   }
 
   /**
+   * Gets all of the outgoing headers.
+   */
+
+  getHeaders() {
+    return this[responseSymbol].getHeaders();
+  }
+
+  /**
    * Adds the provided 'name' and 'value' to the outgoing 'set-cookie' header, adding any of the
    * defined options if present.
    */
