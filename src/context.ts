@@ -31,7 +31,6 @@ type SetCookieOptions = {
 export interface TuftRequest {
   readonly headers: IncomingHttpHeaders;
   readonly protocol: string;
-  readonly secure: boolean;
   readonly ip: string | undefined;
   readonly method: string;
   readonly pathname: string;
@@ -54,11 +53,13 @@ export class TuftContext {
   readonly [requestSymbol]: IncomingMessage;
   readonly [responseSymbol]: ServerResponse;
   readonly request: TuftRequest;
+  readonly secure: boolean;
 
   constructor(request: IncomingMessage, response: ServerResponse, tuftRequest: TuftRequest) {
     this[requestSymbol] = request;
     this[responseSymbol] = response;
     this.request = tuftRequest;
+    this.secure = tuftRequest.protocol === 'https';
   }
 
   /**
@@ -191,7 +192,6 @@ export function createTuftContext(
 
   const method = request.method as string;
   const path = request.url as string;
-  const secure = protocol === 'https';
 
   let pathname = path;
   let search = '';
@@ -228,7 +228,6 @@ export function createTuftContext(
   const tuftRequest = {
     headers,
     protocol,
-    secure,
     ip,
     method,
     pathname,
