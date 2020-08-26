@@ -1,6 +1,7 @@
 import type { TuftContext } from '../context';
-import { unescape } from 'querystring';
+
 import { HTTP_HEADER_COOKIE } from '../constants';
+import { unescape } from 'querystring';
 
 /**
  * Returns the 'cookieParser' pre-handler function, which attaches any cookies present on the

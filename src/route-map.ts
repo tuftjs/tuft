@@ -1,10 +1,8 @@
-import type { IncomingMessage, ServerResponse } from 'http';
 import type { ServerOptions, SecureServerOptions } from './server';
 import type { TuftContext } from './context';
 import type { HttpError } from './utils';
+import type { IncomingMessage, ServerResponse } from 'http';
 
-import { promises as fsPromises } from 'fs';
-import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
 import { RouteManager } from './route-manager';
 import { TuftServer, TuftSecureServer } from './server';
 import { supportedRequestMethods } from './utils';
@@ -23,6 +21,8 @@ import {
   ROUTE_MAP_DEFAULT_BASE_PATH,
 } from './constants';
 import importedMimeTypes from './data/mime-types.json';
+import { stat, opendir } from 'fs/promises';
+import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
 
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | Promise<TuftResponse>;
@@ -216,8 +216,8 @@ export class TuftRouteMap extends Map {
     let rootDir: string, pathnames: string[];
 
     try {
-      const stat = await fsPromises.stat(path);
-      rootDir = stat.isDirectory() ? path : dirname(path);
+      const stats = await stat(path);
+      rootDir = stats.isDirectory() ? path : dirname(path);
       pathnames = await getFilePaths(path);
     }
 
@@ -303,14 +303,14 @@ export async function handleStaticFileHeadRequest(path: string, t: TuftContext) 
 export async function getFilePaths(path: string) {
   const result: string[] = [];
 
-  const stat = await fsPromises.stat(path);
+  const stats = await stat(path);
 
-  if (stat.isFile()) {
+  if (stats.isFile()) {
     result.push(path);
   }
 
   else {
-    const dir = await fsPromises.opendir(path);
+    const dir = await opendir(path);
 
     for await (const dirent of dir) {
       const paths = await getFilePaths(path + '/' + dirent.name);
@@ -330,7 +330,7 @@ export async function createStaticFileResponseObject(
   file: string,
 ): Promise<TuftResponse> {
   const { range } = t.request.headers;
-  const { size, mtime } = await fsPromises.stat(file);
+  const { size, mtime } = await stat(file);
 
   const contentType = mimeTypes[extname(file)] ?? 'application/octet-stream';
 

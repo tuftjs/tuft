@@ -43,14 +43,14 @@ export type HttpError =
   'NETWORK_AUTHENTICATION_REQUIRED';
 
 export const supportedRequestMethods = [
-  constants.HTTP2_METHOD_DELETE,
-  constants.HTTP2_METHOD_GET,
-  constants.HTTP2_METHOD_HEAD,
-  constants.HTTP2_METHOD_OPTIONS,
-  constants.HTTP2_METHOD_PATCH,
-  constants.HTTP2_METHOD_POST,
-  constants.HTTP2_METHOD_PUT,
-  constants.HTTP2_METHOD_TRACE,
+  'DELETE',
+  'GET',
+  'HEAD',
+  'OPTIONS',
+  'PATCH',
+  'POST',
+  'PUT',
+  'TRACE',
 ];
 
 export const httpErrorCodes = {

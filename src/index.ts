@@ -1,4 +1,5 @@
 import type { RouteMapOptions } from './route-map';
+
 import { TuftRouteMap } from './route-map';
 
 // Type exports
@@ -11,11 +12,11 @@ export function tuft(options?: RouteMapOptions) {
   return new TuftRouteMap(options);
 }
 
-// Extensions
+// Extension exports
 export { createSearchParams } from './pre-handlers/search-params';
 export { createCookieParser } from './pre-handlers/cookie-parser';
 export { createBodyParser } from './pre-handlers/body-parser';
 export { createWriteStreamResponder } from './responders/write-stream';
 
-// Utility functions
+// Utility function exports
 export { createPromise } from './utils';

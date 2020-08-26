@@ -1,4 +1,3 @@
-import type { IncomingMessage, ServerResponse } from 'http';
 import type { TuftContextOptions } from './context';
 import type {
   TuftRoute,
@@ -7,8 +6,8 @@ import type {
   TuftPreHandler,
   TuftResponder,
 } from './route-map';
+import type { IncomingMessage, ServerResponse } from 'http';
 
-import { stat, createReadStream } from 'fs';
 import { createTuftContext } from './context';
 import { httpErrorCodes, HttpError } from './utils';
 import {
@@ -21,6 +20,7 @@ import {
   HTTP_STATUS_BAD_REQUEST,
   DEFAULT_HTTP_STATUS,
 } from './constants';
+import { stat, createReadStream } from 'fs';
 
 const EMPTY_ARRAY: [] = [];
 

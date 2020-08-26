@@ -3,10 +3,10 @@ import type { Server as Http1SecureServer } from 'https';
 import type { KeyObject } from 'tls';
 import type { AddressInfo } from 'net';
 
+import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants';
 import { createServer } from 'http';
 import { createServer as createSecureServer } from 'https';
 import { EventEmitter } from 'events';
-import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from './constants';
 
 export type ServerOptions = {
   host?: string,
