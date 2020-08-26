@@ -3,5 +3,6 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
   ],
-  preset: 'ts-jest'
+  preset: 'ts-jest',
+  clearMocks: true,
 };

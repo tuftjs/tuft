@@ -24,14 +24,6 @@ import {
   handleJsonResponse,
 } from '../src/response-handlers';
 
-const mockConsoleError = jest
-  .spyOn(console, 'error')
-  .mockImplementation(() => { });
-
-const mockExit = jest
-  .spyOn(process, 'exit')
-  .mockImplementation(() => undefined as never);
-
 function createMockRequest(method: string = 'GET', url: string = '/') {
   const mockRequest: any = {
     method,
@@ -74,8 +66,7 @@ function createMockResponse() {
 }
 
 afterAll(() => {
-  mockConsoleError.mockRestore();
-  mockExit.mockRestore();
+  jest.restoreAllMocks();
 });
 
 /**

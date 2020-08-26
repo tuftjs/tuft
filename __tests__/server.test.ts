@@ -2,15 +2,6 @@ import { TuftServer, TuftSecureServer, emitError, emitTimeout } from '../src/ser
 import { TUFT_SERVER_DEFAULT_HOST, TUFT_SERVER_DEFAULT_PORT } from '../src/constants';
 
 const mockCallback = jest.fn();
-const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-beforeEach(() => {
-  mockCallback.mockClear();
-});
-
-afterAll(() => {
-  mockConsoleError.mockRestore();
-});
 
 /**
  * TuftServer

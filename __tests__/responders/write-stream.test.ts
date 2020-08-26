@@ -16,9 +16,6 @@ const mockResponse = {
 
 beforeEach(() => {
   mockIsDrained = true;
-  mockResponse.write.mockClear();
-  mockResponse.end.mockClear();
-  mockResponse.once.mockClear();
 });
 
 const writeStreamResponder = createWriteStreamResponder();

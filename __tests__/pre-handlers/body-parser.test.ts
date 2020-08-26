@@ -1,7 +1,7 @@
-import { PassThrough } from 'stream';
 import { requestSymbol } from '../../src/context';
 import { createBodyParser } from '../../src/pre-handlers/body-parser';
 import { HTTP_HEADER_CONTENT_TYPE, HTTP_HEADER_CONTENT_LENGTH } from '../../src/constants';
+import { PassThrough } from 'stream';
 
 type MockTuftContext = {
   request: {
