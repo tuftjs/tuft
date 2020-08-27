@@ -26,6 +26,9 @@ function createMockResponse() {
     getHeader: jest.fn((name: string) => {
       return mockResponse._headers[name];
     }),
+    getHeaders: jest.fn(() => {
+      return mockResponse._headers;
+    }),
     hasHeader: jest.fn((name: string) => {
       return mockResponse._headers[name] !== undefined;
     }),
@@ -105,6 +108,28 @@ describe('TuftContext', () => {
       t.setHeader('custom-header-name', 'custom-header-value');
 
       expect(t.getHeader('custom-header-name')).toBe('custom-header-value');
+    });
+  });
+
+  describe('TuftContext.prototype.getHeaders()', () => {
+    test('returns the expected value', () => {
+      const mockRequest = createMockRequest();
+      const mockResponse = createMockResponse();
+      const mockTuftRequest = createMockTuftRequest();
+
+      const t = new TuftContext(
+        mockRequest,
+        mockResponse,
+        mockTuftRequest,
+      );
+
+      t.setHeader('custom-header-name-1', 'custom-header-value-1');
+      t.setHeader('custom-header-name-2', 'custom-header-value-2');
+
+      expect(t.getHeaders()).toEqual({
+        ['custom-header-name-1']: 'custom-header-value-1',
+        ['custom-header-name-2']: 'custom-header-value-2',
+      });
     });
   });
 
