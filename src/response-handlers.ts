@@ -21,6 +21,7 @@ import {
   DEFAULT_HTTP_STATUS,
 } from './constants';
 import { stat, createReadStream } from 'fs';
+import { STATUS_CODES } from 'http';
 
 const EMPTY_ARRAY: [] = [];
 
@@ -206,10 +207,14 @@ export function handleHttpErrorResponse(
   response: ServerResponse,
 ) {
   const status = httpErrorCodes[error as HttpError] ?? HTTP_STATUS_BAD_REQUEST;
+  const body = STATUS_CODES[status] as string;
 
   response
-    .writeHead(status)
-    .end();
+    .writeHead(status, {
+      [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
+      [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
+    })
+    .end(body);
 }
 
 /**
@@ -305,7 +310,7 @@ export function handleJsonResponse(
  */
 
 export function handleFileResponse(
-  { file, status, offset = 0, length }: TuftResponse,
+  { file, offset = 0, length, status }: TuftResponse,
   response: ServerResponse,
 ) {
   stat(file as string, (err, stats) => {
