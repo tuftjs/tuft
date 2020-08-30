@@ -10,6 +10,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 
 import { createTuftContext } from './context';
 import { httpErrorCodes, HttpError } from './utils';
+import importedMimeTypes from './data/mime-types.json';
 import {
   HTTP_HEADER_CONTENT_TYPE,
   HTTP_HEADER_CONTENT_LENGTH,
@@ -21,11 +22,14 @@ import {
   DEFAULT_HTTP_STATUS,
 } from './constants';
 import { stat, createReadStream } from 'fs';
+import { extname } from 'path';
 import { STATUS_CODES } from 'http';
 
 const EMPTY_ARRAY: [] = [];
 
 Object.freeze(EMPTY_ARRAY);
+
+const mimeTypes: { [key: string]: string } = importedMimeTypes;
 
 /**
  * Accepts an object containing route properties and returns a function that is capable of handling
@@ -321,10 +325,17 @@ export function handleFileResponse(
 
     const headers = response.getHeaders();
 
+    const modified = headers[HTTP_HEADER_LAST_MODIFIED] ?? stats.mtime.toUTCString();
+    const range = headers[HTTP_HEADER_ACCEPT_RANGES] ?? 'none';
+
+    const contentType = headers[HTTP_HEADER_CONTENT_TYPE]
+      ?? mimeTypes[extname(file as string)]
+      ?? 'application/octet-stream';
+
     response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
-      [HTTP_HEADER_CONTENT_TYPE]: headers[HTTP_HEADER_CONTENT_TYPE] ?? 'application/octet-stream',
-      [HTTP_HEADER_ACCEPT_RANGES]: headers[HTTP_HEADER_ACCEPT_RANGES] ?? 'none',
-      [HTTP_HEADER_LAST_MODIFIED]: headers[HTTP_HEADER_LAST_MODIFIED] ?? stats.mtime.toUTCString(),
+      [HTTP_HEADER_LAST_MODIFIED]: modified,
+      [HTTP_HEADER_ACCEPT_RANGES]: range,
+      [HTTP_HEADER_CONTENT_TYPE]: contentType,
     });
 
     const options: {
