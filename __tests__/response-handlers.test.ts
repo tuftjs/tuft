@@ -2,11 +2,14 @@ import type { TuftPreHandler, TuftResponder } from '../src/route-map';
 import type { HttpError } from '../src/utils';
 
 import {
+  DEFAULT_HTTP_STATUS,
   HTTP_STATUS_OK,
+  HTTP_STATUS_FOUND,
+  HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_TEAPOT,
   HTTP_HEADER_CONTENT_TYPE,
   HTTP_HEADER_ACCEPT_RANGES,
-  HTTP_HEADER_LAST_MODIFIED
+  HTTP_HEADER_LAST_MODIFIED,
 } from '../src/constants';
 import {
   createResponseHandler,
@@ -23,6 +26,7 @@ import {
   handleHtmlResponse,
   handleJsonResponse,
 } from '../src/response-handlers';
+import { join } from 'path';
 
 function createMockRequest(method: string = 'GET', url: string = '/') {
   const mockRequest: any = {
@@ -505,7 +509,7 @@ describe('handleUnknownResponse()', () => {
 
 describe('handleHttpErrorResponse', () => {
   describe('when passed a valid value for `error`', () => {
-    test('response.end() is called', () => {
+    test('response.writeHead() is called with the expected status code', () => {
       const response = {
         error: 'TEAPOT' as HttpError,
       };
@@ -517,12 +521,14 @@ describe('handleHttpErrorResponse', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(HTTP_STATUS_TEAPOT, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith('I\'m a Teapot');
     });
   });
 
   describe('when passed an invalid value for `error`', () => {
-    test('response.end() is called', () => {
+    test('response.writeHead() is called with the expected status code', () => {
       const response = {
         error: 'FOO' as HttpError,
       };
@@ -534,7 +540,9 @@ describe('handleHttpErrorResponse', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(HTTP_STATUS_BAD_REQUEST, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith('Bad Request');
     });
   });
 });
@@ -545,7 +553,7 @@ describe('handleHttpErrorResponse', () => {
 
 describe('handleRedirectResponse()', () => {
   describe('when passed a string for the `url` parameter', () => {
-    test('response.end() is called', () => {
+    test('response.writeHead() is called with the expected header', () => {
       const response = {
         redirect: '/foo',
       };
@@ -557,7 +565,9 @@ describe('handleRedirectResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_FOUND, mockResponse._headers);
+      expect(mockResponse._headers).toHaveProperty('location', '/foo');
+      expect(mockResponse.end).toHaveBeenCalledWith();
     });
   });
 });
@@ -567,8 +577,8 @@ describe('handleRedirectResponse()', () => {
  */
 
 describe('handleBufferResponse()', () => {
-  describe('with a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a `status` with a set value', () => {
+    test('calls `.writeHead()` with the same value', () => {
       const raw = Buffer.from('abc');
       const response = {
         status: HTTP_STATUS_OK,
@@ -582,12 +592,14 @@ describe('handleBufferResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(raw);
     });
   });
 
-  describe('without a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a buffer value', () => {
+    test('response.end() is called with that same value', () => {
       const raw = Buffer.from('abc');
       const response = {
         raw,
@@ -600,7 +612,9 @@ describe('handleBufferResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(raw);
     });
   });
 });
@@ -610,8 +624,8 @@ describe('handleBufferResponse()', () => {
  */
 
 describe('handleTextResponse()', () => {
-  describe('with a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a `status` with a set value', () => {
+    test('calls `.writeHead()` with the same value', () => {
       const text = 'abc';
       const response = {
         status: HTTP_STATUS_OK,
@@ -625,12 +639,14 @@ describe('handleTextResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(text);
     });
   });
 
-  describe('without a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a string value', () => {
+    test('response.end() is called with that same value', () => {
       const text = 'abc';
       const response = {
         text,
@@ -643,12 +659,14 @@ describe('handleTextResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(text);
     });
   });
 
   describe('when passed a boolean value', () => {
-    test('response.end() is called', () => {
+    test('response.end() is called with the string version', () => {
       const text = true;
       const response = {
         text,
@@ -661,7 +679,9 @@ describe('handleTextResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(text.toString());
     });
   });
 });
@@ -671,8 +691,8 @@ describe('handleTextResponse()', () => {
  */
 
 describe('handleHtmlResponse()', () => {
-  describe('with a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a `status` with a set value', () => {
+    test('calls `.writeHead()` with the same value', () => {
       const html = '<h1>abc</h1>';
       const response = {
         status: HTTP_STATUS_OK,
@@ -686,12 +706,14 @@ describe('handleHtmlResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(html);
     });
   });
 
-  describe('without a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a string value', () => {
+    test('response.end() is called with that same value', () => {
       const html = '<h1>abc</h1>';
       const response = {
         html,
@@ -704,7 +726,9 @@ describe('handleHtmlResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(html);
     });
   });
 });
@@ -714,8 +738,8 @@ describe('handleHtmlResponse()', () => {
  */
 
 describe('handleJsonResponse()', () => {
-  describe('with a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed a `status` with a set value', () => {
+    test('calls `.writeHead()` with the same value', () => {
       const json = { abc: 123 };
       const response = {
         status: HTTP_STATUS_OK,
@@ -729,12 +753,14 @@ describe('handleJsonResponse()', () => {
       );
 
       expect(result).toBeUndefined();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
       expect(mockResponse.end).toHaveBeenCalled();
     });
   });
 
-  describe('without a status property', () => {
-    test('response.end() is called', () => {
+  describe('when passed an object', () => {
+    test('response.end() is called with the serialized object', () => {
       const json = { abc: 123 };
       const response = {
         json,
@@ -747,12 +773,14 @@ describe('handleJsonResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(JSON.stringify(json));
     });
   });
 
   describe('when passed a value that is already serialized', () => {
-    test('response.end() is called', () => {
+    test('response.end() is called with that value', () => {
       const json = JSON.stringify({ abc: 123 });
       const response = {
         json,
@@ -765,7 +793,9 @@ describe('handleJsonResponse()', () => {
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.end).toHaveBeenCalled();
+      expect(mockResponse.writeHead)
+        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.end).toHaveBeenCalledWith(json);
     });
   });
 });
@@ -775,17 +805,43 @@ describe('handleJsonResponse()', () => {
  */
 
 describe('handleFileResponse()', () => {
-  describe('with a status property', () => {
-    test('response.end() is not called', done => {
+  describe('with a text file', () => {
+    test('adds the expected headers', done => {
+      const response = {
+        file: join(__dirname, '../mock-assets/abc.txt'),
+      };
+      const mockResponse = createMockResponse();
+
+      mockResponse.end = jest.fn(() => {
+        expect(mockResponse.writeHead)
+          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.end).toHaveBeenCalledWith();
+        expect(mockResponse._headers).toHaveProperty('content-type', 'text/plain');
+        done();
+      });
+
+      const result = handleFileResponse(
+        response,
+        mockResponse,
+      );
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('with a text file and a status property', () => {
+    test('adds the expected headers', done => {
       const response = {
         status: HTTP_STATUS_OK,
-        file: __filename,
+        file: join(__dirname, '../mock-assets/abc.txt'),
       };
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead).toHaveBeenCalled();
-        expect(mockResponse.end).toHaveBeenCalled();
+        expect(mockResponse.writeHead)
+          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.end).toHaveBeenCalledWith();
+        expect(mockResponse._headers).toHaveProperty('content-type', 'text/plain');
         done();
       });
 
@@ -798,16 +854,18 @@ describe('handleFileResponse()', () => {
     });
   });
 
-  describe('without a status property', () => {
-    test('response.end() is not called', done => {
+  describe('with an unknown file type', () => {
+    test('adds the expected headers', done => {
       const response = {
-        file: __filename,
+        file: join(__dirname, '../mock-assets/abc.foo'),
       };
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead).toHaveBeenCalled();
-        expect(mockResponse.end).toHaveBeenCalled();
+        expect(mockResponse.writeHead)
+          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.end).toHaveBeenCalledWith();
+        expect(mockResponse._headers).toHaveProperty('content-type', 'application/octet-stream');
         done();
       });
 
@@ -820,17 +878,18 @@ describe('handleFileResponse()', () => {
     });
   });
 
-  describe('with `content-type`, `accept-ranges`, and `last-modified` headers', () => {
-    test('response.end() is not called', done => {
+  describe('with custom `content-type`, `accept-ranges`, and `last-modified` headers', () => {
+    test('adds the expected headers', done => {
       const response = {
-        file: __filename,
+        file: join(__dirname, '../mock-assets/abc.foo'),
       };
 
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead).toHaveBeenCalled();
-        expect(mockResponse.end).toHaveBeenCalled();
+        expect(mockResponse.writeHead)
+          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.end).toHaveBeenCalledWith();
         done();
       });
 
@@ -848,7 +907,7 @@ describe('handleFileResponse()', () => {
   });
 
   describe('with a length property', () => {
-    test('response.end() is not called', done => {
+    test('adds the expected headers', done => {
       const response = {
         file: __filename,
         length: 1
@@ -856,8 +915,9 @@ describe('handleFileResponse()', () => {
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead).toHaveBeenCalled();
-        expect(mockResponse.end).toHaveBeenCalled();
+        expect(mockResponse.writeHead)
+          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.end).toHaveBeenCalledWith();
         done();
       });
 
@@ -870,8 +930,8 @@ describe('handleFileResponse()', () => {
     });
   });
 
-  describe('with an non-existent file path', () => {
-    test('response.end() is not called', done => {
+  describe('with a non-existent file path', () => {
+    test('an error is emitted', done => {
       const response = {
         file: './does_not_exist',
       };
@@ -900,8 +960,8 @@ describe('handleFileResponse()', () => {
  */
 
 describe('handleStatusResponse()', () => {
-  describe('when passed a `status` argument of 418', () => {
-    test('response.end() is called', () => {
+  describe('when passed a `status` with a set value', () => {
+    test('calls `.writeHead()` with the same value', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
       };
@@ -913,6 +973,7 @@ describe('handleStatusResponse()', () => {
       );
 
       expect(result).toBeUndefined();
+      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_TEAPOT);
       expect(mockResponse.end).toHaveBeenCalled();
     });
   });
