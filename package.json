@@ -17,22 +17,23 @@
     "tuftjs",
     "node",
     "web",
+    "http",
+    "api",
     "framework"
   ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest",
-    "test:coverage": "jest --coverage",
+    "test:ci": "jest --coverage",
     "prepublishOnly": "npm run test && npm run build",
-    "build": "rm -rf ./lib && tsc -b",
-    "start": "ts-node ./examples"
+    "build": "rm -rf ./lib && tsc -b"
   },
   "devDependencies": {
     "@types/jest": "^26.0.13",
     "@types/node": "^14.6.4",
-    "@typescript-eslint/eslint-plugin": "^4.0.1",
-    "@typescript-eslint/parser": "^4.0.1",
+    "@typescript-eslint/eslint-plugin": "^4.1.0",
+    "@typescript-eslint/parser": "^4.1.0",
     "eslint": "^7.8.1",
     "jest": "^26.4.2",
     "ts-jest": "^26.3.0",
