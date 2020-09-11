@@ -1,6 +1,6 @@
 {
   "name": "tuft",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A web framework for Node.js.",
   "author": "Stuart Kennedy",
   "license": "MIT",
@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@types/jest": "^26.0.13",
-    "@types/node": "^14.6.4",
+    "@types/node": "^14.10.0",
     "@typescript-eslint/eslint-plugin": "^4.1.0",
     "@typescript-eslint/parser": "^4.1.0",
     "eslint": "^7.8.1",
