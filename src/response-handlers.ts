@@ -319,7 +319,7 @@ export function handleJsonResponse(
 export function handleFileResponse(
   file: string,
   offset: number = 0,
-  length: number,
+  length: number | undefined,
   response: ServerResponse,
 ) {
   stat(file as string, (err, stats) => {
