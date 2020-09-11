@@ -420,8 +420,8 @@ export async function primaryHandler(
   response: ServerResponse,
 ) {
   try {
-    request.on('error', err => primaryErrorHandler(response, errorHandler, err));
-    response.on('error', err => primaryErrorHandler(response, errorHandler, err));
+    request.on('error', primaryErrorHandler.bind(null, response, errorHandler));
+    response.on('error', primaryErrorHandler.bind(null, response, errorHandler));
 
     if (!trustProxy) {
       // Remove the untrusted proxy headers.
