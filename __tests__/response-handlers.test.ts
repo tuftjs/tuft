@@ -10,6 +10,8 @@ import {
   HTTP_HEADER_CONTENT_TYPE,
   HTTP_HEADER_ACCEPT_RANGES,
   HTTP_HEADER_LAST_MODIFIED,
+  HTTP_HEADER_CONTENT_LENGTH,
+  HTTP_HEADER_LOCATION,
 } from '../src/constants';
 import {
   createResponseHandler,
@@ -20,7 +22,6 @@ import {
   handleHttpErrorResponse,
   handleRedirectResponse,
   handleFileResponse,
-  handleStatusResponse,
   handleBufferResponse,
   handleTextResponse,
   handleHtmlResponse,
@@ -49,13 +50,6 @@ function createMockResponse() {
     on: jest.fn(),
     once: jest.fn(),
     emit: jest.fn(),
-    writeHead: jest.fn((statusCode: number, headers: any) => {
-      mockResponse.statusCode = statusCode;
-      for (const header in headers) {
-        mockResponse._headers[header] = headers[header];
-      }
-      return mockResponse;
-    }),
     write: jest.fn(),
     end: jest.fn(),
     setHeader: jest.fn((name: string, value: string | number) => {
@@ -360,13 +354,13 @@ describe('handleResponseHandler()', () => {
 
 describe('handleUnknownResponse()', () => {
   describe('when passed a response with an `error` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         error: 'TEAPOT' as HttpError,
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -376,13 +370,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with a `redirect` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         redirect: '/foo',
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -392,13 +386,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with a `raw` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         raw: Buffer.from('abc'),
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -408,13 +402,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with a `text` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         text: 'abc',
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -424,13 +418,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with an `html` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         html: '<h1>abc</h1>',
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -440,13 +434,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with a `json` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         json: JSON.stringify('abc'),
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -456,13 +450,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with a `file` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         file: __filename,
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -472,13 +466,13 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed a response with a `status` property', () => {
-    test('returns undefined', async () => {
+    test('returns undefined', () => {
       const response = {
         status: HTTP_STATUS_TEAPOT,
       };
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -488,11 +482,11 @@ describe('handleUnknownResponse()', () => {
   });
 
   describe('when passed an empty response', () => {
-    test('response.end() is called', async () => {
+    test('response.end() is called', () => {
       const response = {};
       const mockResponse = createMockResponse();
 
-      const result = await handleUnknownResponse(
+      const result = handleUnknownResponse(
         response,
         mockResponse,
       );
@@ -509,40 +503,42 @@ describe('handleUnknownResponse()', () => {
 
 describe('handleHttpErrorResponse', () => {
   describe('when passed a valid value for `error`', () => {
-    test('response.writeHead() is called with the expected status code', () => {
-      const response = {
-        error: 'TEAPOT' as HttpError,
-      };
+    test('the expected status code, headers, and body are set', () => {
+      const error = 'TEAPOT';
       const mockResponse = createMockResponse();
 
-      const result = handleHttpErrorResponse(
-        response,
-        mockResponse,
-      );
+      const expectedBody = 'I\'m a Teapot';
+      const result = handleHttpErrorResponse(error, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(HTTP_STATUS_TEAPOT, mockResponse._headers);
-      expect(mockResponse.end).toHaveBeenCalledWith('I\'m a Teapot');
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_TEAPOT);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, expectedBody.length);
+      expect(mockResponse.end).toHaveBeenCalledWith(expectedBody);
     });
   });
 
   describe('when passed an invalid value for `error`', () => {
-    test('response.writeHead() is called with the expected status code', () => {
-      const response = {
-        error: 'FOO' as HttpError,
-      };
+    test('the expected status code, headers, and body are set', () => {
+      const error = 'FOO';
       const mockResponse = createMockResponse();
 
+      const expectedBody = 'Bad Request';
       const result = handleHttpErrorResponse(
-        response,
+        //@ts-expect-error
+        error,
         mockResponse,
       );
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(HTTP_STATUS_BAD_REQUEST, mockResponse._headers);
-      expect(mockResponse.end).toHaveBeenCalledWith('Bad Request');
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_BAD_REQUEST);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, expectedBody.length);
+      expect(mockResponse.end).toHaveBeenCalledWith(expectedBody);
     });
   });
 });
@@ -553,20 +549,15 @@ describe('handleHttpErrorResponse', () => {
 
 describe('handleRedirectResponse()', () => {
   describe('when passed a string for the `url` parameter', () => {
-    test('response.writeHead() is called with the expected header', () => {
-      const response = {
-        redirect: '/foo',
-      };
+    test('the expected status code, headers, and body are set', () => {
+      const redirect = '/foo';
       const mockResponse = createMockResponse();
 
-      const result = handleRedirectResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleRedirectResponse(redirect, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_FOUND, mockResponse._headers);
-      expect(mockResponse._headers).toHaveProperty('location', '/foo');
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_FOUND);
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(HTTP_HEADER_LOCATION, redirect);
       expect(mockResponse.end).toHaveBeenCalledWith();
     });
   });
@@ -577,43 +568,19 @@ describe('handleRedirectResponse()', () => {
  */
 
 describe('handleBufferResponse()', () => {
-  describe('when passed a `status` with a set value', () => {
-    test('calls `.writeHead()` with the same value', () => {
-      const raw = Buffer.from('abc');
-      const response = {
-        status: HTTP_STATUS_OK,
-        raw,
-      };
-      const mockResponse = createMockResponse();
-
-      const result = handleBufferResponse(
-        response,
-        mockResponse,
-      );
-
-      expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
-      expect(mockResponse.end).toHaveBeenCalledWith(raw);
-    });
-  });
-
   describe('when passed a buffer value', () => {
-    test('response.end() is called with that same value', () => {
+    test('the expected status code, headers, and body are set', () => {
       const raw = Buffer.from('abc');
-      const response = {
-        raw,
-      };
       const mockResponse = createMockResponse();
 
-      const result = handleBufferResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleBufferResponse(raw, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'application/octet-stream');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, raw.length);
       expect(mockResponse.end).toHaveBeenCalledWith(raw);
     });
   });
@@ -624,63 +591,36 @@ describe('handleBufferResponse()', () => {
  */
 
 describe('handleTextResponse()', () => {
-  describe('when passed a `status` with a set value', () => {
-    test('calls `.writeHead()` with the same value', () => {
-      const text = 'abc';
-      const response = {
-        status: HTTP_STATUS_OK,
-        text,
-      };
-      const mockResponse = createMockResponse();
-
-      const result = handleTextResponse(
-        response,
-        mockResponse,
-      );
-
-      expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
-      expect(mockResponse.end).toHaveBeenCalledWith(text);
-    });
-  });
-
   describe('when passed a string value', () => {
-    test('response.end() is called with that same value', () => {
+    test('the expected status code, headers, and body are set', () => {
       const text = 'abc';
-      const response = {
-        text,
-      };
       const mockResponse = createMockResponse();
 
-      const result = handleTextResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleTextResponse(text, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, text.length);
       expect(mockResponse.end).toHaveBeenCalledWith(text);
     });
   });
 
-  describe('when passed a boolean value', () => {
-    test('response.end() is called with the string version', () => {
-      const text = true;
-      const response = {
-        text,
-      };
+  describe('when passed a number value', () => {
+    test('response.end() is called with that value as a string', () => {
+      const text = 100;
       const mockResponse = createMockResponse();
 
-      const result = handleTextResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleTextResponse(text, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, text.toString().length);
       expect(mockResponse.end).toHaveBeenCalledWith(text.toString());
     });
   });
@@ -691,43 +631,19 @@ describe('handleTextResponse()', () => {
  */
 
 describe('handleHtmlResponse()', () => {
-  describe('when passed a `status` with a set value', () => {
-    test('calls `.writeHead()` with the same value', () => {
-      const html = '<h1>abc</h1>';
-      const response = {
-        status: HTTP_STATUS_OK,
-        html,
-      };
-      const mockResponse = createMockResponse();
-
-      const result = handleHtmlResponse(
-        response,
-        mockResponse,
-      );
-
-      expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
-      expect(mockResponse.end).toHaveBeenCalledWith(html);
-    });
-  });
-
   describe('when passed a string value', () => {
-    test('response.end() is called with that same value', () => {
+    test('the expected status code, headers, and body are set', () => {
       const html = '<h1>abc</h1>';
-      const response = {
-        html,
-      };
       const mockResponse = createMockResponse();
 
-      const result = handleHtmlResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleHtmlResponse(html, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/html; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, html.length);
       expect(mockResponse.end).toHaveBeenCalledWith(html);
     });
   });
@@ -738,63 +654,36 @@ describe('handleHtmlResponse()', () => {
  */
 
 describe('handleJsonResponse()', () => {
-  describe('when passed a `status` with a set value', () => {
-    test('calls `.writeHead()` with the same value', () => {
-      const json = { abc: 123 };
-      const response = {
-        status: HTTP_STATUS_OK,
-        json,
-      };
-      const mockResponse = createMockResponse();
-
-      const result = handleJsonResponse(
-        response,
-        mockResponse,
-      );
-
-      expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(HTTP_STATUS_OK, mockResponse._headers);
-      expect(mockResponse.end).toHaveBeenCalled();
-    });
-  });
-
   describe('when passed an object', () => {
-    test('response.end() is called with the serialized object', () => {
+    test('the expected status code, headers, and body are set', () => {
       const json = { abc: 123 };
-      const response = {
-        json,
-      };
       const mockResponse = createMockResponse();
 
-      const result = handleJsonResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleJsonResponse(json, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'application/json; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, JSON.stringify(json).length);
       expect(mockResponse.end).toHaveBeenCalledWith(JSON.stringify(json));
     });
   });
 
-  describe('when passed a value that is already serialized', () => {
-    test('response.end() is called with that value', () => {
+  describe('when passed a value that is already a serialized string', () => {
+    test('response.end() is called with that same value', () => {
       const json = JSON.stringify({ abc: 123 });
-      const response = {
-        json,
-      };
       const mockResponse = createMockResponse();
 
-      const result = handleJsonResponse(
-        response,
-        mockResponse,
-      );
+      const result = handleJsonResponse(json, mockResponse);
 
       expect(result).toBeUndefined();
-      expect(mockResponse.writeHead)
-        .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+      expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'application/json; charset=UTF-8');
+      expect(mockResponse.setHeader)
+        .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_LENGTH, json.length);
       expect(mockResponse.end).toHaveBeenCalledWith(json);
     });
   });
@@ -805,23 +694,26 @@ describe('handleJsonResponse()', () => {
  */
 
 describe('handleFileResponse()', () => {
-  describe('with a text file', () => {
-    test('adds the expected headers', done => {
-      const response = {
-        file: join(__dirname, '../mock-assets/abc.txt'),
-      };
+  describe('when passed a valid filename', () => {
+    test('the expected status code, headers, and body are set', done => {
+      const file = join(__dirname, '../mock-assets/abc.txt');
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead)
-          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.statusCode).toBe(DEFAULT_HTTP_STATUS);
+        expect(mockResponse.setHeader)
+          .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
+        expect(mockResponse.setHeader)
+          .toHaveBeenCalledWith(HTTP_HEADER_ACCEPT_RANGES, 'none');
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_LAST_MODIFIED);
         expect(mockResponse.end).toHaveBeenCalledWith();
-        expect(mockResponse._headers).toHaveProperty('content-type', 'text/plain');
         done();
       });
 
       const result = handleFileResponse(
-        response,
+        file,
+        undefined,
+        undefined,
         mockResponse,
       );
 
@@ -829,48 +721,22 @@ describe('handleFileResponse()', () => {
     });
   });
 
-  describe('with a text file and a status property', () => {
-    test('adds the expected headers', done => {
-      const response = {
-        status: HTTP_STATUS_OK,
-        file: join(__dirname, '../mock-assets/abc.txt'),
-      };
+  describe('when passed a filename with an unknown file type', () => {
+    test('the `content-type` header is set to `application/octet-stream`', done => {
+      const file = join(__dirname, '../mock-assets/abc.foo');
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead)
-          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.setHeader)
+          .toHaveBeenCalledWith(HTTP_HEADER_CONTENT_TYPE, 'application/octet-stream');
         expect(mockResponse.end).toHaveBeenCalledWith();
-        expect(mockResponse._headers).toHaveProperty('content-type', 'text/plain');
         done();
       });
 
       const result = handleFileResponse(
-        response,
-        mockResponse,
-      );
-
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('with an unknown file type', () => {
-    test('adds the expected headers', done => {
-      const response = {
-        file: join(__dirname, '../mock-assets/abc.foo'),
-      };
-      const mockResponse = createMockResponse();
-
-      mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead)
-          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
-        expect(mockResponse.end).toHaveBeenCalledWith();
-        expect(mockResponse._headers).toHaveProperty('content-type', 'application/octet-stream');
-        done();
-      });
-
-      const result = handleFileResponse(
-        response,
+        file,
+        undefined,
+        undefined,
         mockResponse,
       );
 
@@ -879,26 +745,28 @@ describe('handleFileResponse()', () => {
   });
 
   describe('with custom `content-type`, `accept-ranges`, and `last-modified` headers', () => {
-    test('adds the expected headers', done => {
-      const response = {
-        file: join(__dirname, '../mock-assets/abc.foo'),
-      };
-
+    test('does not alter the those custom headers', done => {
+      const file = join(__dirname, '../mock-assets/abc.foo');
+      const customDateString = (new Date()).toUTCString();
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead)
-          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse.setHeader).toHaveBeenCalledTimes(6);
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_ACCEPT_RANGES, 'bytes');
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_LAST_MODIFIED, customDateString);
         expect(mockResponse.end).toHaveBeenCalledWith();
         done();
       });
 
-      mockResponse.setHeader(HTTP_HEADER_CONTENT_TYPE, 'application/octet-stream');
-      mockResponse.setHeader(HTTP_HEADER_ACCEPT_RANGES, 'none');
-      mockResponse.setHeader(HTTP_HEADER_LAST_MODIFIED, (new Date()).toUTCString());
+      mockResponse.setHeader(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
+      mockResponse.setHeader(HTTP_HEADER_ACCEPT_RANGES, 'bytes');
+      mockResponse.setHeader(HTTP_HEADER_LAST_MODIFIED, customDateString);
 
       const result = handleFileResponse(
-        response,
+        file,
+        undefined,
+        undefined,
         mockResponse,
       );
 
@@ -907,22 +775,23 @@ describe('handleFileResponse()', () => {
   });
 
   describe('with a length property', () => {
-    test('adds the expected headers', done => {
-      const response = {
-        file: __filename,
-        length: 1
-      };
+    test('the expected status code, headers, and body are set', done => {
+      const file = join(__dirname, '../mock-assets/abc.txt');
+      const length = 1;
       const mockResponse = createMockResponse();
 
       mockResponse.end = jest.fn(() => {
-        expect(mockResponse.writeHead)
-          .toHaveBeenCalledWith(DEFAULT_HTTP_STATUS, mockResponse._headers);
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_CONTENT_TYPE, 'text/plain');
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_ACCEPT_RANGES, 'none');
+        expect(mockResponse._headers).toHaveProperty(HTTP_HEADER_LAST_MODIFIED);
         expect(mockResponse.end).toHaveBeenCalledWith();
         done();
       });
 
       const result = handleFileResponse(
-        response,
+        file,
+        undefined,
+        length,
         mockResponse,
       );
 
@@ -932,49 +801,25 @@ describe('handleFileResponse()', () => {
 
   describe('with a non-existent file path', () => {
     test('an error is emitted', done => {
-      const response = {
-        file: './does_not_exist',
-      };
+      const file = './does_not_exist';
       const mockResponse = createMockResponse();
 
       mockResponse.emit = jest.fn((name, err) => {
         expect(name).toBe('error');
         expect(err.code).toBe('ENOENT');
-        expect(mockResponse.writeHead).not.toHaveBeenCalled();
         expect(mockResponse.emit).toHaveBeenCalled();
+        expect(mockResponse.end).not.toHaveBeenCalled();
         done();
       });
 
       const result = handleFileResponse(
-        response,
+        file,
+        undefined,
+        undefined,
         mockResponse,
       );
 
       expect(result).toBeUndefined();
-    });
-  });
-});
-
-/**
- * handleStatusResponse()
- */
-
-describe('handleStatusResponse()', () => {
-  describe('when passed a `status` with a set value', () => {
-    test('calls `.writeHead()` with the same value', () => {
-      const response = {
-        status: HTTP_STATUS_TEAPOT,
-      };
-      const mockResponse = createMockResponse();
-
-      const result = handleStatusResponse(
-        response,
-        mockResponse,
-      );
-
-      expect(result).toBeUndefined();
-      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_TEAPOT);
-      expect(mockResponse.end).toHaveBeenCalled();
     });
   });
 });
