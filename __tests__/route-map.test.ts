@@ -835,6 +835,50 @@ describe('primaryHandler()', () => {
       expect(mockResponseHandler).not.toHaveBeenCalled();
     });
   });
+
+  describe('when the request object emits an error', () => {
+    test('the passed error handler is called', async () => {
+      const trustProxy = true;
+
+      const method = 'GET';
+      const path = '/foo';
+
+      const mockRequest: any = {
+        _events: {},
+        method,
+        url: path,
+        on: jest.fn((name, handler) => {
+          mockRequest._events[name] = handler;
+        }),
+        emit: jest.fn((name, arg) => {
+          mockRequest._events[name](arg);
+        }),
+      };
+
+      const mockResponse = {
+        writableEnded: false,
+        headersSent: false,
+        statusCode: HTTP_STATUS_OK,
+        on: jest.fn(),
+        end: jest.fn()
+      };
+
+      const returnValue = await primaryHandler(
+        trustProxy,
+        //@ts-expect-error
+        mockRoutes,
+        mockErrorHandler,
+        mockRequest,
+        mockResponse
+      );
+
+      mockRequest.emit('error', mockError);
+
+      expect(returnValue).toBeUndefined();
+      expect(mockErrorHandler).toHaveBeenCalledWith(mockError);
+      expect(mockResponse.statusCode).toBe(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    });
+  });
 });
 
 /**
