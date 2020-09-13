@@ -40,7 +40,7 @@ export class RouteManager {
 }
 
 type RouteTreeBranch = {
-  handler?: (request: IncomingMessage, response: ServerResponse) => void | Promise<void>
+  handler?: (request: IncomingMessage, response: ServerResponse) => Promise<void>
   next: RouteTreeNode,
 };
 
