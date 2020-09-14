@@ -164,32 +164,32 @@ export function handleUnknownResponse(
     return;
   }
 
-  if (redirect !== undefined) {
+  else if (redirect !== undefined) {
     handleRedirectResponse(redirect, response);
     return;
   }
 
-  if (raw !== undefined) {
+  else if (raw !== undefined) {
     handleBufferResponse(raw, response);
     return;
   }
 
-  if (text !== undefined) {
+  else if (text !== undefined) {
     handleTextResponse(text, response);
     return;
   }
 
-  if (html !== undefined) {
+  else if (html !== undefined) {
     handleHtmlResponse(html, response);
     return;
   }
 
-  if (json !== undefined) {
+  else if (json !== undefined) {
     handleJsonResponse(json, response);
     return;
   }
 
-  if (file !== undefined) {
+  else if (file !== undefined) {
     const { offset, length } = tuftResponse;
     handleFileResponse(file, offset, length, response);
     return;
