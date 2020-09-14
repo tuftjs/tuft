@@ -625,7 +625,7 @@ describe('createStaticFileResponseObject()', () => {
  */
 
 describe('primaryHandler()', () => {
-  const mockResponseHandler = jest.fn();
+  const mockResponseHandler = jest.fn(async () => undefined);
   const mockError = Error('mockError');
   const mockRoutes = {
     find: jest.fn((method, pathname) => {
@@ -642,7 +642,7 @@ describe('primaryHandler()', () => {
   };
 
   describe('when the value of `request.url` does not match a route', () => {
-    test('the response ends with a 404 status code', async () => {
+    test('the response ends with a 404 status code', () => {
       const trustProxy = true;
 
       const method = 'GET';
@@ -659,10 +659,10 @@ describe('primaryHandler()', () => {
         headersSent: false,
         statusCode: HTTP_STATUS_OK,
         on: jest.fn(),
-        end: jest.fn()
+        end: jest.fn(),
       };
 
-      const returnValue = await primaryHandler(
+      const returnValue = primaryHandler(
         trustProxy,
         //@ts-expect-error
         mockRoutes,
@@ -672,15 +672,15 @@ describe('primaryHandler()', () => {
       );
 
       expect(returnValue).toBeUndefined();
+      expect(mockRoutes.find).toHaveBeenCalledWith(method, path);
       expect(mockResponse.statusCode).toBe(HTTP_STATUS_NOT_FOUND);
       expect(mockResponse.end).toHaveBeenCalled();
-      expect(mockRoutes.find).toHaveBeenCalledWith(method, path);
       expect(mockResponseHandler).not.toHaveBeenCalled();
     });
   });
 
   describe('when the value of `request.method` is not a supported request method', () => {
-    test('the response ends with a 501 status code', async () => {
+    test('the response ends with a 501 status code', () => {
       const trustProxy = true;
 
       const method = 'LINK';
@@ -697,10 +697,10 @@ describe('primaryHandler()', () => {
         headersSent: false,
         statusCode: HTTP_STATUS_OK,
         on: jest.fn(),
-        end: jest.fn()
+        end: jest.fn(),
       };
 
-      const returnValue = await primaryHandler(
+      const returnValue = primaryHandler(
         trustProxy,
         //@ts-expect-error
         mockRoutes,
@@ -710,15 +710,15 @@ describe('primaryHandler()', () => {
       );
 
       expect(returnValue).toBeUndefined();
+      expect(mockRoutes.find).not.toHaveBeenCalled();
       expect(mockResponse.statusCode).toBe(HTTP_STATUS_NOT_IMPLEMENTED);
       expect(mockResponse.end).toHaveBeenCalled();
-      expect(mockRoutes.find).not.toHaveBeenCalled();
       expect(mockResponseHandler).not.toHaveBeenCalled();
     });
   });
 
   describe('when the value of `request.url` includes a query string', () => {
-    test('returns undefined', async () => {
+    test('`routes.find()` is called with the expected arguments', () => {
       const trustProxy = true;
 
       const method = 'GET';
@@ -735,10 +735,10 @@ describe('primaryHandler()', () => {
         headersSent: false,
         statusCode: HTTP_STATUS_OK,
         on: jest.fn(),
-        end: jest.fn()
+        end: jest.fn(),
       };
 
-      const returnValue = await primaryHandler(
+      primaryHandler(
         trustProxy,
         //@ts-expect-error
         mockRoutes,
@@ -747,16 +747,12 @@ describe('primaryHandler()', () => {
         mockResponse
       );
 
-      expect(returnValue).toBeUndefined();
-      expect(mockResponse.statusCode).toBe(HTTP_STATUS_OK);
-      expect(mockResponse.end).not.toHaveBeenCalled();
       expect(mockRoutes.find).toHaveBeenCalledWith(method, '/foo');
-      expect(mockResponseHandler).toHaveBeenCalledWith(mockRequest, mockResponse);
     });
   });
 
   describe('when `trustProxy` is set to false', () => {
-    test('returns undefined', async () => {
+    test('the expected request headers are set to undefined', () => {
       const trustProxy = false;
 
       const method = 'GET';
@@ -765,6 +761,8 @@ describe('primaryHandler()', () => {
       const mockRequest = {
         headers: {
           'x-forwarded-proto': 'http',
+          'x-forwarded-port': '80',
+          'x-forwarded-for': 'localhost',
         },
         method,
         url: path,
@@ -779,7 +777,7 @@ describe('primaryHandler()', () => {
         end: jest.fn()
       };
 
-      const returnValue = await primaryHandler(
+      primaryHandler(
         trustProxy,
         //@ts-expect-error
         mockRoutes,
@@ -788,17 +786,14 @@ describe('primaryHandler()', () => {
         mockResponse
       );
 
-      expect(returnValue).toBeUndefined();
       expect(mockRequest.headers['x-forwarded-proto']).toBeUndefined();
-      expect(mockResponse.statusCode).toBe(HTTP_STATUS_OK);
-      expect(mockResponse.end).not.toHaveBeenCalled();
-      expect(mockRoutes.find).toHaveBeenCalledWith(method, '/foo');
-      expect(mockResponseHandler).toHaveBeenCalledWith(mockRequest, mockResponse);
+      expect(mockRequest.headers['x-forwarded-port']).toBeUndefined();
+      expect(mockRequest.headers['x-forwarded-for']).toBeUndefined();
     });
   });
 
   describe('when the response handler throws an error', () => {
-    test('the passed error handler is called', async () => {
+    test('the passed error handler is called', () => {
       const trustProxy = true;
 
       const method = 'GET';
@@ -818,7 +813,7 @@ describe('primaryHandler()', () => {
         end: jest.fn()
       };
 
-      const returnValue = await primaryHandler(
+      const returnValue = primaryHandler(
         trustProxy,
         //@ts-expect-error
         mockRoutes,
@@ -837,7 +832,7 @@ describe('primaryHandler()', () => {
   });
 
   describe('when the request object emits an error', () => {
-    test('the passed error handler is called', async () => {
+    test('the passed error handler is called', () => {
       const trustProxy = true;
 
       const method = 'GET';
@@ -863,7 +858,7 @@ describe('primaryHandler()', () => {
         end: jest.fn()
       };
 
-      const returnValue = await primaryHandler(
+      const returnValue = primaryHandler(
         trustProxy,
         //@ts-expect-error
         mockRoutes,
