@@ -412,7 +412,7 @@ function createPrimaryHandler(
  * there is a matching route, control of the stream is passed to the corresponding response handler.
  */
 
-export async function primaryHandler(
+export function primaryHandler(
   trustProxy: boolean,
   routes: RouteManager,
   errorHandler: ((err: Error) => void | Promise<void>) | null,
@@ -462,7 +462,8 @@ export async function primaryHandler(
     }
 
     // Pass control to the response handler.
-    await handleResponse(request, response);
+    handleResponse(request, response)
+      .catch(handleError);
   }
 
   catch (err) {
