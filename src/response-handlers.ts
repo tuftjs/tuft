@@ -130,7 +130,7 @@ export async function handleResponseHandler(
     tuftResponse = await handler(t);
   }
 
-  if (typeof tuftResponse !== 'object' || tuftResponse === null) {
+  if (typeof tuftResponse !== 'object' || tuftResponse === null || Buffer.isBuffer(tuftResponse)) {
     throw TypeError('\'' + tuftResponse + '\' is not a valid Tuft response object.');
   }
 
