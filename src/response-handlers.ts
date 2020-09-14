@@ -159,22 +159,7 @@ export function handleUnknownResponse(
   // Use default status code if one is not provided.
   response.statusCode = status ?? DEFAULT_HTTP_STATUS;
 
-  if (error !== undefined) {
-    handleHttpErrorResponse(error, response);
-    return;
-  }
-
-  else if (redirect !== undefined) {
-    handleRedirectResponse(redirect, response);
-    return;
-  }
-
-  else if (raw !== undefined) {
-    handleBufferResponse(raw, response);
-    return;
-  }
-
-  else if (text !== undefined) {
+  if (text !== undefined) {
     handleTextResponse(text, response);
     return;
   }
@@ -189,9 +174,24 @@ export function handleUnknownResponse(
     return;
   }
 
+  else if (raw !== undefined) {
+    handleBufferResponse(raw, response);
+    return;
+  }
+
   else if (file !== undefined) {
     const { offset, length } = tuftResponse;
     handleFileResponse(file, offset, length, response);
+    return;
+  }
+
+  else if (redirect !== undefined) {
+    handleRedirectResponse(redirect, response);
+    return;
+  }
+
+  else if (error !== undefined) {
+    handleHttpErrorResponse(error, response);
     return;
   }
 
