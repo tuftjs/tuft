@@ -122,6 +122,7 @@ export async function handleResponse(
   const { status, error, redirect, raw, text, html, json, file } = tuftResponse;
 
   if (text !== undefined) {
+    // The response body is text.
     const body = (text as string | number | boolean).toString();
 
     response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
@@ -135,6 +136,7 @@ export async function handleResponse(
   }
 
   else if (json !== undefined) {
+    // The response body is JSON.
     const body = typeof json === 'string' ? json : JSON.stringify(json);
 
     response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
@@ -148,6 +150,7 @@ export async function handleResponse(
   }
 
   else if (html !== undefined) {
+    // The response body is HTML.
     const body = html;
 
     response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
@@ -161,6 +164,7 @@ export async function handleResponse(
   }
 
   else if (raw !== undefined) {
+    // The response body is a buffer.
     const body = raw;
 
     response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
@@ -174,7 +178,8 @@ export async function handleResponse(
   }
 
   else if (file !== undefined) {
-    const { offset, length } = tuftResponse;
+    // The response body is a file.
+    const { offset = 0, length } = tuftResponse;
     stat(file as string, (err, stats) => {
       if (err) {
         response.emit('error', err);
@@ -191,9 +196,11 @@ export async function handleResponse(
         ?? 'application/octet-stream';
 
       // Set headers for file response.
-      response.setHeader(HTTP_HEADER_CONTENT_TYPE, contentType);
-      response.setHeader(HTTP_HEADER_LAST_MODIFIED, modified);
-      response.setHeader(HTTP_HEADER_ACCEPT_RANGES, range);
+      response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+        [HTTP_HEADER_CONTENT_TYPE]: contentType,
+        [HTTP_HEADER_LAST_MODIFIED]: modified,
+        [HTTP_HEADER_ACCEPT_RANGES]: range,
+      });
 
       const options: {
         start: number,
@@ -212,6 +219,8 @@ export async function handleResponse(
   }
 
   else if (redirect !== undefined) {
+    // Redirect to the provided location.
+
     // Set the status code to '302 Found'.
     response.writeHead(HTTP_STATUS_FOUND, {
       // Set the 'location' header to point to the redirect URL.
@@ -223,6 +232,7 @@ export async function handleResponse(
   }
 
   else if (error !== undefined) {
+    // Respond with an HTTP error status code.
     const status = httpErrorCodes[error] ?? HTTP_STATUS_BAD_REQUEST;
     const body = STATUS_CODES[status] as string;
 
