@@ -125,7 +125,7 @@ export async function handleResponse(
     // The response body is text.
     const body = (text as string | number | boolean).toString();
 
-    response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+    response.writeHead(status !== undefined ? status : DEFAULT_HTTP_STATUS, {
       // Set headers for text content type.
       [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
       [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
@@ -139,7 +139,7 @@ export async function handleResponse(
     // The response body is JSON.
     const body = typeof json === 'string' ? json : JSON.stringify(json);
 
-    response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+    response.writeHead(status !== undefined ? status : DEFAULT_HTTP_STATUS, {
       // Set headers for JSON content type.
       [HTTP_HEADER_CONTENT_TYPE]: 'application/json; charset=UTF-8',
       [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
@@ -153,7 +153,7 @@ export async function handleResponse(
     // The response body is HTML.
     const body = html;
 
-    response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+    response.writeHead(status !== undefined ? status : DEFAULT_HTTP_STATUS, {
       // Set headers for HTML content type.
       [HTTP_HEADER_CONTENT_TYPE]: 'text/html; charset=UTF-8',
       [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(body),
@@ -167,7 +167,7 @@ export async function handleResponse(
     // The response body is a buffer.
     const body = raw;
 
-    response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+    response.writeHead(status !== undefined ? status : DEFAULT_HTTP_STATUS, {
       // Set headers for text content type.
       [HTTP_HEADER_CONTENT_TYPE]: 'application/octet-stream',
       [HTTP_HEADER_CONTENT_LENGTH]: body.length,
@@ -196,7 +196,7 @@ export async function handleResponse(
         ?? 'application/octet-stream';
 
       // Set headers for file response.
-      response.writeHead(status ?? DEFAULT_HTTP_STATUS, {
+      response.writeHead(status !== undefined ? status : DEFAULT_HTTP_STATUS, {
         [HTTP_HEADER_CONTENT_TYPE]: contentType,
         [HTTP_HEADER_LAST_MODIFIED]: modified,
         [HTTP_HEADER_ACCEPT_RANGES]: range,
@@ -233,7 +233,8 @@ export async function handleResponse(
 
   else if (error !== undefined) {
     // Respond with an HTTP error status code.
-    const status = httpErrorCodes[error] ?? HTTP_STATUS_BAD_REQUEST;
+    const errorCode = httpErrorCodes[error];
+    const status = errorCode !== undefined ? errorCode : HTTP_STATUS_BAD_REQUEST;
     const body = STATUS_CODES[status] as string;
 
     // Set the error status code.
