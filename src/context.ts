@@ -174,9 +174,11 @@ export function createTuftContext(
 
   let protocol: string;
 
-  if (headers[HTTP_HEADER_X_FORWARDED_PROTO]) {
+  const xForwardedProto = headers[HTTP_HEADER_X_FORWARDED_PROTO] as string | undefined;
+
+  if (xForwardedProto !== undefined) {
     // Use the trusted proxy header to determine the protocol.
-    protocol = headers[HTTP_HEADER_X_FORWARDED_PROTO] as string;
+    protocol = xForwardedProto;
   }
 
   else {
@@ -186,11 +188,12 @@ export function createTuftContext(
 
   let ip: string | undefined;
 
-  if (headers[HTTP_HEADER_X_FORWARDED_FOR]) {
+  const xForwardedFor = headers[HTTP_HEADER_X_FORWARDED_FOR] as string | undefined;
+
+  if (xForwardedFor) {
     // Use the trusted proxy header to determine the client IP address.
-    const addresses = headers[HTTP_HEADER_X_FORWARDED_FOR] as string;
-    const separatorIndex = addresses.indexOf(',');
-    ip = separatorIndex > 0 ? addresses.slice(0, separatorIndex) : addresses;
+    const separatorIndex = xForwardedFor.indexOf(',');
+    ip = separatorIndex > 0 ? xForwardedFor.slice(0, separatorIndex) : xForwardedFor;
   }
 
   else {
