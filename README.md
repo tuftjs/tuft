@@ -5,6 +5,7 @@ A fast, lightweight web framework for Node.js, with no dependencies.
 ![CI](https://github.com/tuftjs/tuft/workflows/CI/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/tuftjs/tuft/badge.svg)](https://coveralls.io/github/tuftjs/tuft)
 [![Known Vulnerabilities](https://snyk.io/test/github/tuftjs/tuft/badge.svg?targetFile=package.json)](https://snyk.io/test/github/tuftjs/tuft?targetFile=package.json)
+![npm](https://img.shields.io/npm/v/tuft)
 
 Official website: [https://tuft.dev](https://tuft.dev)
 
