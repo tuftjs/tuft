@@ -17,7 +17,7 @@ export type TuftContextOptions = {
   params?: { [key: number]: string };
 }
 
-type SetCookieOptions = {
+export type SetCookieOptions = {
   expires?: Date,
   maxAge?: number,
   domain?: string,
