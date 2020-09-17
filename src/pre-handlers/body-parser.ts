@@ -1,4 +1,6 @@
-import { TuftContext, requestSymbol } from '../context';
+import type { TuftContext } from '../context';
+
+import { requestSymbol } from '../context';
 import {
   DEFAULT_MAX_BODY_SIZE,
   HTTP_HEADER_CONTENT_LENGTH,
