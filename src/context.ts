@@ -93,11 +93,15 @@ export class TuftContext {
    */
 
   setCookie(name: string, value: string, options: SetCookieOptions = {}) {
-    if (!this[responseSymbol].hasHeader(HTTP_HEADER_SET_COOKIE)) {
-      this[responseSymbol].setHeader(HTTP_HEADER_SET_COOKIE, []);
+    const response = this[responseSymbol];
+
+    let setCookieHeader = response.getHeader(HTTP_HEADER_SET_COOKIE) as string[] | undefined;
+
+    if (setCookieHeader === undefined) {
+      setCookieHeader = [];
+      response.setHeader(HTTP_HEADER_SET_COOKIE, setCookieHeader);
     }
 
-    const cookieHeader = this[responseSymbol].getHeader(HTTP_HEADER_SET_COOKIE) as string[];
     let cookie = escape(name) + '=' + escape(value);
 
     if (!options.path) {
@@ -112,7 +116,7 @@ export class TuftContext {
       }
     }
 
-    cookieHeader.push(cookie);
+    setCookieHeader.push(cookie);
 
     return this;
   }
