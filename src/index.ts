@@ -13,9 +13,10 @@ export function tuft(options?: RouteMapOptions) {
 }
 
 // Extension exports
-export { createSearchParams } from './pre-handlers/search-params';
-export { createCookieParser } from './pre-handlers/cookie-parser';
 export { createBodyParser } from './pre-handlers/body-parser';
+export { createCookieParser } from './pre-handlers/cookie-parser';
+export { createSearchParams } from './pre-handlers/search-params';
+export { createSession } from './pre-handlers/session';
 export { createWriteStreamResponder } from './responders/write-stream';
 
 // Utility function exports
