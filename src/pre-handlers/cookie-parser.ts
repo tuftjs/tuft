@@ -10,7 +10,7 @@ import { unescape } from 'querystring';
 
 export function createCookieParser() {
   return function cookieParser(t: TuftContext) {
-    const cookiesStr = t.request.headers[HTTP_HEADER_COOKIE] as string | undefined;
+    const cookiesStr = t.request.headers[HTTP_HEADER_COOKIE];
     const result: { [name: string]: string } = {};
 
     if (cookiesStr) {
