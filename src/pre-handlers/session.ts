@@ -1,7 +1,9 @@
 import type { TuftContext, SetCookieOptions } from '../context';
 
 import { responseSymbol } from '../context';
+import { HTTP_HEADER_COOKIE } from '../constants';
 import { randomBytes } from 'crypto';
+import { unescape } from 'querystring';
 
 interface TuftSessionOptions {
   name?: string,
@@ -64,10 +66,21 @@ export function createSession(options: TuftSessionOptions = {}) {
   }
 
   return async function session(t: TuftContext) {
-    const { cookies } = t.request;
-
-    let sessionId = cookies?.[sessionCookieName];
+    let sessionId: string | undefined;
     let sessionObj: TuftSession | undefined;
+
+    const cookiesStr = t.request.headers[HTTP_HEADER_COOKIE];
+
+    if (cookiesStr) {
+      const unescapedStr = unescape(cookiesStr);
+      const cookieIndex = unescapedStr.indexOf(sessionCookieName);
+
+      if (cookieIndex >= 0) {
+        const begin = cookieIndex + sessionCookieName.length + 1;
+        const end = unescapedStr.indexOf(';', begin);
+        sessionId = unescapedStr.slice(begin, end < 0 ? undefined : end);
+      }
+    }
 
     if (sessionId) {
       // The client has provided a session ID.
