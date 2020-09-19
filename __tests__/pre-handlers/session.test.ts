@@ -17,13 +17,12 @@ type MockTuftContext = {
     headers: {
       [HTTP_HEADER_COOKIE]?: string,
     },
-    cookies?: { [key: string]: any },
     [key: string]: any;
   },
   setCookie: (name: string, value: string, options?: SetCookieOptions) => MockTuftContext,
 };
 
-function createMockContext(cookies?: { [key: string]: any }): any {
+function createMockContext(headers?: { [key: string]: any }): any {
   const mockContext: MockTuftContext = {
     [responseSymbol]: new PassThrough(),
     request: {
@@ -32,8 +31,8 @@ function createMockContext(cookies?: { [key: string]: any }): any {
     setCookie: jest.fn(),
   };
 
-  if (cookies) {
-    mockContext.request.cookies = cookies;
+  if (headers) {
+    mockContext.request.headers = headers;
   }
 
   return mockContext;
@@ -112,23 +111,11 @@ describe('session()', () => {
     });
   });
 
-  describe('when passed a context with cookies but no session ID', () => {
-    test('creates a new session', async () => {
-      const session = createSession();
-      const context = createMockContext({});
-
-      await session(context);
-
-      expect(context.request).toHaveProperty('session');
-      expect(typeof context.request.session).toBe('object');
-    });
-  });
-
-  describe('when passed a context with cookies that include an invalid session ID', () => {
+  describe('when passed a context with headers that include an invalid session ID', () => {
     test('creates a new session', async () => {
       const session = createSession();
       const context = createMockContext({
-        session_id: 'invalid id',
+        cookie: 'session_id=invalid id',
       });
 
       await session(context);
@@ -140,7 +127,7 @@ describe('session()', () => {
 });
 
 describe('session() with custom session store', () => {
-  describe('when passed a context without cookies', () => {
+  describe('when passed a context without a cookie header', () => {
     test('creates a new session that can be destroyed', async () => {
       const store = createMockStore();
       const session = createSession({ store });
@@ -172,25 +159,12 @@ describe('session() with custom session store', () => {
     });
   });
 
-  describe('when passed a context with cookies but no session ID', () => {
-    test('creates a new session', async () => {
-      const store = createMockStore();
-      const session = createSession({ store });
-      const context = createMockContext({});
-
-      await session(context);
-
-      expect(context.request).toHaveProperty('session');
-      expect(typeof context.request.session).toBe('object');
-    });
-  });
-
-  describe('when passed a context with cookies that include an invalid session ID', () => {
+  describe('when passed a context with a cookie header that does not include a session ID', () => {
     test('creates a new session', async () => {
       const store = createMockStore();
       const session = createSession({ store });
       const context = createMockContext({
-        session_id: 'invalid id',
+        cookie: 'foo=bar',
       });
 
       await session(context);
@@ -200,7 +174,22 @@ describe('session() with custom session store', () => {
     });
   });
 
-  describe('when passed a context with cookies that include a valid session ID', () => {
+  describe('when passed a context with a cookie header that includes an invalid session ID', () => {
+    test('creates a new session', async () => {
+      const store = createMockStore();
+      const session = createSession({ store });
+      const context = createMockContext({
+        cookie: 'session_id=invalid id',
+      });
+
+      await session(context);
+
+      expect(context.request).toHaveProperty('session');
+      expect(typeof context.request.session).toBe('object');
+    });
+  });
+
+  describe('when passed a context with a cookie header that includes a valid session ID', () => {
     test('creates a new session with the existing data', async () => {
       const sessionId = 'mock session id';
       const sessionObj = {
@@ -209,7 +198,27 @@ describe('session() with custom session store', () => {
       const store = createMockStore([[sessionId, sessionObj]]);
       const session = createSession({ store });
       const context = createMockContext({
-        session_id: sessionId,
+        cookie: `session_id=${sessionId}`,
+      });
+
+      await session(context);
+
+      expect(context.request).toHaveProperty('session');
+      expect(typeof context.request.session).toBe('object');
+      expect(context.request.session).toHaveProperty('mockKey', 'mock value');
+    });
+  });
+
+  describe('when passed a context with a cookie header that includes a valid session ID before other non-session cookies', () => {
+    test('creates a new session with the existing data', async () => {
+      const sessionId = 'mock session id';
+      const sessionObj = {
+        mockKey: 'mock value',
+      };
+      const store = createMockStore([[sessionId, sessionObj]]);
+      const session = createSession({ store });
+      const context = createMockContext({
+        cookie: `session_id=${sessionId};foo=bar`,
       });
 
       await session(context);
@@ -233,7 +242,7 @@ describe('session() with custom session store', () => {
       const store = createMockStore(null, true);
       const session = createSession({ store });
       const context = createMockContext({
-        session_id: sessionId,
+        cookie: `session_id=${sessionId}`,
       });
 
       await session(context);
