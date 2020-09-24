@@ -20,6 +20,7 @@ import {
   HTTP_STATUS_FOUND,
   HTTP_STATUS_BAD_REQUEST,
   DEFAULT_HTTP_STATUS,
+  DEFAULT_RESPONSE_BODY,
 } from './constants';
 import { stat, createReadStream } from 'fs';
 import { extname } from 'path';
@@ -249,7 +250,8 @@ export async function handleResponse(
   }
 
   else {
-    // No valid response properties were found, so end the response without sending a body.
-    response.end();
+    // No valid response properties were found, so send the default response.
+    response.statusCode = DEFAULT_HTTP_STATUS;
+    response.end(DEFAULT_RESPONSE_BODY);
   }
 }
