@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
+import type { URLSearchParams } from 'url';
 
 import {
   HTTP_HEADER_SET_COOKIE,
@@ -37,7 +38,8 @@ export interface TuftRequest {
   readonly search: string;
   readonly params: { [key: string]: string };
   cookies?: { [key: string]: string };
-  body?: string | Buffer | { [key: string]: any } | null;
+  body?: any;
+  searchParams?: URLSearchParams;
   [key: string]: any;
 }
 
