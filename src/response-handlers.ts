@@ -249,6 +249,11 @@ export async function handleResponse(
     response.end(body);
   }
 
+  else if (status !== undefined) {
+    response.statusCode = status;
+    response.end();
+  }
+
   else {
     // No valid response properties were found, so send the default response.
     response.statusCode = DEFAULT_HTTP_STATUS;
