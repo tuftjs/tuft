@@ -18,6 +18,16 @@ export const HTTP_HEADER_CONTENT_TYPE      = 'content-type';
 export const HTTP_HEADER_LAST_MODIFIED     = 'last-modified';
 export const HTTP_HEADER_ACCEPT_RANGES     = 'accept-ranges';
 
+// CORS HTTP headers.
+export const HTTP_HEADER_ACC_CTRL_ALLOW_ORIGIN        = 'access-control-allow-origin';
+export const HTTP_HEADER_ACC_CTRL_ALLOW_METHODS       = 'access-control-allow-methods';
+export const HTTP_HEADER_ACC_CTRL_ALLOW_HEADERS       = 'access-control-allow-headers';
+export const HTTP_HEADER_ACC_CTRL_ALLOW_CREDENTIALS   = 'access-control-allow-credentials';
+export const HTTP_HEADER_ACC_CTRL_MAX_AGE             = 'access-control-max-age';
+export const HTTP_HEADER_ACC_CTRL_EXPOSE_HEADERS      = 'access-control-expose-headers';
+export const HTTP_HEADER_ACC_CTRL_REQUEST_METHOD      = 'access-control-request-method';
+export const HTTP_HEADER_ACC_CTRL_REQUEST_HEADERS     = 'access-control-request-headers';
+
 // Defacto standard HTTP headers.
 export const HTTP_HEADER_X_FORWARDED_FOR    = 'x-forwarded-for';
 export const HTTP_HEADER_X_FORWARDED_PORT   = 'x-forwarded-port';
@@ -25,6 +35,7 @@ export const HTTP_HEADER_X_FORWARDED_PROTO  = 'x-forwarded-proto';
 
 // HTTP status codes.
 export const HTTP_STATUS_OK                       = 200;
+export const HTTP_STATUS_NO_CONTENT               = 204;
 export const HTTP_STATUS_PARTIAL_CONTENT          = 206;
 export const HTTP_STATUS_FOUND                    = 302;
 export const HTTP_STATUS_BAD_REQUEST              = 400;
@@ -38,6 +49,7 @@ export const ROUTE_MAP_DEFAULT_BASE_PATH        = '';
 export const ROUTE_MAP_DEFAULT_PATH             = '/';
 export const ROUTE_MAP_DEFAULT_TRAILING_SLASH   = null;
 export const ROUTE_MAP_DEFAULT_TRUST_PROXY      = true;
+export const ROUTE_MAP_DEFAULT_CORS             = false;
 
 // Default options for instances of TuftServer and TuftSecureServer.
 export const TUFT_SERVER_DEFAULT_HOST = '127.0.0.1';

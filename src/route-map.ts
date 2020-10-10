@@ -15,7 +15,16 @@ import {
   HTTP_HEADER_X_FORWARDED_FOR,
   HTTP_HEADER_X_FORWARDED_PORT,
   HTTP_HEADER_X_FORWARDED_PROTO,
+  HTTP_HEADER_ACC_CTRL_ALLOW_ORIGIN,
+  HTTP_HEADER_ACC_CTRL_ALLOW_METHODS,
+  HTTP_HEADER_ACC_CTRL_ALLOW_HEADERS,
+  HTTP_HEADER_ACC_CTRL_MAX_AGE,
+  HTTP_HEADER_ACC_CTRL_ALLOW_CREDENTIALS,
+  HTTP_HEADER_ACC_CTRL_EXPOSE_HEADERS,
+  HTTP_HEADER_ACC_CTRL_REQUEST_METHOD,
+  HTTP_HEADER_ACC_CTRL_REQUEST_HEADERS,
   HTTP_STATUS_OK,
+  HTTP_STATUS_NO_CONTENT,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
   HTTP_STATUS_NOT_IMPLEMENTED,
@@ -23,10 +32,19 @@ import {
   ROUTE_MAP_DEFAULT_TRAILING_SLASH,
   ROUTE_MAP_DEFAULT_BASE_PATH,
   ROUTE_MAP_DEFAULT_TRUST_PROXY,
+  ROUTE_MAP_DEFAULT_CORS,
+  HTTP_METHOD_DELETE,
+  HTTP_METHOD_GET,
+  HTTP_METHOD_HEAD,
+  HTTP_METHOD_PATCH,
+  HTTP_METHOD_POST,
+  HTTP_METHOD_PUT,
+  HTTP_STATUS_BAD_REQUEST,
 } from './constants';
 import importedMimeTypes from './data/mime-types.json';
 import { promises as fsPromises } from 'fs';
 import { extname, basename, relative, dirname, resolve, isAbsolute } from 'path';
+import { STATUS_CODES } from 'http';
 
 export interface TuftHandler {
   (t: TuftContext): TuftResponse | Promise<TuftResponse>;
@@ -69,9 +87,35 @@ export type RouteMapOptions = {
   basePath?: string;
   trailingSlash?: boolean;
   trustProxy?: boolean;
+  cors?: boolean | CorsOptions;
+}
+
+export type CorsOptions = {
+  allowOrigin?: string | string[];
+  allowMethods?: string | string[],
+  allowHeaders?: string[],
+  allowCredentials?: true,
+  exposeHeaders?: string | string[],
+  maxAge?: number,
 }
 
 const mimeTypes: { [key: string]: string } = importedMimeTypes;
+
+const defaultCorsOptions = {
+  allowOrigin: '*',
+  allowMethods: [
+    HTTP_METHOD_DELETE,
+    HTTP_METHOD_GET,
+    HTTP_METHOD_HEAD,
+    HTTP_METHOD_PATCH,
+    HTTP_METHOD_POST,
+    HTTP_METHOD_PUT,
+  ],
+  allowHeaders: undefined,
+  allowCredentials: undefined,
+  exposeHeaders: undefined,
+  maxAge: undefined,
+};
 
 /**
  * Stores route data indexed by method and path. Instances of TuftRouteMap can be merged with other
@@ -84,7 +128,7 @@ export class TuftRouteMap extends Map {
   readonly #trailingSlash: boolean | null;  // Match paths with a trailing slash.
   readonly #basePath: string;               // Prepend to route path.
   readonly #trustProxy: boolean;
-
+  readonly #corsPreflightHandler: TuftResponse | null;
   #applicationErrorHandler: ((err: Error) => void | Promise<void>) | null;
 
   constructor(options: RouteMapOptions = {}) {
@@ -95,7 +139,42 @@ export class TuftRouteMap extends Map {
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
     this.#trustProxy = options.trustProxy ?? ROUTE_MAP_DEFAULT_TRUST_PROXY;
+    this.#corsPreflightHandler = null;
     this.#applicationErrorHandler = null;
+
+    const corsOptions = options.cors ?? ROUTE_MAP_DEFAULT_CORS;
+    const cors = corsOptions === true ? defaultCorsOptions : corsOptions;
+
+    if (cors !== false) {
+      // CORS is to be enabled for all routes.
+      const allowOrigin = cors.allowOrigin ?? defaultCorsOptions.allowOrigin;
+      const exposeHeaders = cors.exposeHeaders
+        ? [cors.exposeHeaders].flat().join(', ')
+        : null;
+      const corsPreHandler = handleCorsOrigin.bind(null, allowOrigin, exposeHeaders);
+      this.#preHandlers.push(corsPreHandler);
+
+      const headerProps: { [key: string]: any } = {};
+
+      headerProps.methods = cors.allowMethods
+        ? [cors.allowMethods].flat().join(', ')
+        : defaultCorsOptions.allowMethods.join(', ');
+
+      if (typeof cors.allowHeaders === 'string' || Array.isArray(cors.allowHeaders)) {
+        headerProps.headers = [cors.allowHeaders].flat().join(', ');
+      }
+
+      if (cors.allowCredentials === true) {
+        headerProps.credentials = 'true';
+      }
+
+      if (typeof cors.maxAge === 'number') {
+        headerProps.maxAge = cors.maxAge.toString();
+      }
+
+      const corsPreflightHandler = handleCorsPreflight.bind(null, headerProps);
+      this.#corsPreflightHandler = corsPreflightHandler;
+    }
   }
 
   get trustProxy() {
@@ -134,6 +213,7 @@ export class TuftRouteMap extends Map {
       if (route.trailingSlash !== undefined) {
         mergedRoute.trailingSlash = route.trailingSlash;
       }
+
       else if (this.#trailingSlash !== null) {
         mergedRoute.trailingSlash = this.#trailingSlash;
       }
@@ -166,6 +246,18 @@ export class TuftRouteMap extends Map {
       path = this.#basePath + keyArr[1];
     }
 
+    if (this.#corsPreflightHandler) {
+      // This is a CORS-enabled route.
+      const key = `OPTIONS ${path}`;
+      const route = {
+        trailingSlash: this.#trailingSlash,
+        preHandlers: this.#preHandlers,
+        response: this.#corsPreflightHandler,
+      };
+
+      super.set(key, route);
+    }
+
     const routeProps: TuftRoute = { response };
 
     if (this.#preHandlers.length > 0) {
@@ -182,7 +274,7 @@ export class TuftRouteMap extends Map {
 
     // Add a copy of the route data for each method.
     for (const method of methods) {
-      const key = method + ' ' + path;
+      const key = `${method} ${path}`;
       const route = Object.assign({}, routeProps);
 
       Object.freeze(route);
@@ -286,6 +378,67 @@ export class TuftRouteMap extends Map {
     const handler = createPrimaryHandler(this, this.#applicationErrorHandler);
     return new TuftSecureServer(handler, options);
   }
+}
+
+/**
+ * A Tuft prehandler function for setting the 'Access-Control-Allow-Origin' response header.
+ */
+
+export function handleCorsOrigin(
+  origin: string | string[],
+  headers: string | null,
+  t: TuftContext,
+) {
+  if (headers !== null) {
+    t.setHeader(HTTP_HEADER_ACC_CTRL_EXPOSE_HEADERS, headers);
+  }
+
+  if (typeof origin === 'string') {
+    // Only a single allowed origin string has been provided.
+    t.setHeader(HTTP_HEADER_ACC_CTRL_ALLOW_ORIGIN, origin);
+    return;
+  }
+
+  // Multiple allowed origins have been provided.
+  const clientOrigin = t.request.protocol + '://' + t.request.headers.host as string;
+
+  if (origin.includes(clientOrigin)) {
+    // The request's origin matches one of the allowed origins.
+    t.setHeader(HTTP_HEADER_ACC_CTRL_ALLOW_ORIGIN, clientOrigin);
+  }
+}
+
+/**
+ * A Tuft response handler for responding to CORS preflight requests.
+ */
+
+export function handleCorsPreflight(headers: { [header: string]: string }, t: TuftContext) {
+  const preflightRequestMethod = t.request.headers[HTTP_HEADER_ACC_CTRL_REQUEST_METHOD];
+  const preflightRequestHeaders = t.request.headers[HTTP_HEADER_ACC_CTRL_REQUEST_HEADERS];
+
+  if (preflightRequestMethod === undefined || preflightRequestHeaders === undefined) {
+    // One or both of the required headers for a preflight request are missing.
+    return {
+      status: HTTP_STATUS_BAD_REQUEST,
+      text: STATUS_CODES[HTTP_STATUS_BAD_REQUEST],
+    };
+  }
+
+  t
+    .setHeader(HTTP_HEADER_ACC_CTRL_ALLOW_METHODS, headers.methods)
+    .setHeader(HTTP_HEADER_ACC_CTRL_ALLOW_HEADERS, headers.headers ?? preflightRequestHeaders)
+    .setHeader(HTTP_HEADER_CONTENT_LENGTH, '0');
+
+  if (headers.credentials !== undefined) {
+    t.setHeader(HTTP_HEADER_ACC_CTRL_ALLOW_CREDENTIALS, headers.credentials);
+  }
+
+  if (headers.maxAge !== undefined) {
+    t.setHeader(HTTP_HEADER_ACC_CTRL_MAX_AGE, headers.maxAge);
+  }
+
+  // Once all the necessary headers are set, respond with `204 No Content`.
+  return { status: HTTP_STATUS_NO_CONTENT };
 }
 
 /**
