@@ -24,7 +24,6 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "jest",
     "test:ci": "jest --coverage",
     "prepublishOnly": "npm run test && npm run build",
     "build": "rm -rf ./lib && tsc -b"
