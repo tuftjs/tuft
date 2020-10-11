@@ -24,9 +24,11 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test:ci": "jest --coverage",
+    "test:unit": "jest --coverage",
+    "test:e2e": "./e2e-tests.sh",
     "prepublishOnly": "npm run test && npm run build",
-    "build": "rm -rf ./lib && tsc -b"
+    "build": "rm -rf ./lib && tsc -b",
+    "start:test": "npm run build && node ./e2e-tests/server"
   },
   "devDependencies": {
     "@types/jest": "^26.0.14",
@@ -35,7 +37,9 @@
     "@typescript-eslint/parser": "^4.4.0",
     "eslint": "^7.11.0",
     "jest": "^26.5.2",
+    "newman": "^5.2.0",
     "ts-jest": "^26.4.1",
-    "typescript": "^4.0.3"
+    "typescript": "^4.0.3",
+    "wait-on": "^5.2.0"
   }
 }

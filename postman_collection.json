@@ -1,0 +1,475 @@
+{
+	"info": {
+		"_postman_id": "71d1f21b-0ad4-4a05-a5b2-89639a6cf772",
+		"name": "tuft",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "/buffer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "48936f5a-4332-46d1-805f-c03e77cfc0c0",
+						"exec": [
+							"pm.test('Status code is 200', function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('Hello, world!');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'application/octet-stream\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'application/octet-stream');\r",
+							"});\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/buffer",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"buffer"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/text",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 200', function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('Hello, world!');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'text/plain; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'text/plain; charset=UTF-8');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/text",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"text"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/bufferWithStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "48936f5a-4332-46d1-805f-c03e77cfc0c0",
+						"exec": [
+							"pm.test('Status code is 418', function () {\r",
+							"    pm.response.to.have.status(418);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('Hello, world!');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'application/octet-stream\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'application/octet-stream');\r",
+							"});\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/bufferWithStatus",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"bufferWithStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/textWithStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 418', function () {\r",
+							"    pm.response.to.have.status(418);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('Hello, world!');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'text/plain; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'text/plain; charset=UTF-8');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/textWithStatus",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"textWithStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/json",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 200', function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body({ hello: 'world' });\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'application/json; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'application/json; charset=UTF-8');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/json",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"json"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/jsonWithStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 418', function () {\r",
+							"    pm.response.to.have.status(418);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body({ hello: 'world' });\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'application/json; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'application/json; charset=UTF-8');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/jsonWithStatus",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"jsonWithStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/htmlWithStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 418', function () {\r",
+							"    pm.response.to.have.status(418);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('<h1>Hello, world!</h1>');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'text/html; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'text/html; charset=UTF-8');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/htmlWithStatus",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"htmlWithStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/html",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 200', function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('<h1>Hello, world!</h1>');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'text/html; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'text/html; charset=UTF-8');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/html",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"html"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 418', function () {\r",
+							"    pm.response.to.have.status(418);\r",
+							"});\r",
+							"\r",
+							"pm.test('There is no response body', function () {\r",
+							"    pm.response.to.not.have.body;\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/status",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/file",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 200', function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('abc\\n');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'text/plain; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'text/plain');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/file",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"file"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/fileWithStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "01a52a7f-1fb5-408e-99a6-b75280255eca",
+						"exec": [
+							"pm.test('Status code is 418', function () {\r",
+							"    pm.response.to.have.status(418);\r",
+							"});\r",
+							"\r",
+							"pm.test('Response body is the expected value', function () {\r",
+							"    pm.response.to.have.body('abc\\n');\r",
+							"});\r",
+							"\r",
+							"pm.test('Response header \\'content-type\\' is set to \\'text/plain; charset=UTF-8\\'', function () {\r",
+							"    pm.response.to.have.header('content-type', 'text/plain');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/fileWithStatus",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"fileWithStatus"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
