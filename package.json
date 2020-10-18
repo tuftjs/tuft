@@ -26,7 +26,7 @@
   "scripts": {
     "test:unit": "jest --coverage",
     "test:e2e": "./e2e-tests.sh",
-    "prepublishOnly": "npm run test && npm run build",
+    "prepublishOnly": "npm run test:unit && npm run test:e2e && npm run build",
     "build": "rm -rf ./lib && tsc -b",
     "start:test": "npm run build && node ./e2e-tests/server"
   },
