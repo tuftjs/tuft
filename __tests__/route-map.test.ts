@@ -78,7 +78,7 @@ describe('TuftRouteMap', () => {
         const map1 = new TuftRouteMap({
           basePath: '/foo',
           trailingSlash: true,
-          preHandlers: [() => { }],
+          prehandlers: [() => { }],
           responders: [() => { }],
         });
         const map2 = new TuftRouteMap();
@@ -97,7 +97,7 @@ describe('TuftRouteMap', () => {
           basePath: '/foo',
           trailingSlash: true,
           trustProxy: true,
-          preHandlers: [() => { }],
+          prehandlers: [() => { }],
           responders: [() => { }],
         });
 
@@ -175,8 +175,8 @@ describe('TuftRouteMap', () => {
 
         const route = map.get('OPTIONS /');
 
-        expect(route).toHaveProperty('preHandlers');
-        expect(route.preHandlers[0]?.name).toBe('bound handleCorsOrigin');
+        expect(route).toHaveProperty('prehandlers');
+        expect(route.prehandlers[0]?.name).toBe('bound handleCorsOrigin');
         expect(route).toHaveProperty('response');
         expect(route.response?.name).toBe('bound handleCorsPreflight');
       });
@@ -203,8 +203,8 @@ describe('TuftRouteMap', () => {
 
         const route = map.get('OPTIONS /');
 
-        expect(route).toHaveProperty('preHandlers');
-        expect(route.preHandlers[0]?.name).toBe('bound handleCorsOrigin');
+        expect(route).toHaveProperty('prehandlers');
+        expect(route.prehandlers[0]?.name).toBe('bound handleCorsOrigin');
         expect(route).toHaveProperty('response');
         expect(route.response?.name).toBe('bound handleCorsPreflight');
       });
@@ -229,8 +229,8 @@ describe('TuftRouteMap', () => {
 
         const route = map.get('OPTIONS /');
 
-        expect(route).toHaveProperty('preHandlers');
-        expect(route.preHandlers[0]?.name).toBe('bound handleCorsOrigin');
+        expect(route).toHaveProperty('prehandlers');
+        expect(route.prehandlers[0]?.name).toBe('bound handleCorsOrigin');
         expect(route).toHaveProperty('response');
         expect(route.response?.name).toBe('bound handleCorsPreflight');
       });
