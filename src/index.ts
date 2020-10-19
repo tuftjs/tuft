@@ -3,7 +3,7 @@ import type { RouteMapOptions } from './route-map';
 import { TuftRouteMap } from './route-map';
 
 // Type exports
-export type { TuftHandler, TuftPreHandler, TuftResponse, TuftRouteMap } from './route-map';
+export type { TuftHandler, TuftPrehandler, TuftResponse, TuftRouteMap } from './route-map';
 export type { TuftContext, TuftRequest } from './context';
 export type { TuftServer, TuftSecureServer } from './server';
 

@@ -50,7 +50,7 @@ export interface TuftHandler {
   (t: TuftContext): TuftResponse | Promise<TuftResponse>;
 }
 
-export interface TuftPreHandler {
+export interface TuftPrehandler {
   (t: TuftContext): TuftResponse | void | Promise<TuftResponse | void>;
 }
 
@@ -75,14 +75,18 @@ export interface TuftResponse {
 
 export interface TuftRoute {
   response: TuftHandler | TuftResponse;
-  preHandlers?: TuftPreHandler[];
+  prehandlers?: TuftPrehandler[];
   responders?: TuftResponder[];
   params?: { [key: string]: string };
   trailingSlash?: boolean;
 }
 
 export type RouteMapOptions = {
-  preHandlers?: TuftPreHandler[];
+  prehandlers?: TuftPrehandler[];
+  /**
+   * @deprecated Equivalent to 'prehandlers', may be removed in a future major release.
+   */
+  preHandlers?: TuftPrehandler[];
   responders?: TuftResponder[];
   basePath?: string;
   trailingSlash?: boolean;
@@ -123,7 +127,7 @@ const defaultCorsOptions = {
  */
 
 export class TuftRouteMap extends Map {
-  readonly #preHandlers: TuftPreHandler[];
+  readonly #prehandlers: TuftPrehandler[];
   readonly #responders: TuftResponder[];
   readonly #trailingSlash: boolean | null;  // Match paths with a trailing slash.
   readonly #basePath: string;               // Prepend to route path.
@@ -134,7 +138,9 @@ export class TuftRouteMap extends Map {
   constructor(options: RouteMapOptions = {}) {
     super();
 
-    this.#preHandlers = options.preHandlers ?? [];
+    // 'preHandlers' (with an uppercase 'H') is supported as a legacy option, but
+    // 'prehandlers' (all lowercase) takes precedence.
+    this.#prehandlers = options.prehandlers ?? options.preHandlers ?? [];
     this.#responders = options.responders ?? [];
     this.#trailingSlash = options.trailingSlash ?? ROUTE_MAP_DEFAULT_TRAILING_SLASH;
     this.#basePath = options.basePath ?? ROUTE_MAP_DEFAULT_BASE_PATH;
@@ -152,7 +158,7 @@ export class TuftRouteMap extends Map {
         ? [cors.exposeHeaders].flat().join(', ')
         : null;
       const corsPreHandler = handleCorsOrigin.bind(null, allowOrigin, exposeHeaders);
-      this.#preHandlers.push(corsPreHandler);
+      this.#prehandlers.push(corsPreHandler);
 
       const headerProps: { [key: string]: any } = {};
 
@@ -199,8 +205,8 @@ export class TuftRouteMap extends Map {
         response: route.response,
       };
 
-      if (this.#preHandlers.length > 0 || route.preHandlers?.length > 0) {
-        mergedRoute.preHandlers = this.#preHandlers.concat(route.preHandlers ?? []);
+      if (this.#prehandlers.length > 0 || route.prehandlers?.length > 0) {
+        mergedRoute.prehandlers = this.#prehandlers.concat(route.prehandlers ?? []);
       }
 
       if (this.#responders.length > 0 || route.responders?.length > 0) {
@@ -251,7 +257,7 @@ export class TuftRouteMap extends Map {
       const key = `OPTIONS ${path}`;
       const route = {
         trailingSlash: this.#trailingSlash,
-        preHandlers: this.#preHandlers,
+        prehandlers: this.#prehandlers,
         response: this.#corsPreflightHandler,
       };
 
@@ -260,8 +266,8 @@ export class TuftRouteMap extends Map {
 
     const routeProps: TuftRoute = { response };
 
-    if (this.#preHandlers.length > 0) {
-      routeProps.preHandlers = this.#preHandlers;
+    if (this.#prehandlers.length > 0) {
+      routeProps.prehandlers = this.#prehandlers;
     }
 
     if (this.#responders.length > 0) {
