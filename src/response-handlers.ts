@@ -3,7 +3,7 @@ import type {
   TuftRoute,
   TuftResponse,
   TuftHandler,
-  TuftPreHandler,
+  TuftPrehandler,
   TuftResponder,
 } from './route-map';
 import type { IncomingMessage, ServerResponse } from 'http';
@@ -41,7 +41,7 @@ const mimeTypes: { [key: string]: string } = importedMimeTypes;
 export function createResponseHandler(route: TuftRoute) {
   const { response, params } = route;
 
-  const preHandlers = route.preHandlers ?? EMPTY_ARRAY;
+  const preHandlers = route.prehandlers ?? EMPTY_ARRAY;
   const responders = route.responders ?? EMPTY_ARRAY;
   const options = { params };
 
@@ -89,7 +89,7 @@ export function returnResponse(response: TuftResponse) {
 
 export async function handleResponse(
   handler: TuftHandler,
-  preHandlers: TuftPreHandler[],
+  prehandlers: TuftPrehandler[],
   responders: TuftResponder[],
   contextOptions: TuftContextOptions,
   request: IncomingMessage,
@@ -99,8 +99,8 @@ export async function handleResponse(
 
   let tuftResponse: TuftResponse | void;
 
-  for (let i = 0; i < preHandlers.length && tuftResponse === undefined; i++) {
-    const preHandler = preHandlers[i];
+  for (let i = 0; i < prehandlers.length && tuftResponse === undefined; i++) {
+    const preHandler = prehandlers[i];
     tuftResponse = await preHandler(t);
   }
 
