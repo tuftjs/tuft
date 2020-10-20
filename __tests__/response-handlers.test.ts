@@ -1,4 +1,4 @@
-import type { TuftPreHandler, TuftResponder } from '../src/route-map';
+import type { TuftPrehandler, TuftResponder } from '../src/route-map';
 import type { HttpError } from '../src/utils';
 
 import { createResponseHandler, returnResponse, handleResponse } from '../src/response-handlers';
@@ -110,11 +110,11 @@ describe('createResponseHandler()', () => {
     });
   });
 
-  describe('when preHandlers and responders are both set', () => {
+  describe('when prehandlers and responders are both set', () => {
     test('returns bound handleResponse()', () => {
       const result = createResponseHandler({
         response: {},
-        preHandlers: [],
+        prehandlers: [],
         responders: [],
       });
 
@@ -159,7 +159,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return {};
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -167,7 +167,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -185,7 +185,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return null;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -194,7 +194,7 @@ describe('handleResponse()', () => {
       const result = handleResponse(
         //@ts-ignore
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -211,7 +211,7 @@ describe('handleResponse()', () => {
       const handler = () => {
         return {};
       };
-      const preHandlers = [
+      const prehandlers = [
         jest.fn(() => {
           return {
             status: HTTP_STATUS_TEAPOT,
@@ -225,7 +225,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -233,8 +233,8 @@ describe('handleResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(preHandlers[0]).toHaveBeenCalled();
-      expect(preHandlers[0]).toHaveReturnedWith({ status: HTTP_STATUS_TEAPOT });
+      expect(prehandlers[0]).toHaveBeenCalled();
+      expect(prehandlers[0]).toHaveReturnedWith({ status: HTTP_STATUS_TEAPOT });
     });
   });
 
@@ -243,7 +243,7 @@ describe('handleResponse()', () => {
       const handler = () => {
         return {};
       };
-      const preHandlers = [jest.fn()];
+      const prehandlers = [jest.fn()];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -251,7 +251,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -259,8 +259,8 @@ describe('handleResponse()', () => {
       );
 
       await expect(result).resolves.toBeUndefined();
-      expect(preHandlers[0]).toHaveBeenCalled();
-      expect(preHandlers[0]).toHaveReturned();
+      expect(prehandlers[0]).toHaveBeenCalled();
+      expect(prehandlers[0]).toHaveReturned();
     });
   });
 
@@ -270,7 +270,7 @@ describe('handleResponse()', () => {
       const handler = () => {
         return response;
       };
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [jest.fn((response: {}) => response)];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -278,7 +278,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -297,7 +297,7 @@ describe('handleResponse()', () => {
       const handler = () => {
         return response;
       };
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [jest.fn(() => { })];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -305,7 +305,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -327,7 +327,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -335,7 +335,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -362,7 +362,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -370,7 +370,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -396,7 +396,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -404,7 +404,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -432,7 +432,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -440,7 +440,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -469,7 +469,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -477,7 +477,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -505,7 +505,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -513,7 +513,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -540,7 +540,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -548,7 +548,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -574,7 +574,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -582,7 +582,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -609,7 +609,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -617,7 +617,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -644,7 +644,7 @@ describe('handleResponse()', () => {
         const handler = jest.fn(() => {
           return responseObject;
         });
-        const preHandlers: TuftPreHandler[] = [];
+        const prehandlers: TuftPrehandler[] = [];
         const responders: TuftResponder[] = [];
         const contextOptions = {};
         const mockRequest = createMockRequest();
@@ -664,7 +664,7 @@ describe('handleResponse()', () => {
 
         const result = handleResponse(
           handler,
-          preHandlers,
+          prehandlers,
           responders,
           contextOptions,
           mockRequest,
@@ -686,7 +686,7 @@ describe('handleResponse()', () => {
         const handler = jest.fn(() => {
           return responseObject;
         });
-        const preHandlers: TuftPreHandler[] = [];
+        const prehandlers: TuftPrehandler[] = [];
         const responders: TuftResponder[] = [];
         const contextOptions = {};
         const mockRequest = createMockRequest();
@@ -706,7 +706,7 @@ describe('handleResponse()', () => {
 
         const result = handleResponse(
           handler,
-          preHandlers,
+          prehandlers,
           responders,
           contextOptions,
           mockRequest,
@@ -727,7 +727,7 @@ describe('handleResponse()', () => {
         const handler = jest.fn(() => {
           return responseObject;
         });
-        const preHandlers: TuftPreHandler[] = [];
+        const prehandlers: TuftPrehandler[] = [];
         const responders: TuftResponder[] = [];
         const contextOptions = {};
         const mockRequest = createMockRequest();
@@ -747,7 +747,7 @@ describe('handleResponse()', () => {
 
         const result = handleResponse(
           handler,
-          preHandlers,
+          prehandlers,
           responders,
           contextOptions,
           mockRequest,
@@ -772,7 +772,7 @@ describe('handleResponse()', () => {
           t.setHeader(HTTP_HEADER_LAST_MODIFIED, customDateString);
           return responseObject;
         });
-        const preHandlers: TuftPreHandler[] = [];
+        const prehandlers: TuftPrehandler[] = [];
         const responders: TuftResponder[] = [];
         const contextOptions = {};
         const mockRequest = createMockRequest();
@@ -790,7 +790,7 @@ describe('handleResponse()', () => {
 
         const result = handleResponse(
           handler,
-          preHandlers,
+          prehandlers,
           responders,
           contextOptions,
           mockRequest,
@@ -812,7 +812,7 @@ describe('handleResponse()', () => {
         const handler = jest.fn(() => {
           return responseObject;
         });
-        const preHandlers: TuftPreHandler[] = [];
+        const prehandlers: TuftPrehandler[] = [];
         const responders: TuftResponder[] = [];
         const contextOptions = {};
         const mockRequest = createMockRequest();
@@ -832,7 +832,7 @@ describe('handleResponse()', () => {
 
         const result = handleResponse(
           handler,
-          preHandlers,
+          prehandlers,
           responders,
           contextOptions,
           mockRequest,
@@ -853,7 +853,7 @@ describe('handleResponse()', () => {
         const handler = jest.fn(() => {
           return responseObject;
         });
-        const preHandlers: TuftPreHandler[] = [];
+        const prehandlers: TuftPrehandler[] = [];
         const responders: TuftResponder[] = [];
         const contextOptions = {};
         const mockRequest = createMockRequest();
@@ -869,7 +869,7 @@ describe('handleResponse()', () => {
 
         const result = handleResponse(
           handler,
-          preHandlers,
+          prehandlers,
           responders,
           contextOptions,
           mockRequest,
@@ -891,7 +891,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -899,7 +899,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -924,7 +924,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -932,7 +932,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
@@ -960,7 +960,7 @@ describe('handleResponse()', () => {
       const handler = jest.fn(() => {
         return responseObject;
       });
-      const preHandlers: TuftPreHandler[] = [];
+      const prehandlers: TuftPrehandler[] = [];
       const responders: TuftResponder[] = [];
       const contextOptions = {};
       const mockRequest = createMockRequest();
@@ -968,7 +968,7 @@ describe('handleResponse()', () => {
 
       const result = handleResponse(
         handler,
-        preHandlers,
+        prehandlers,
         responders,
         contextOptions,
         mockRequest,
