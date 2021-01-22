@@ -84,7 +84,7 @@ abstract class TuftServerBase extends EventEmitter {
    */
 
   stop() {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       this.#server.close(err => {
         err ? reject(err) : resolve();
       });
