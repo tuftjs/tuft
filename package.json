@@ -31,15 +31,15 @@
     "start:test": "npm run build && node ./e2e-tests/server"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.23",
-    "@types/node": "^15.0.2",
-    "@typescript-eslint/eslint-plugin": "^4.22.1",
-    "@typescript-eslint/parser": "^4.22.1",
-    "eslint": "^7.25.0",
+    "@types/jest": "^26.0.24",
+    "@types/node": "^15.14.1",
+    "@typescript-eslint/eslint-plugin": "^4.28.2",
+    "@typescript-eslint/parser": "^4.28.2",
+    "eslint": "^7.30.0",
     "jest": "^26.6.3",
-    "newman": "^5.2.3",
+    "newman": "^5.2.4",
     "ts-jest": "^26.5.6",
-    "typescript": "^4.2.4",
+    "typescript": "^4.3.5",
     "wait-on": "^5.3.0"
   }
 }
