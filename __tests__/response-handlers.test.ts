@@ -637,7 +637,7 @@ describe('handleResponse()', () => {
 
   describe('file response', () => {
     describe('when passed a handler that returns an object with `file`', () => {
-      test('calls that handler and the expected response methods', async done => {
+      test('calls that handler and the expected response methods', done => {
         const responseObject = {
           file: join(__dirname, '../mock-assets/abc.txt'),
         };
@@ -671,14 +671,15 @@ describe('handleResponse()', () => {
           mockResponse
         );
 
-        await expect(result).resolves.toBeUndefined();
-        expect(handler).toHaveBeenCalled();
-        expect(handler).toHaveReturnedWith(responseObject);
+        expect(result).resolves.toBeUndefined().then(() => {
+          expect(handler).toHaveBeenCalled();
+          expect(handler).toHaveReturnedWith(responseObject);
+        });
       });
     });
 
     describe('when passed a handler that returns an object with `file` and `status`', () => {
-      test('calls that handler and the expected response methods', async done => {
+      test('calls that handler and the expected response methods', done => {
         const responseObject = {
           file: join(__dirname, '../mock-assets/abc.txt'),
           status: HTTP_STATUS_TEAPOT,
@@ -713,14 +714,15 @@ describe('handleResponse()', () => {
           mockResponse
         );
 
-        await expect(result).resolves.toBeUndefined();
-        expect(handler).toHaveBeenCalled();
-        expect(handler).toHaveReturnedWith(responseObject);
+        expect(result).resolves.toBeUndefined().then(() => {
+          expect(handler).toHaveBeenCalled();
+          expect(handler).toHaveReturnedWith(responseObject);
+        });
       });
     });
 
     describe('when passed a handler that returns an object with `file` of unknown type', () => {
-      test('calls that handler and the expected response methods', async done => {
+      test('calls that handler and the expected response methods', done => {
         const responseObject = {
           file: join(__dirname, '../mock-assets/abc.foo'),
         };
@@ -754,14 +756,15 @@ describe('handleResponse()', () => {
           mockResponse
         );
 
-        await expect(result).resolves.toBeUndefined();
-        expect(handler).toHaveBeenCalled();
-        expect(handler).toHaveReturnedWith(responseObject);
+        expect(result).resolves.toBeUndefined().then(() => {
+          expect(handler).toHaveBeenCalled();
+          expect(handler).toHaveReturnedWith(responseObject);
+        });
       });
     });
 
     describe('when passed a handler that returns an object with `file` and has custom headers', () => {
-      test('calls that handler and the expected response methods', async done => {
+      test('calls that handler and the expected response methods', done => {
         const customDateString = (new Date()).toUTCString();
         const responseObject = {
           file: join(__dirname, '../mock-assets/abc.txt'),
@@ -797,14 +800,15 @@ describe('handleResponse()', () => {
           mockResponse
         );
 
-        await expect(result).resolves.toBeUndefined();
-        expect(handler).toHaveBeenCalled();
-        expect(handler).toHaveReturnedWith(responseObject);
+        expect(result).resolves.toBeUndefined().then(() => {
+          expect(handler).toHaveBeenCalled();
+          expect(handler).toHaveReturnedWith(responseObject);
+        });
       });
     });
 
     describe('when passed a handler that returns an object with `file` and `length`', () => {
-      test('calls that handler and the expected response methods', async done => {
+      test('calls that handler and the expected response methods', done => {
         const responseObject = {
           file: join(__dirname, '../mock-assets/abc.txt'),
           length: 1,
@@ -839,14 +843,15 @@ describe('handleResponse()', () => {
           mockResponse
         );
 
-        await expect(result).resolves.toBeUndefined();
-        expect(handler).toHaveBeenCalled();
-        expect(handler).toHaveReturnedWith(responseObject);
+        expect(result).resolves.toBeUndefined().then(() => {
+          expect(handler).toHaveBeenCalled();
+          expect(handler).toHaveReturnedWith(responseObject);
+        });
       });
     });
 
     describe('when passed a handler that returns an object with `file` pointing to a non-existent file path', () => {
-      test('calls that handler and the expected response methods', async done => {
+      test('calls that handler and the expected response methods',  done => {
         const responseObject = {
           file: './does_not_exist',
         };
@@ -876,15 +881,16 @@ describe('handleResponse()', () => {
           mockResponse
         );
 
-        await expect(result).resolves.toBeUndefined();
-        expect(handler).toHaveBeenCalled();
-        expect(handler).toHaveReturnedWith(responseObject);
+        expect(result).resolves.toBeUndefined().then(() => {
+          expect(handler).toHaveBeenCalled();
+          expect(handler).toHaveReturnedWith(responseObject);
+        });
       });
     });
   });
 
   describe('when passed a handler that returns an object with `redirect`', () => {
-    test('calls that handler and the expected response methods', async () => {
+    test('calls that handler and the expected response methods', done => {
       const responseObject = {
         redirect: '/foo',
       };
@@ -906,18 +912,20 @@ describe('handleResponse()', () => {
         mockResponse
       );
 
-      await expect(result).resolves.toBeUndefined();
-      expect(handler).toHaveBeenCalled();
-      expect(handler).toHaveReturnedWith(responseObject);
-      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_FOUND, {
-        [HTTP_HEADER_LOCATION]: responseObject.redirect,
+      expect(result).resolves.toBeUndefined().then(() => {
+        expect(handler).toHaveBeenCalled();
+        expect(handler).toHaveReturnedWith(responseObject);
+        expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_FOUND, {
+          [HTTP_HEADER_LOCATION]: responseObject.redirect,
+        });
+        expect(mockResponse.end).toHaveBeenCalledWith();
+        done();
       });
-      expect(mockResponse.end).toHaveBeenCalledWith();
     });
   });
 
   describe('when passed a handler that returns an object with `error`', () => {
-    test('calls that handler and the expected response methods', async () => {
+    test('calls that handler and the expected response methods', done => {
       const responseObject = {
         error: 'TEAPOT' as HttpError,
       };
@@ -941,19 +949,21 @@ describe('handleResponse()', () => {
 
       const expectedBody = 'I\'m a Teapot';
 
-      await expect(result).resolves.toBeUndefined();
-      expect(handler).toHaveBeenCalled();
-      expect(handler).toHaveReturnedWith(responseObject);
-      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_TEAPOT, {
-        [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
-        [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(expectedBody),
+      expect(result).resolves.toBeUndefined().then(() => {
+        expect(handler).toHaveBeenCalled();
+        expect(handler).toHaveReturnedWith(responseObject);
+        expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_TEAPOT, {
+          [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
+          [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(expectedBody),
+        });
+        expect(mockResponse.end).toHaveBeenCalledWith(expectedBody);
+        done();
       });
-      expect(mockResponse.end).toHaveBeenCalledWith(expectedBody);
     });
   });
 
   describe('when passed a handler that returns an object with `error` set to an invalud value', () => {
-    test('calls that handler and the expected response methods', async () => {
+    test('calls that handler and the expected response methods', done => {
       const responseObject = {
         error: 'FOO' as HttpError,
       };
@@ -977,14 +987,16 @@ describe('handleResponse()', () => {
 
       const expectedBody = 'Bad Request';
 
-      await expect(result).resolves.toBeUndefined();
-      expect(handler).toHaveBeenCalled();
-      expect(handler).toHaveReturnedWith(responseObject);
-      expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_BAD_REQUEST, {
-        [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
-        [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(expectedBody),
+      expect(result).resolves.toBeUndefined().then(() => {
+        expect(handler).toHaveBeenCalled();
+        expect(handler).toHaveReturnedWith(responseObject);
+        expect(mockResponse.writeHead).toHaveBeenCalledWith(HTTP_STATUS_BAD_REQUEST, {
+          [HTTP_HEADER_CONTENT_TYPE]: 'text/plain; charset=UTF-8',
+          [HTTP_HEADER_CONTENT_LENGTH]: Buffer.byteLength(expectedBody),
+        });
+        expect(mockResponse.end).toHaveBeenCalledWith(expectedBody);
+        done();
       });
-      expect(mockResponse.end).toHaveBeenCalledWith(expectedBody);
     });
   });
 });

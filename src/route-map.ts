@@ -133,7 +133,7 @@ export class TuftRouteMap extends Map {
   readonly #basePath: string;               // Prepend to route path.
   readonly #trustProxy: boolean;
   readonly #corsPreflightHandler: TuftResponse | null;
-  #applicationErrorHandler: ((err: Error) => void | Promise<void>) | null;
+  #applicationErrorHandler: ((err: unknown) => void | Promise<void>) | null;
 
   constructor(options: RouteMapOptions = {}) {
     super();
@@ -362,7 +362,7 @@ export class TuftRouteMap extends Map {
    * Adds an error listener to handle errors that are thrown in the application.
    */
 
-  onError(callback: (err: Error) => void | Promise<void>) {
+  onError(callback: (err: unknown) => void | Promise<void>) {
     this.#applicationErrorHandler = callback;
     return this;
   }
@@ -559,7 +559,7 @@ export async function createStaticFileResponseObject(
 
 function createPrimaryHandler(
   routeMap: TuftRouteMap,
-  errorHandler: ((err: Error) => void | Promise<void>) | null,
+  errorHandler: ((err: unknown) => void | Promise<void>) | null,
 ) {
   const routes = new RouteManager(routeMap);
   return primaryHandler.bind(null, routeMap.trustProxy, routes, errorHandler);
@@ -574,12 +574,12 @@ function createPrimaryHandler(
 export function primaryHandler(
   trustProxy: boolean,
   routes: RouteManager,
-  errorHandler: ((err: Error) => void | Promise<void>) | null,
+  errorHandler: ((err: unknown) => void | Promise<void>) | null,
   request: IncomingMessage,
   response: ServerResponse,
 ) {
   try {
-    const handleError = (err: Error) => {
+    const handleError = (err: unknown) => {
       primaryErrorHandler(response, errorHandler, err);
     };
 
@@ -637,8 +637,8 @@ export function primaryHandler(
 
 export async function primaryErrorHandler(
   response: ServerResponse,
-  handleError: ((err: Error) => void | Promise<void>) | null,
-  err: Error,
+  handleError: ((err: unknown) => void | Promise<void>) | null,
+  err: unknown,
 ) {
   if (!response.writableEnded) {
     if (!response.headersSent) {

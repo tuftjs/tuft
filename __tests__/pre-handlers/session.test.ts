@@ -230,7 +230,7 @@ describe('session() with custom session store', () => {
   });
 
   describe('when the session store throws an error after calling `.set()`', () => {
-    test('the error is logged', async done => {
+    test('the error is logged', done => {
       jest
         .spyOn(console, 'error')
         .mockImplementationOnce(err => {
@@ -245,9 +245,7 @@ describe('session() with custom session store', () => {
         cookie: `session_id=${sessionId}`,
       });
 
-      await session(context);
-
-      context[responseSymbol].emit('finish');
+      session(context).then(() => context[responseSymbol].emit('finish'));
     });
   });
 });
